@@ -1,0 +1,65 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        compiler: [gcc, clang, msvc]
+        exclude:
+          - os: ubuntu-latest
+            compiler: msvc
+          - os: macos-latest
+            compiler: msvc
+
+    runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.compiler }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run the tests
+        run: ./command/test.sh
+
+  static-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install the tools
+        run: sudo apt install cppcheck clang-tidy -y
+
+      - name: Run cppcheck
+        run: cppcheck lambdaspeed.c --force
+
+      - name: Run clang-tidy
+        run: clang-tidy lambdaspeed.c
+
+  benchmark:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install mimalloc
+        run: |
+          git clone https://github.com/microsoft/mimalloc.git
+          cd mimalloc
+          mkdir -p out/release
+          cd out/release
+          cmake ../..
+          sudo make install
+
+      - name: Install Hyperfine
+        run: cargo install hyperfine
+
+      - name: Run the benchmarks
+        run: ./command/bench.sh
