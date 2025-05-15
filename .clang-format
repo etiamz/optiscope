@@ -1,0 +1,47 @@
+Language: C
+BasedOnStyle: LLVM
+
+IndentWidth: 4
+ContinuationIndentWidth: 4
+ColumnLimit: 80
+
+AlignAfterOpenBracket: AlwaysBreak
+AlignConsecutiveMacros:
+  Enabled: true
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: Always
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortLoopsOnASingleLine: true
+AlwaysBreakBeforeMultilineStrings: true
+BinPackArguments: false
+BinPackParameters: OnePerLine
+BreakAfterReturnType: All
+BreakStringLiterals: false
+
+AttributeMacros:
+  [
+    COMPILER_UNUSED,
+    COMPILER_NORETURN,
+    COMPILER_COLD,
+    COMPILER_HOT,
+    COMPILER_FLATTEN,
+    COMPILER_RETURNS_NONNULL,
+    COMPILER_WARN_UNUSED_RESULT,
+    COMPILER_OPTIMIZE,
+    COMPILER_MALLOC,
+    COMPILER_FORMAT,
+    COMPILER_NONNULL,
+    COMPILER_CONST,
+    COMPILER_PURE,
+  ]
+ForEachMacros: [
+    FOR_ALL_PORTS, #
+    ITERATE_LIST,
+    CONSUME_LIST,
+    CONSUME_FOCUS,
+  ]
+StatementMacros: [PRINTER]

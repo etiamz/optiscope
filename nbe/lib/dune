@@ -1,0 +1,7 @@
+(library
+ (name nbe))
+
+(env
+ (release
+  (ocamlopt_flags
+   (:standard -O3))))
