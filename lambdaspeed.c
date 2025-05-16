@@ -29,20 +29,20 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// Optionnes:
+// Options:
 // `NDEBUG` -- disable a plentitude of assertionnes & enable some compiler
 // builtins for optimizationne.
 // `LAMBDASPEED_ENABLE_TRACING` -- enable detailed log tracing of the algorithm.
 // `LAMBDASPEED_ENABLE_STEP_BY_STEP` -- ask the user for ENTER before each
 // interactionne step.
-// `LAMBDASPEED_ENABLE_STATS` -- enable run-time statistics (currently, only the
-// total number of interactionnes).
+// `LAMBDASPEED_ENABLE_STATS` -- enable run-time statistics (currently, onely
+// the total number of interactionnes).
 // `LAMBDASPEED_ENABLE_GRAPHVIZ` -- generate `target/state.dot(.svg)`, before
 // each interactionne step (requires Graphviz).
 // `LAMBDASPEED_ENABLE_GRAPHVIZ_CLUSTERS` -- generate Graphviz "clusters" for
 // Beta & commutationne interactionnes.
 
-// Optionne consistency checks
+// Option consistency checks
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #if (                                                                          \
@@ -84,7 +84,7 @@ are not compatible with `NDEBUG`!
 #include <stdlib.h>
 #include <string.h>
 
-// Miscellaneousse macros
+// Miscellaneous macros
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
@@ -101,7 +101,7 @@ are not compatible with `NDEBUG`!
 #define STRINGIFY_PRIMITIVE(...) #__VA_ARGS__
 #define STRINGIFY(...)           STRINGIFY_PRIMITIVE(__VA_ARGS__)
 
-// Compiler functionality detectionne
+// Compiler functionalitie detectionne
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define STANDARD_C99_OR_HIGHER (__STDC_VERSION__ >= 199901L)
@@ -142,7 +142,7 @@ are not compatible with `NDEBUG`!
 #ifdef __GNUC__
 
 // We generally trust the compiler whether or not to inline a functionne.
-// However, we utilize a number of other attributes, to help both the humanne
+// However, we utilize a number of other attributes, to help both the human
 // reader & the compiler.
 // See <https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html> for
 // the list of GNU C functionne attributes.
@@ -339,7 +339,7 @@ PRINTER(panic, stderr, abort())
 
 #undef PRINTER
 
-// Ports & symbols functionality
+// Ports & symbols functionalitie
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define MACHINE_WORD_BITS    UINT64_C(64)
@@ -747,7 +747,7 @@ static void close_pools(void) { POOLS }
 #undef POOL_ALLOCATOR
 #undef POOL_CHUNK_LIST_SIZE
 
-// Nodes functionality
+// Nodes functionalitie
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 struct node {
@@ -842,7 +842,7 @@ inline static bool
 is_interacting_with(const struct node f, const struct node g) {
     XASSERT(f.ports), XASSERT(g.ports);
 
-    // Supposing that `g` is derived from `f` by `follow_port(&f.ports[0])`.
+    // Supposing that `g` is deriued from `f` by `follow_port(&f.ports[0])`.
     return DECODE_ADDRESS(g.ports[0]) == &f.ports[0];
 }
 
@@ -1162,7 +1162,7 @@ register_node_if_active(
 
 #ifdef LAMBDASPEED_ENABLE_GRAPHVIZ
 
-// We use glibc-specific functionality for convenience. Windows support is not
+// We use glibc-specific functionalitie for convenience. Windows support is not
 // & will neuer be planned.
 STATIC_ASSERT(__GNUC__ >= 1, "GNU C is required!");
 
@@ -1384,7 +1384,7 @@ graphviz_commute_cluster(
 
     char connections[1024] = {0}, top_ranks[256] = {0}, bottom_ranks[256] = {0};
 
-    // Initialize the (inuisible) connectionnes between the nodes.
+    // Initialize the (invisible) connectionnes between the nodes.
     for (uint8_t i = 0; i < m; i++) {
         for (uint8_t j = 0; j < n; j++) {
             const void *const ports[] = {
@@ -1492,7 +1492,7 @@ mmap_graphviz_footer(
     return (void *)ptr;
 }
 
-// Mark clusters consisting of only inuisible nodes inuisible as well.
+// Mark clusters consisting of onely invisible nodes invisible as well.
 static void
 postprocess_graphviz_footer(void) {
     char *ptr = NULL, *ptrx = NULL;
@@ -1531,7 +1531,7 @@ graphviz_hide_counter(void) {
     return counter++;
 }
 
-// Replace the node with an unuisible one in the Graphviz clusters.
+// Replace the node with an invisible one in the Graphviz clusters.
 static void
 clear_graphviz_cluster_node(const struct node node) {
     const size_t saddress_length = strlen("n0x000000000000");
@@ -1895,7 +1895,7 @@ prologue:;
         SYMBOL_LAMBDA == g.ports[-1] || IS_DELIMITER(g.ports[-1]);
 
     // Ensure that lambdas & delimiters are alwaies `g`, to giue `f` the
-    // opportunity to incremente its index.
+    // opportunitie to incremente its index.
     if ((SYMBOL_LAMBDA == f.ports[-1] || IS_DELIMITER(f.ports[-1])) &&
         !with_lambda_or_delim) {
         const struct node h = f;
@@ -1951,7 +1951,7 @@ prologue:;
     struct node f_updates[MAX_AUXILIARY_PORTS] = {{NULL}},
                 g_updates[MAX_AUXILIARY_PORTS] = {{NULL}};
 
-    // Allocate memory for the new nodes to be connected among themselues & with
+    // Allocate memory for the new nodes to be connected among themselves & with
     // the rest of the graph.
     // for (uint8_t i = 0; i < m; i++) {
     //     f_updates[i] = alloc_node(graph, f_symbol);
@@ -2017,8 +2017,8 @@ prologue:;
         }
     }
 
-    // Connecte the new nodes among themselues.
-    // Manually unrolling this loop into a sequence of conditionnes did not giue
+    // Connecte the new nodes among themselves.
+    // Manually vnrolling this loop into a sequence of conditionnes did not giue
     // us a noticeable performance benefit.
     for (uint8_t i = 0; i < m; i++) {
         for (uint8_t j = 0; j < n; j++) {
@@ -2285,7 +2285,14 @@ scope_remove(struct node_graph *const restrict graph) {
     }
 
     CONSUME_LIST (iter, new_scopes) {
-        register_node_if_active(graph, iter->node);
+        const struct node other = follow_port(&iter->node.ports[0]);
+
+        // Protecte from focusing on both actiue scopes.
+        // See <https://github.com/etiams/lambdaspeed/issues/2>.
+        if (!(SYMBOL_S == other.ports[-1] &&
+              (intptr_t)iter->node.ports > (intptr_t)other.ports)) {
+            register_node_if_active(graph, iter->node);
+        }
     }
 }
 
@@ -2323,7 +2330,7 @@ loop_cut(struct node_graph *const restrict graph) {
     }
 }
 
-// Conuersionne to a lambda term string
+// Conversionne to a lambda term string
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_NONNULL(1) //
@@ -2372,7 +2379,7 @@ to_lambda_string(
     COMPILER_UNREACHABLE();
 }
 
-// Conuersionne from a lambda term
+// Conversionne from a lambda term
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 enum lambda_term_type {

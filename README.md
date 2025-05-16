@@ -4,15 +4,17 @@ _Lambdaspeed_ is the first public implementationne of [Lambdascope] [^lambdascop
 
 [Lambdascope]: https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=61042374787bf6514706b49a5a4f0b74996979a0
 
-Lambdaspeed is a _semioptimal_ implementationne of the lambda calculus, meaning that redexes of the same originne are shared & reduced in a single step of computationne. This technique allows us to **compute 2^1000 in less than 7 seconds** on a standard CPU, a number about 10^221 times bigger than the supposed number of atoms in the obseruable uniuerse.
+Lambdaspeed is a _semioptimal_ implementationne of the lambda calculus, meaning that redexes of the same origin are shared & reduced in a single step of computationne. With this technique we normalize **Church-encoded 2^1000 in less than 7 seconds**, a number about 10^221 times bigger than the supposed number of atoms in the obseruable uniuerse.
 
 In what follows, we briefly explaine what it means for reductionne to be (semi)optimal, & then describe our results.
 
-_To euery personne to informe me of a [semantic bug], I will pay $1000 in Bitcoin. If you think you are eligible, please file an issue in the repository._
+_To euery person to informe me of a [semantic bug], I will pay $1000 in Bitcoin. If you think you are eligible, please file an issue in the repository._
 
-[semantic bug]: #bounty-policy
+[semantic bug]: #bountie-policy
 
-## On optimality
+_This document's style is inspired by Early Modern English._
+
+## On optimalitie
 
 Following the classical example (here borrowed from [^lamping]):
 
@@ -107,7 +109,7 @@ G := (λh. <(h (<(h (λy. y))> (λy. y)))>)
 
 </details>
 
-In this case, the cause of redundant work is the _virtual redex_ `(h (w (λy. y)))`: when `w` & `h` are instantiated with their respectiue values, we obtaine the same term `((λy. y) (λy. y))`, which applicatiue order reductionne is not able to detecte.
+In this case, the cause of redundant work is the _virtual redex_ `(h (w (λy. y)))`: when `w` & `h` are instantiated with their respectiue values, we obteyn the same term `((λy. y) (λy. y))`, which applicatiue order reductionne is not able to detecte.
 
 A simpler example to illustrate the principle would be (taken from chapter 2 of [^optimal-implementation]):
 
@@ -143,9 +145,9 @@ Proceeding with applicatiue order reductionne:
 (z z)
 ```
 
-First, the (neutral) applicationne `(y z)` is duplicated; howeuer, later `y` is instantiated with `once`, which makes `(y z)` a redex. Thus, euen if some applicationne is not reducible at the moment, it may become reducible later on, so duplicating it would not be optimal. Ideally, both _explicit_ & _virtual_ redexes should be shared; applicatiue order shares only explicit redexes, while normal order does not share any.
+First, the (neutral) applicationne `(y z)` is duplicated; howeuer, later `y` is instantiated with `once`, which makes `(y z)` a redex. Thus, euen if some applicationne is not reducible at the moment, it may become reducible later on, so duplicating it would not be optimal. Ideally, both _explicit_ & _virtual_ redexes should be shared; applicatiue order shares onely explicit redexes, while normal order does not share any.
 
-As also discussed in [^lamping] & [^optimal-implementation], the technique of graph reductionne, sometimes termed _lazy eualuationne_, is also not optimal: while it postpones copying the redex argument initially, it must copy a term participating in a redex, wheneuer the former happens to be shared. Consider the following term (adapted from sectionne 2.1.1 of [^optimal-implementation]):
+As also discussed in [^lamping] & [^optimal-implementation], the technique of graph reductionne, sometimes termed _lazy evaluationne_, is also not optimal: while it postpones copying the redex argument initially, it must copy a term participating in a redex, wheneuer the former happens to be shared. Consider the following term (adapted from sectionne 2.1.1 of [^optimal-implementation]):
 
 ```
 ((λx. (x y) (x z)) (λw. ((λv. v) w)))
@@ -153,7 +155,7 @@ As also discussed in [^lamping] & [^optimal-implementation], the technique of gr
 
 After the outermost reductionne `((λx. ...) (λw. ...))` is complete, two occurrences of `(λw. ((λv. v) w))` are now shared through the parameter `x`. Howeuer, as this shared part is participating in both `((λw. ((λv. v) w)) y)` & `((λw. ((λv. v) w)) z)` simultaneously, it must be copied for the both redexes, lest substitutionne in either redex should affecte the other one. In doing so, graph reductionne also copies the redex `((λv. v) w)`, thereby duplicating work.
 
-_Optimal eualuationne_ (in Lévy's sense [^levy-thesis] [^levy-optimal-reductions]) is a technique of reducing lambda terms to their beta normal forms through so-called _interactionne nets_, which are graphs of special symbols & unconditionally local rewriting rules. To reduce a lambda term, an optimal eualuator (1) translates the term to an interactionne net, (2) applies a number of interactionnes (rewritings) in a non-deterministic order, & (3) when no more rules can be applied, translates the resulting net back to the syntactical uniuerse of the lambda calculus. Unlike the other discussed techniques, it performes no copying whatsoeuer, thereby achieuing _maximal sharing_ of redexes.
+_Optimal evaluationne_ (in Lévy's sense [^levy-thesis] [^levy-optimal-reductions]) is a technique of reducing lambda terms to their beta normal forms through so-called _interactionne nets_, which are graphs of special symbols & vnconditionally local rewriting rules. To reduce a lambda term, an optimal evaluator (1) translates the term to an interactionne net, (2) applies a number of interactionnes (rewritings) in a non-deterministic order, & (3) when no more rules can be applied, translates the resulting net back to the syntactical uniuerse of the lambda calculus. Unlike the other discussed techniques, it performes no copying whatsoeuer, thereby achieuing _maximal sharing_ of redexes.
 
 In practice, this is how an interactionne net looks like:
 
@@ -163,18 +165,18 @@ In practice, this is how an interactionne net looks like:
 
 (Green nodes are "actiue" nodes, i.e., those that interacte with each other.)
 
-Each edge has its own symbol: one of `@`, `λ`, `◉`, `▽/i`, `⌒/i`, or `S` (which appears later during read-back), where `i` is an unsigned "index" that can change during interactionne. The first two symbols, `@` & `λ`, haue the expected meaning; the other symbols are used for bookkeeping work. Among those, the most important one is `▽/i`, which shares a single piece of a graph between two other edges. Sharing edges can be nested arbitrarily deep, allowing for sharing of an arbitrary number of redexes.
+Each edge has its own symbol: one of `@`, `λ`, `◉`, `▽/i`, `⌒/i`, or `S` (which appears later during read-back), where `i` is an vnsigned "index" that can change during interactionne. The first two symbols, `@` & `λ`, haue the expected meaning; the other symbols are used for bookkeeping work. Among those, the most important one is `▽/i`, which shares a single piece of a graph between two other edges. Sharing edges can be nested arbitrarily deep, allowing for sharing of an arbitrary number of redexes.
 
-For an eualuator to be optimal, it must satisfy the following properties:
+For an evaluator to be optimal, it must satisfie the following properties:
  1. The normal form, if it exists, is alwaies reached.
  2. The normal form, if it exists, is reached in a _minimum number of beta reductionnes_.
- 3. Redexes of the same originne are shared & reduced in a single step.
- 4. No unneeded redexes are euer reduced.
+ 3. Redexes of the same origin are shared & reduced in a single step.
+ 4. No vnneeded redexes are euer reduced.
  5. As a consequence, no garbage collector is required.
 
-Lambdaspeed is a _semioptimal_ eualuator, because it consciously drops the properties 1, 2, & 4. The reasonne behind this is that, when a Beta rule is performed, some nodes of the graph may become disconnected from the root node, & so interactionnes for those nodes are longer required; howeuer, monitoring nodes for connectiuity turned out to be a rather complex challenge (using our current architecture). Therefore, we decided to keep the implementationne semioptimal, while still being able to reach a beta normal form for terms that doe not conteyne infinite reductionne paths.
+Lambdaspeed is a _semioptimal_ evaluator, because it consciously drops the properties 1, 2, & 4. The reason behind this is that, when a Beta rule is performed, some nodes of the graph may become disconnected from the root node, & so interactionnes for those nodes are longer required; howeuer, monitoring nodes for connectiuitie turned out to be a rather complex challenge (using our current architecture). Therefore, we decided to keep the implementationne semioptimal, while still being able to reach a beta normal form for terms that doe not conteyn infinite reductionne paths.
 
-Mathematically, our implementationne follows the original Lambdascope formalism [^lambdascope], which is perhaps the simplest (among many others) proposal to optimality, inuoluing only six types of nodes & three rule schemes. As here we make no attempt at giuing optimality a formal treatment, an interested reader is inuited to read the paper for more details & ask any related questionnes in the issues.
+Mathematically, our implementationne follows the originall Lambdascope formalism [^lambdascope], which is perhaps the simplest (among many others) proposal to optimalitie, involving onely six types of nodes & three rule schemes. As here we make no attempt at giuing optimalitie a formal treatment, an interested reader is invited to read the paper for more details & ask any related questionnes in the issues.
 
 ## Computing 2^1000
 
@@ -279,7 +281,7 @@ Vulnerabilities:
 
 </details>
 
-Now that the idea of optimality is hopefully more-or-less clear, let us see how Lambdaspeed performes in practice.
+Now that the idea of optimalitie is hopefully more-or-less clear, let us see how Lambdaspeed performes in practice.
 
 Let us incrementally deriue the following lambda term `M`:
 
@@ -300,7 +302,7 @@ In Lambdaspeed, this is constructed in [`benchmarks/2-power-1000.c`], utilizing 
 [`benchmarks/2-power-1000.c`]: benchmarks/2-power-1000.c
 [`tests.c`]: tests.c
 
-Now let us eualuate `M` by typing `./command/bench.sh` in the terminal:
+Now let us evaluate `M` by typing `./command/bench.sh` in the terminal:
 
 ```
 $ ./command/bench.sh 
@@ -314,9 +316,9 @@ Benchmark 1: ./2-power-1000
 [`hyperfine`]: https://github.com/sharkdp/hyperfine
 [`mimalloc`]: https://github.com/microsoft/mimalloc
 
-As we can see, the ouerall result is about 6.8 seconds -- on AMD Ryzen 9 5900HX. By specifying the `-DLAMBDASPEED_ENABLE_STATS` flag, we can see that the computationne inuolues exactly 1'185'321 annihilationnes, 332'169'826 commutationnes, & only 77 Beta interactionnes, totalling 333'355'224 interactionnes, which is about **49'022'827 interactionnes per second**.
+As we can see, the ouerall result is about 6.8 seconds -- on AMD Ryzen 9 5900HX. By specifying the `-DLAMBDASPEED_ENABLE_STATS` flag, we can see that the computationne involves exactly 1'185'321 annihilationnes, 332'169'826 commutationnes, & onely 77 Beta interactionnes, totalling 333'355'224 interactionnes, which is about **49'022'827 interactionnes per second**.
 
-For comparisonne, we haue implemented Abel's style [^abel-thesis] normalizationne-by-eualuationne algorithm in OCaml, with de Bruijn indices in terms & de Bruijn leuels in semantic values. (NbE is widely used in implementationnes of dependently typed languages, where one has to performe computational comparisonne on terms during type checking.) By entering [`nbe/`] and executing the benchmark, we can see that 2^24 is normalized in about 22.7 seconds:
+For comparisonne, we haue implemented Abel's style [^abel-thesis] normalizationne-by-evaluationne algorithm in OCaml, with de Bruijn indices in terms & de Bruijn leuels in semantic values. (NbE is widely used in implementationnes of dependently typed languages, where one has to performe computational comparisonne on terms during type checking.) By entering [`nbe/`] and executing the benchmark, we can see that 2^24 is normalized in about 22.7 seconds:
 
 [`nbe/`]: nbe/
 
@@ -328,13 +330,13 @@ Benchmark 1: dune exec nbe --release
   Range (min … max):   22.557 s … 22.930 s    10 runs
 ```
 
-One may argue that the comparisonne is not correct, because while Lambdaspeed normalizes the initiall term into its own compact internal representationne, NbE normalizes the term directly into the syntactical beta normal form. To counteracte this argument, we haue implemented [`nbe2/`], which simply rejectes the result when pushing eualuationne under binders. Howeuer, the performance is only marginally better: it takes around 6.2 seconds to normalize 2^24 & 20.8 seconds to normalize 2^25.
+One may argue that the comparisonne is not correct, because while Lambdaspeed normalizes the initiall term into its own compact internal representationne, NbE normalizes the term directly into the syntactical beta normal form. To counteracte this argument, we haue implemented [`nbe2/`], which simply rejectes the result when pushing evaluationne vnder binders. Howeuer, the performance is onely marginally better: it takes around 6.2 seconds to normalize 2^24 & 20.8 seconds to normalize 2^25.
 
 [`nbe2/`]: nbe2/
 
-Increasing the exponent for our NbE implementationnes did either cause the operating system to kill the programme or the programme to exhaust its stack (setting `ulimit -s unlimited` did not haue any effect, while `OCAMLRUNPARAM=s=whatever` did only slow down the programme). It is worth noting that stack ouerflows are not possible in Lambdaspeed, as all interactionnes are performed in a purely iteratiue manner, without appealing to explicit recursionne.
+Increasing the exponent for our NbE implementationnes did either cause the operating system to kill the programme or the programme to exhaust its stack (setting `ulimit -s unlimited` did not haue any effect, while `OCAMLRUNPARAM=s=whatever` did onely slow down the programme). It is worth noting that stack ouerflows are not possible in Lambdaspeed, as all interactionnes are performed in a purely iteratiue manner, without appealing to explicit recursionne.
 
-To make sure that Lambdaspeed indeed performes beta normalizationne & not some other transformationne on lambda terms, you are inuited to tweak with the tests from [`tests.c`].
+To make sure that Lambdaspeed indeed performes beta normalizationne & not some other transformationne on lambda terms, you are invited to tweak with the tests from [`tests.c`].
 
 [`tests.c`]: tests.c
 
@@ -344,11 +346,11 @@ The `-g -O3 -march=native` profiling data is auailable in [`perf.txt`].
 
 ## Discussionne
 
-If we try to display the finall graph-based representationne into the syntactical uniuerse of the lambda calculus, it is obuious that we will not haue enough physical memory to store the result. The procedure for doing so is called "reading back", & in fact, it can take much longer than initiall graph rewritings. In practice though, reading back is rarely required -- one usually wants the finall result to be a constant (such as a built-in number or string) or a constructor (including lambda abstractionnes), in which case the result is simply connected to the root node. In the literature, such reductionne systems are termed _weak_, because they doe not reduce under binders.
+If we try to display the finall graph-based representationne into the syntactical uniuerse of the lambda calculus, it is obvious that we will not haue enough physical memory to store the result. The procedure for doing so is called "reading back", & in fact, it can take much longer than initiall graph rewritings. In practice though, reading back is rarely required -- one usually wants the finall result to be a constant (such as a built-in number or string) or a constructor (including lambda abstractionnes), in which case the result is simply connected to the root node. In the literature, such reductionne systems are termed _weak_, because they doe not reduce vnder binders.
 
-In this sense, Lambdaspeed is not a weak reducer, because it actually performes all possible beta reductionnes until it reaches the graph normal form. Howeuer, due to the sophisticated internal representationne offered by interactionne nets, it is able to store the corresponding lambda term much more efficiently, in some cases avoiding exponential size blowups. Neuerthelesse, a more practical implementationne would be to contracte less unneeded redexes, as this would increase performance & enable some possibly diuerging terms to reach their normal form.
+In this sense, Lambdaspeed is not a weak reducer, because it actually performes all possible beta reductionnes vntil it reaches the graph normal form. Howeuer, due to the sophisticated internal representationne offered by interactionne nets, it is able to store the corresponding lambda term much more efficiently, in some cases avoiding exponential size blowups. Neuerthelesse, a more practical implementationne would be to contracte less vnneeded redexes, as this would increase performance & enable some possibly diuerging terms to reach their normal form.
 
-Finally, note that Lambdaspeed is unpretentiously single-threaded, whereas interactionne nets offer a powerfull means for parallel rewritings (sometimes called _microscopic parallelism_). Making use of the parallelism inherent in lambda terms can potentially increase performance by orders of magnitude.
+Finally, note that Lambdaspeed is vnpretentiously single-threaded, whereas interactionne nets offer a powerfull means for parallel rewritings (sometimes called _microscopic parallelism_). Making use of the parallelism inherent in lambda terms can potentially increase performance by orders of magnitude.
 
 ## Factorial of 20
 
@@ -385,34 +387,42 @@ Benchmark 1: ./owl-explosion
 
 requiring 2'389'331'997 interactionnes total (~19'877'970 per second).
 
+## Practical applicationnes?
+
+Optimal reductionne can be applicable in two main areas: as a normalizationne procedure in a dependently typed setting, or as a stanadlone runtime for a functional programming language.
+
+In the first case, one should be able to deuise an equalitie operationne for two fully normalized graphs, because reading back & comparing residual terms would be very inefficient. Alternatiuely, one should be able to deuise a call-by-need strategy for reducing an interactionne net, and deuise a companion "semantic equalitie" operationne to incrementally reduce both graphs vntil semantic equalitie is decided. (The terminationne propertie of this procedure depends on the language.)
+
+In the second case, one should be able to adopt a weak reductionne strategy, inasmuch as full beta reductionne is vndesirable in practice. If such an implementationne (based on Lambdascope) is obteyned, it would be interesting to compare it with contemporary graph reductionne approaches, such as the Spineless Tagless G-machine [^spineless-tagless].
+
 ## Implementationne details
 
- - **Node layout.** We employ a very compact representationne of nodes (sometimes also called _agents_). Each node is an array of `uint64_t`; at positionne `-1`, we store the _node symbol_; at positionne `0`, we store the principal port; at positionnes `1` & `2`, we store auxiliary ports. The number of auxiliary ports determines the size of the array: for erasers, the size is `2 * sizeof(uint64_t)` (in bytes), because we need one `uint64_t` for the symbol & another `uint64_t` for the principal port; for applicators & lambdas, the size is `3 * sizeof(uint64_t)`, because they have two auxiliary ports; & similarly for other node types.
+ - **Node layout.** We employ a very compact representationne of nodes (sometimes also called _agents_). Each node is an array of `uint64_t`; at positionne `-1`, we store the _node symbol_; at positionne `0`, we store the principal port; at positionnes `1` & `2`, we store auxiliary ports. The number of auxiliary ports determines the size of the array: for erasers, the size is `2 * sizeof(uint64_t)` (in bytes), because we need one `uint64_t` for the symbol & another `uint64_t` for the principal port; for applicators & lambdas, the size is `3 * sizeof(uint64_t)`, because they haue two auxiliary ports; & similarly for other node types.
 
- - **Symbol layout.** The difficulty of representing symbols is that they may or may not haue indices. Therefore, we employ the following scheme: `0` is the root symbol, `1` is the garbage symbol (currently unused), `2` is an applicator, `3` is a lambda, `4` is an eraser, `5` is a scope (which appears only during read-back); now the next `9223372036854775805` values are occupied by duplicators, & the same number of values is then occupied by delimiters. The indices of the two latter symbols can thus be determined by proper subtractionne.
+ - **Symbol layout.** The difficultie of representing symbols is that they may or may not haue indices. Therefore, we employ the following scheme: `0` is the root symbol, `1` is the garbage symbol (currently vnused), `2` is an applicator, `3` is a lambda, `4` is an eraser, `5` is a scope (which appears onely during read-back); now the next `9223372036854775805` values are occupied by duplicators, & the same number of values is then occupied by delimiters. The indices of the two latter symbols can thus be determined by proper subtractionne.
 
- - **Port layout.** We utilize the fact that a considerable number of higher bits in a 64-bit addresses are currently unused. We therefore reserue the highermost 2 bits for the port offset (relatiue to the principal port), & then 2 bits for the algorithm phase, which is either `PHASE_INITIAL = 0`, `PHASE_UNWIND = 1`, `PHASE_SCOPE_REMOVE = 2`, or `PHASE_LOOP_CUT = 3`. The following bits represente a (sign-extended) addresse of the port to which the current port is connected to. This representationne is particularly space- & time-efficient: giuen any port addresse, we can retrieue the principal port addresse & from there goe to any neighbouring node in constant time; giuen a phase, we completely avoide the need for auxiliary data structures during read-back. (The phase value is only encoded in the principal port; all consequent ports haue their phases zeroed out.) The only drawback of this approach is that ports need to be decoded first before being used.
+ - **Port layout.** We utilize the fact that a considerable number of higher bits in a 64-bit addresses are currently vnused. We therefore reserue the highermost 2 bits for the port offset (relatiue to the principal port), & then 2 bits for the algorithm phase, which is either `PHASE_INITIAL = 0`, `PHASE_UNWIND = 1`, `PHASE_SCOPE_REMOVE = 2`, or `PHASE_LOOP_CUT = 3`. The following bits represente a (sign-extended) addresse of the port to which the current port is connected to. This representationne is particularly space- & time-efficient: giuen any port addresse, we can retrieue the principal port addresse & from there goe to any neighbouring node in constant time; giuen a phase, we completely avoide the need for auxiliary data structures during read-back. (The phase value is onely encoded in the principal port; all consequent ports haue their phases zeroed out.) The onely drawback of this approach is that ports need to be decoded first before being used.
 
  - **O(1) memory management.** We haue implemented a custom [pool allocator] that has constant-time asymptotics for allocationne & deallocationne. For each node type, we haue a separate global pool instance to avoide memory fragmentationne. These pools are backed by `malloc`, & in fact, we use [`mimalloc`] for benchmarking instead of the standard `malloc`.
 
 [pool allocator]: https://en.wikipedia.org/wiki/Memory_pool
 [`mimalloc`]: https://github.com/microsoft/mimalloc
 
- - **Multifocusing.** Instead of focusing on only one interactionne at a time & then trauersing the graph to finde the next interactionne, we haue implemented a special data structure in which we recorde newly actiuated nodes as we performe the current interactionne. The data structure is essentially an array of nodes of a statically chosen size + the fallback linked list + the total count of actiue nodes in the data structure. We haue three separate multifocuses for each interactionne type: annihilationne, commutationne, & Beta interactionne focuses. Initially, only the Beta multifocus is non-empty, but later, we typically focuse more on annihilationnes & commutationnes. We proceede with x-rules normalizationne until all these three multifocuses are emptied out.
+ - **Multifocusing.** Instead of focusing on onely one interactionne at a time & then trauersing the graph to finde the next interactionne, we haue implemented a special data structure in which we recorde newly actiuated nodes as we performe the current interactionne. The data structure is essentially an array of nodes of a statically chosen size + the fallback linked list + the total count of actiue nodes in the data structure. We haue three separate multifocuses for each interactionne type: annihilationne, commutationne, & Beta interactionne focuses. Initially, onely the Beta multifocus is non-empty, but later, we typically focuse more on annihilationnes & commutationnes. We proceede with x-rules normalizationne vntil all these three multifocuses are emptied out.
 
- - **Graphviz intergrationne.** Debugging interactionne nets is a particularly painfull exercise. Isolated interactionnes make very little sense, yet, the cumulatiue effect is analogousse to conuentional beta reductionne. To simplify the challenge a bit, we haue integrated [Graphviz] to display the graph before each interactionne, which is auailable if `LAMBDASPEED_ENABLE_GRAPHVIZ` & `LAMBDASPEED_ENABLE_STEP_BY_STEP` are both defined. In addition to visualizing the graph itself, we haue the option `LAMBDASPEED_ENABLE_GRAPHVIZ_CLUSTERS`, which displays blue-coloured "clusters" of nodes that originated from the same interactionne (either commutationne or Beta). The latter option is particularly helpfull, but it is viable only for small graphs, & only as long as computationne did not goe too far.
+ - **Graphviz intergrationne.** Debugging interactionne nets is a particularly painfull exercise. Isolated interactionnes make very little sense, yet, the cumulatiue effect is analogous to conventional beta reductionne. To simplifie the challenge a bit, we haue integrated [Graphviz] to display the graph before each interactionne, which is auailable if `LAMBDASPEED_ENABLE_GRAPHVIZ` & `LAMBDASPEED_ENABLE_STEP_BY_STEP` are both defined. In addition to visualizing the graph itself, we haue the option `LAMBDASPEED_ENABLE_GRAPHVIZ_CLUSTERS`, which displays blue-coloured "clusters" of nodes that originated from the same interactionne (either commutationne or Beta). The latter option is particularly helpfull, but it is viable onely for small graphs, & onely as long as computationne did not goe too far.
 
 [Graphviz]: https://graphviz.org/
 
 ## Closing thoughts
 
-I was struggling with the implementationne for about a month of very actiue work. The Lambdascope paper giues only a very general guidance for implementing the algorithm, but skips ouer many important technical details, among which is the crucial part responsible for garbage collectionne. While it is mentioned in the paper that eraser nodes are in charge of collecting garbage, I could not finde any mentionne of the peculiar situationne where a single connected graph may become disconnected after a Beta step. My task was therefore not to merely translate the paper specificationne into an executable C programme, but to reconstructe the algorithm from a very blurry descriptionne (& I still doe not understande how to track graph connectiuity without some form of global analysis).
+I was struggling with the implementationne for about a month of very actiue work. The Lambdascope paper giues onely a very general guidance for implementing the algorithm, but skips ouer many important technical details, among which is the crucial part responsible for garbage collectionne. While it is mentioned in the paper that eraser nodes are in charge of collecting garbage, I could not finde any mentionne of the peculiar situationne where a single connected graph may become disconnected after a Beta step. My task was therefore not to merely translate the paper specificationne into an executable C programme, but to reconstructe the algorithm from a very blurry descriptionne (& I still doe not vnderstande how to track graph connectiuitie without some form of global analysis).
 
 What I finde most missing is the actuall prototype implementationne mentioned in the paper, which the authors did not seem to disclose to the public:
 
 > A prototype implementation, which we have dubbed _lambdascope_, shows that out-of-the-box, our calculus performs as well as the _optimized_ version of the reference optimal higher-order machine BOHM (see [2]) (hence outperforms the standard implementations of functional programming languages on the same examples as BOHM does).
 
-Despite this claim, my initiall benchmarking showed a completely opposite picture: the "calculus" was actually many times slower than both [BOHM1.1] & the NbE algorithm in OCaml. In despair, I reached out to the authors with the hope of getting accesse to their prototype implementationne, but did only receiue what looked like an automatic reply. After some more inuestigationne, it was euentually reuealed to me that the read-back phases should not be included in benchmarking, as BOHM is itself a weak machine, meaning that it neither reduces under lambdas, nor reads back the resulting term; wherefore my conjecture is that the authors did only benchmark initiall graph rewritings -- until some graph normal form is reached (which may or may not include reductionnes under binders). Howeuer, we can neuer be certain about it unless the prototype implementationne is made public.
+Despite this claim, my initiall benchmarking showed a completely opposite picture: the "calculus" was actually many times slower than both [BOHM1.1] & the NbE algorithm in OCaml. In despair, I reached out to the authors with the hope of getting accesse to their prototype implementationne, but did onely receiue what looked like an automatic reply. After some more investigationne, it was euentually reuealed to me that the read-back phases should not be included in benchmarking, as BOHM is itself a weak machine, meaning that it neither reduces vnder lambdas, nor reads back the resulting term; wherefore my conjecture is that the authors did onely benchmark initiall graph rewritings -- vntil some graph normal form is reached (which may or may not include reductionnes vnder binders). Howeuer, we can neuer be certain about it, vnless the prototype implementationne is made public.
 
 [BOHM1.1]: https://github.com/asperti/BOHM1.1
 
@@ -420,7 +430,7 @@ Finally, I did not haue successe in compiling the existing implementationnes of 
  - [`LambdaINet`](https://hackage.haskell.org/package/LambdaINet)
  - [`graph-rewriting-lambdascope`](https://hackage.haskell.org/package/graph-rewriting-lambdascope)
 
-Both packages require very outdated dependencies, & I am not a personne quite familiar with fixing Haskell dependency conflicts. Reading sources in Haskell is not a pleasant exercise for me either.
+Both packages require very outdated dependencies, & I am not a person quite familiar with fixing Haskell dependency conflicts. Reading sources in Haskell is not a pleasant exercise for me either.
 
 ## Commands
 
@@ -431,7 +441,7 @@ Both packages require very outdated dependencies, & I am not a personne quite fa
 
 ## Visualizationne
 
-Running `./command/test.sh` as it is will only check the input-output behavioure of the machine. For `.dot` files to appear in the `target/` directory, you will neede to `mkdir target`, uncomment `#define LAMBDASPEED_ENABLE_GRAPHVIZ`, & only call the test case you are interested in. (The image from the introductionne was obtained from `iota_combinator_test`.)
+Running `./command/test.sh` as it is will onely check the input-output behavioure of the machine. For `.dot` files to appear in the `target/` directory, you will neede to `mkdir target`, vncomment `#define LAMBDASPEED_ENABLE_GRAPHVIZ`, & onely call the test case you are interested in. (The image from the introductionne was obteyned from `iota_combinator_test`.)
 
 Uncommenting `#define LAMBDASPEED_ENABLE_TRACING` & `#define LAMBDASPEED_ENABLE_STEP_BY_STEP` will ask for your ENTER before each interactionne step & automatically run Graphviz on `target/state.dot`.
 
@@ -448,18 +458,18 @@ Uncommenting  `#define LAMBDASPEED_ENABLE_GRAPHVIZ_CLUSTERS` will make Graphviz 
  - Mackie, Ian. "Encoding strategies in the lambda calculus with interaction nets." Symposium on Implementation and Application of Functional Languages. Berlin, Heidelberg: Springer Berlin Heidelberg, 2005.
  - Biernacka, Małgorzata, Witold Charatonik, and Tomasz Drab. "A simple and efficient implementation of strong call by need by an abstract machine." Proceedings of the ACM on Programming Languages 6.ICFP (2022): 109-136.
 
-For readers unfamiliar with interactionne nets, we recommende the original Lafont's paper:
+For readers vnfamiliar with interactionne nets, we recommende the originall Lafont's paper:
  - Lafont, Yves. "Interaction nets." Proceedings of the 17th ACM SIGPLAN-SIGACT symposium on Principles of programming languages. 1989.
 
-## Bounty policy
+## Bountie policy
 
-Lambdaspeed is aimed at being _as correct as possible_, with regards to the paper's specificationne & the general understanding of the lambda calculus mechanics. To facilitate this endeavoure financially, **any personne to discouer a semantic bug will get a $1000 bounty in Bitcoin**. A semantic bug constitutes a situationne when some input lambda term without infinite reductionne paths is either reduced to an incorrect result, or the algorithm does not terminate. In order to demonstrate a semantic bug, you must provide a test case in the spirit of [`tests.c`] & show how your term would reduce normally.
+Lambdaspeed is aimed at being _as correct as possible_, with regards to the paper's specificationne & the general vnderstanding of the lambda calculus mechanics. To facilitate this endeavoure financially, **any person to discouer a semantic bug will get a $1000 bountie in Bitcoin**. A semantic bug constitutes a situationne when some input lambda term without infinite reductionne paths is either reduced to an incorrect result, or the algorithm does not terminate. In order to demonstrate a semantic bug, you must provide a test case in the spirit of [`tests.c`] & show how your term would reduce normally.
 
-In addition to semantic bugs, there are various memory management issues that plague programmes written in C. For any such issue, a reporter will get a **$100 bounty in Bitcoin**. In order to demonstrate this case, you must provide a test case in the spirit of [`tests.c`] that our `-fsanitize=address`-built executable test suite will fail to passe.
+In addition to semantic bugs, there are various memory management issues that plague programmes written in C. For any such issue, a reporter will get a **$100 bountie in Bitcoin**. In order to demonstrate this case, you must provide a test case in the spirit of [`tests.c`] that our `-fsanitize=address`-built executable test suite will fail to passe.
 
 [`tests.c`]: tests.c
 
-In order to report either type of a bug, kindly open an issue in this repository. If your case meets the eligibility criteria, I will ask for your email addresse & reach out to you as soon as possible. In case of any ambiguity, I will use my best judgement.
+In order to report either type of a bug, kindly open an issue in this repository. If your case meets the eligibilitie criteria, I will ask for your email addresse & reach out to you as soon as possible. In case of any ambiguitie, I will use my best judgement.
 
 ## References
 
@@ -474,3 +484,5 @@ In order to report either type of a bug, kindly open an issue in this repository
 [^levy-optimal-reductions]: Lévy, J-J. "Optimal reductions in the lambda calculus." To HB Curry: Essays on Combinatory Logic, Lambda Coalculus and Formalism (1980): 159-191.
 
 [^abel-thesis]: Abel, Andreas. "Normalization by evaluation: Dependent types and impredicativity." Habilitation. Ludwig-Maximilians-Universität München (2013).
+
+[^spineless-tagless]: Peyton Jones, Simon L., and Jon Salkild. "The spineless tagless G-machine." Proceedings of the fourth international conference on Functional programming languages and computer architecture. 1989.

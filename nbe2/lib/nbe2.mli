@@ -22,10 +22,6 @@ type value = VClosure of value list * term | VNeutral of neutral
 
 and neutral = NVar of Level.t | NApply of neutral * value
 
-val vvar : Level.t -> value
-
-val vapply : neutral * value -> value
-
 val normalize : lvl:Level.t -> rho:value list -> term -> unit
 
 val normalize_at : lvl:Level.t -> rho:value list -> term -> unit
