@@ -17,5 +17,6 @@
 
 (package
  (name nbe2)
- (synopsis "An OCaml NbE implementation of the pure lambda calculus")
+ (synopsis
+  "An alternative OCaml NbE implementation of the pure lambda calculus")
  (depends ocaml))
