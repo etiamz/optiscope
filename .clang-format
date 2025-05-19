@@ -39,7 +39,8 @@ AttributeMacros:
     COMPILER_PURE,
   ]
 ForEachMacros: [
-    FOR_ALL_PORTS, #
+    ITERATE_ONCE, #
+    FOR_ALL_PORTS,
     ITERATE_LIST,
     CONSUME_LIST,
     CONSUME_FOCUS,
