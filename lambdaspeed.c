@@ -95,6 +95,9 @@ are not compatible with `NDEBUG`!
 #define CLEAR_MEMORY(object) /* empty */
 #endif
 
+#define ITERATE_ONCE(finish, before, after)                                    \
+    for (bool finish = (before, false); !finish; after, finish = true)
+
 #define CAT_PRIMITIVE(a, b) a##b
 #define CAT(a, b)           CAT_PRIMITIVE(a, b)
 
@@ -956,6 +959,8 @@ focus_on(struct focus *const restrict focus, const struct node node) {
     assert(focus);
     XASSERT(node.ports);
 
+    if (SIZE_MAX == focus->count) { panic("The focus is full!"); }
+
     if (focus->count < ARRAY_LENGTH(focus->initial)) {
         focus->initial[focus->count] = node;
     } else {
@@ -1008,9 +1013,11 @@ free_graph(struct node_graph *const restrict graph) {
     debug("%s()", __func__);
 
     assert(graph);
-    XASSERT(0 == graph->annihilations->count),
-        XASSERT(0 == graph->commutations->count),
-        XASSERT(0 == graph->betas->count);
+    XASSERT(graph->root.ports);
+    XASSERT(graph->annihilations), XASSERT(0 == graph->annihilations->count);
+    XASSERT(graph->commutations), XASSERT(0 == graph->commutations->count);
+    XASSERT(graph->betas), XASSERT(0 == graph->betas->count);
+    XASSERT(!graph->is_reading_back);
 
     free(DECODE_ADDRESS(graph->root.ports[0]) - 1 /* back to the symbol */);
     free(graph->root.ports - 1 /* back to the symbol */);
@@ -1797,7 +1804,7 @@ wait_for_user(const struct node_graph graph) {
 
     printf("Press ENTER to proceed...");
     fflush(stdout);
-    (void)getchar();
+    if (EOF == getchar()) { perror("getchar"), abort(); }
 }
 
 #else
@@ -2093,8 +2100,8 @@ beta(
     debug("%s(%p @, %p λ)", __func__, (void *)f.ports, (void *)g.ports);
     wait_for_user(*graph);
 
-    assert(!graph->is_reading_back);
     assert(graph);
+    XASSERT(!graph->is_reading_back);
     XASSERT(f.ports), XASSERT(g.ports);
     assert(is_interaction(f, g));
     XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
@@ -2686,36 +2693,36 @@ algorithm(
 
     if (NULL == stream) { goto cleanup; }
 
-#ifndef NDEBUG
-    graph.is_reading_back = true;
-#endif
+    ITERATE_ONCE(
+        finish, graph.is_reading_back = true, graph.is_reading_back = false) {
+        // Phase #1:
+        {
+            unwind(&graph);
+            graphviz(&graph, "target/1-unwound.dot");
+            normalize_x_rules(&graph);
+            graphviz(&graph, "target/1-unwoundx.dot");
+        }
 
-    // Phase #1:
-    {
-        unwind(&graph);
-        graphviz(&graph, "target/1-unwound.dot");
-        normalize_x_rules(&graph);
-        graphviz(&graph, "target/1-unwoundx.dot");
-    }
+        // Phase #2:
+        {
+            scope_remove(&graph);
+            graphviz(&graph, "target/2-unscoped.dot");
+            normalize_x_rules(&graph);
+            graphviz(&graph, "target/2-unscopedx.dot");
+        }
 
-    // Phase #2:
-    {
-        scope_remove(&graph);
-        graphviz(&graph, "target/2-unscoped.dot");
-        normalize_x_rules(&graph);
-        graphviz(&graph, "target/2-unscopedx.dot");
-    }
-
-    // Phase #3:
-    {
-        loop_cut(&graph);
-        graphviz(&graph, "target/3-unlooped.dot");
-        normalize_x_rules(&graph);
-        graphviz(&graph, "target/3-unloopedx.dot");
+        // Phase #3:
+        {
+            loop_cut(&graph);
+            graphviz(&graph, "target/3-unlooped.dot");
+            normalize_x_rules(&graph);
+            graphviz(&graph, "target/3-unloopedx.dot");
+        }
     }
 
     to_lambda_string(stream, 0, follow_port(&graph.root.ports[1]));
 
 cleanup:
+    assert(is_normalized_graph(&graph));
     free_graph(&graph);
 }
