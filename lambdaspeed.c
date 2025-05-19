@@ -2693,7 +2693,7 @@ algorithm(
 
     if (NULL == stream) { goto cleanup; }
 
-    ITERATE_ONCE(
+    ITERATE_ONCE (
         finish, graph.is_reading_back = true, graph.is_reading_back = false) {
         // Phase #1:
         {
