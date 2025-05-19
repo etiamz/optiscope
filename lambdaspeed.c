@@ -579,6 +579,17 @@ xmalloc(const size_t size) {
     return object;
 }
 
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
+static void *
+xcalloc(const size_t n, const size_t size) {
+    XASSERT(size > 0);
+
+    void *const object = calloc(n, size);
+    if (NULL == object) { panic("Failed allocation!"); }
+
+    return object;
+}
+
 #define POOL_CHUNK_LIST_SIZE 1024 /* for all types of objects */
 
 #define POOL_ALLOCATOR(prefix, chunk_size)                                     \
@@ -972,7 +983,7 @@ unfocus(struct focus *const restrict focus) {
 
 struct node_graph {
     const struct node root;
-    struct focus annihilations, commutations, betas;
+    struct focus *annihilations, *commutations, *betas;
     uint64_t current_phase;
     bool is_reading_back;
 
@@ -986,9 +997,9 @@ inline static bool
 is_normalized_graph(const struct node_graph *const restrict graph) {
     assert(graph);
 
-    return 0 == graph->betas.count &&         //
-           0 == graph->annihilations.count && //
-           0 == graph->commutations.count;
+    return 0 == graph->betas->count &&         //
+           0 == graph->annihilations->count && //
+           0 == graph->commutations->count;
 }
 
 COMPILER_NONNULL(1) COMPILER_COLD //
@@ -997,12 +1008,16 @@ free_graph(struct node_graph *const restrict graph) {
     debug("%s()", __func__);
 
     assert(graph);
-    XASSERT(0 == graph->annihilations.count),
-        XASSERT(0 == graph->commutations.count),
-        XASSERT(0 == graph->betas.count);
+    XASSERT(0 == graph->annihilations->count),
+        XASSERT(0 == graph->commutations->count),
+        XASSERT(0 == graph->betas->count);
 
     free(DECODE_ADDRESS(graph->root.ports[0]) - 1 /* back to the symbol */);
     free(graph->root.ports - 1 /* back to the symbol */);
+
+    free(graph->annihilations);
+    free(graph->commutations);
+    free(graph->betas);
 }
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
@@ -1120,13 +1135,13 @@ register_active_pair(
     const uint64_t f_symbol = f.ports[-1], g_symbol = g.ports[-1];
 
     if (f_symbol == SYMBOL_APPLICATOR && g_symbol == SYMBOL_LAMBDA) {
-        focus_on(&graph->betas, f);
+        focus_on(graph->betas, f);
     } else if (g_symbol == SYMBOL_APPLICATOR && f_symbol == SYMBOL_LAMBDA) {
-        focus_on(&graph->betas, g);
+        focus_on(graph->betas, g);
     } else if (f_symbol == g_symbol) {
-        focus_on(&graph->annihilations, f);
+        focus_on(graph->annihilations, f);
     } else {
-        focus_on(&graph->commutations, f);
+        focus_on(graph->commutations, f);
     }
 }
 
@@ -2148,12 +2163,12 @@ normalize_x_rules(struct node_graph *const restrict graph) {
 
     do {
         if (!graph->is_reading_back) {
-            CONSUME_FOCUS (&graph->betas, f) { interact(graph, beta, f); }
+            CONSUME_FOCUS (graph->betas, f) { interact(graph, beta, f); }
         }
-        CONSUME_FOCUS (&graph->annihilations, f) {
+        CONSUME_FOCUS (graph->annihilations, f) {
             interact(graph, annihilate, f);
         }
-        CONSUME_FOCUS (&graph->commutations, f) { //
+        CONSUME_FOCUS (graph->commutations, f) { //
             interact(graph, commute, f);
         }
     } while (!is_normalized_graph(graph));
@@ -2562,7 +2577,7 @@ go_of_lambda_term(
         go_of_lambda_term(
             graph, term->payload.applicator.rand, &applicator.ports[2], lvl);
         connect_ports(&applicator.ports[1], output_port);
-        if (is_active(applicator)) { focus_on(&graph->betas, applicator); }
+        if (is_active(applicator)) { focus_on(graph->betas, applicator); }
         break;
     }
     case LAMBDA_TERM_LAMBDA: {
@@ -2621,9 +2636,9 @@ of_lambda_term(struct lambda_term *const restrict term) {
 
     struct node_graph graph = {
         .root = root,
-        .annihilations = {.initial = {{NULL}}, .count = 0, .rest = NULL},
-        .commutations = {.initial = {{NULL}}, .count = 0, .rest = NULL},
-        .betas = {.initial = {{NULL}}, .count = 0, .rest = NULL},
+        .annihilations = xcalloc(1, sizeof *graph.annihilations),
+        .commutations = xcalloc(1, sizeof *graph.commutations),
+        .betas = xcalloc(1, sizeof *graph.commutations),
         .current_phase = PHASE_INITIAL,
         .is_reading_back = false,
 
