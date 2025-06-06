@@ -615,7 +615,7 @@ free_chunk(void *const memory);
 // clang-format off
 COMPILER_WARN_UNUSED_RESULT COMPILER_MALLOC(free_chunk, 1) COMPILER_COLD
 // clang-format on
-void *alloc_chunk(const size_t size) {
+static void *alloc_chunk(const size_t size) {
     assert(size <= HUGE_PAGE_SIZE_2MB);
 
     const int prot = PROT_READ | PROT_WRITE,
@@ -1816,6 +1816,7 @@ collect_garbage(
             case 0: FOLLOW(f.ports[1]), FOLLOW(f.ports[2]), COLLECT(f); break;
             case 1:
             case 2: ERASE(&f.ports[i]); break;
+            default: COMPILER_UNREACHABLE();
             }
             break;
         default:
