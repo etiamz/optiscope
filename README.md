@@ -205,8 +205,8 @@ Description: Recursively computes the 30th Fibonacci number using the built-in f
 
 ```
 Benchmark 1: ./fibonacci-of-30
-  Time (mean ± σ):      7.742 s ±  0.035 s    [User: 7.169 s, System: 0.572 s]
-  Range (min … max):    7.710 s …  7.797 s    5 runs
+  Time (mean ± σ):      7.261 s ±  0.049 s    [User: 7.083 s, System: 0.178 s]
+  Range (min … max):    7.203 s …  7.314 s    5 runs
 ```
 
 <details>
@@ -230,8 +230,8 @@ Description: Reverses the Church-encoded list of 3000 cells & then sums all the 
 
 ```
 Benchmark 1: ./church-list-reverse-and-sum
-  Time (mean ± σ):      2.362 s ±  0.017 s    [User: 2.270 s, System: 0.092 s]
-  Range (min … max):    2.347 s …  2.385 s    5 runs
+  Time (mean ± σ):      2.250 s ±  0.005 s    [User: 2.220 s, System: 0.030 s]
+  Range (min … max):    2.243 s …  2.256 s    5 runs
 ```
 
 <details>
@@ -255,8 +255,8 @@ Description: Performes an insertion sort on a Scott-encoded list of 150 cells, t
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):     12.309 s ±  0.177 s    [User: 11.596 s, System: 0.711 s]
-  Range (min … max):   12.139 s … 12.583 s    5 runs
+  Time (mean ± σ):     11.365 s ±  0.136 s    [User: 11.159 s, System: 0.205 s]
+  Range (min … max):   11.216 s … 11.496 s    5 runs
 ```
 
 <details>
@@ -280,8 +280,8 @@ Description: Performes an (inefficient) quicksort on a Scott-encoded list of 70 
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):      8.610 s ±  0.056 s    [User: 8.546 s, System: 0.063 s]
-  Range (min … max):    8.543 s …  8.693 s    5 runs
+  Time (mean ± σ):      8.411 s ±  0.057 s    [User: 8.343 s, System: 0.067 s]
+  Range (min … max):    8.311 s …  8.451 s    5 runs
 ```
 
 <details>
@@ -305,8 +305,8 @@ Description: Multiplies by 2 all the cells in a Scott-encoded binary tree of siz
 
 ```
 Benchmark 1: ./scott-tree-map-and-sum
-  Time (mean ± σ):      1.322 s ±  0.003 s    [User: 1.226 s, System: 0.097 s]
-  Range (min … max):    1.318 s …  1.325 s    5 runs
+  Time (mean ± σ):      1.210 s ±  0.004 s    [User: 1.174 s, System: 0.035 s]
+  Range (min … max):    1.206 s …  1.216 s    5 runs
 ```
 
 <details>
@@ -330,8 +330,8 @@ Description: Evaluates an application sequence of 5000 + 1 Owl combinators `(λa
 
 ```
 Benchmark 1: ./owl-explosion
-  Time (mean ± σ):      6.740 s ±  0.051 s    [User: 6.059 s, System: 0.680 s]
-  Range (min … max):    6.690 s …  6.794 s    5 runs
+  Time (mean ± σ):      4.726 s ±  0.011 s    [User: 4.530 s, System: 0.196 s]
+  Range (min … max):    4.710 s …  4.736 s    5 runs
 ```
 
 <details>

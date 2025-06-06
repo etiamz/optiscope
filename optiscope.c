@@ -1815,7 +1815,16 @@ collect_garbage(
             switch (i) {
             case 0: FOLLOW(f.ports[1]), FOLLOW(f.ports[2]), COLLECT(f); break;
             case 1:
-            case 2: ERASE(&f.ports[i]); break;
+            case 2: {
+                const uint8_t other_idx = 1 == i ? 2 : 1;
+                const struct node other = follow_port(&f.ports[other_idx]);
+                if (SYMBOL_ERASER == other.ports[-1]) {
+                    FOLLOW(f.ports[0]), COLLECT(other), COLLECT(f);
+                } else {
+                    ERASE(&f.ports[i]);
+                }
+                break;
+            }
             default: COMPILER_UNREACHABLE();
             }
             break;
@@ -2031,35 +2040,31 @@ commute(struct context *const restrict graph, struct node f, struct node g) {
     XASSERT(f.ports), XASSERT(g.ports);
     assert_commutation(f, g);
 
-prologue:;
+#ifndef NDEBUG
+    {
+        const bool with_lambda_or_delim =
+            SYMBOL_LAMBDA == g.ports[-1] || IS_DELIMITER(g.ports[-1]);
 
-    const bool with_lambda_or_delim =
-        SYMBOL_LAMBDA == g.ports[-1] || IS_DELIMITER(g.ports[-1]);
+        // Ensure that lambdas & delimiters are alwaies `g`, to give `f` the
+        // opportunity to increment its index.
+        assert(
+            !((SYMBOL_LAMBDA == f.ports[-1] || IS_DELIMITER(f.ports[-1])) &&
+              !with_lambda_or_delim));
 
-    // Ensure that lambdas & delimiters are alwaies `g`, to give `f` the
-    // opportunity to increment its index.
-    if ((SYMBOL_LAMBDA == f.ports[-1] || IS_DELIMITER(f.ports[-1])) &&
-        !with_lambda_or_delim) {
-        const struct node h = f;
-        f = g, g = h;
-        goto prologue;
+        // If `f` is a lambda & `g` is a delimiter, swap them so that the index
+        // of `g` could be incremented.
+        assert(!(SYMBOL_LAMBDA == f.ports[-1] && IS_DELIMITER(g.ports[-1])));
     }
+#endif
 
-    const int64_t i = symbol_index(f.ports[-1]), j = symbol_index(g.ports[-1]);
+    int64_t i = symbol_index(f.ports[-1]), j = symbol_index(g.ports[-1]);
 
     // If both are delimiters, the one with a higher index should be `f`.
     if (IS_DELIMITER(f.ports[-1]) && IS_DELIMITER(g.ports[-1]) && j > i) {
         const struct node h = f;
         f = g, g = h;
-        goto prologue;
-    }
-
-    // If `f` is a lambda & `g` is a delimiter, swap them so that the index of
-    // `g` could be incremented.
-    if (SYMBOL_LAMBDA == f.ports[-1] && IS_DELIMITER(g.ports[-1])) {
-        const struct node h = f;
-        f = g, g = h;
-        goto prologue;
+        const uint64_t k = i;
+        i = j, j = k;
     }
 
     debug_interaction(__func__, graph, f, g);
@@ -2974,7 +2979,7 @@ of_lambda_term(
             switch (gsym) {                                                    \
             case SYMBOL_APPLICATOR: BETA(g, f); break;                         \
             case SYMBOL_FIX: FIX(g, f); break;                                 \
-            default: COMMUTE(f, g);                                            \
+            default: COMMUTE(g, f); /* lambdas must alwaies be the second */   \
             }                                                                  \
             break;                                                             \
         case SYMBOL_CELL:                                                      \
@@ -3007,8 +3012,19 @@ of_lambda_term(
             else COMMUTE(f, g);                                                \
             break;                                                             \
         default:                                                               \
+            if (fsym <= MAX_DUPLICATOR_INDEX) goto duplicator;                 \
+            else if (fsym <= MAX_DELIMITER_INDEX) goto delimiter;              \
+            else COMPILER_UNREACHABLE();                                       \
+        case SYMBOL_S:                                                         \
+        duplicator:                                                            \
             if (fsym == gsym) ANNIHILATE(f, g);                                \
             else COMMUTE(f, g);                                                \
+            break;                                                             \
+        delimiter:                                                             \
+            if (fsym == gsym) ANNIHILATE(f, g);                                \
+            else if (SYMBOL_LAMBDA == gsym) COMMUTE(f, g);                     \
+            else COMMUTE(g, f); /* delimiters must be the second */            \
+            break;                                                             \
         }                                                                      \
     } while (false)
 
