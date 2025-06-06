@@ -225,6 +225,65 @@ binary_arithmetic(void) {
             binary_call(multiply, binary_call(add, var(x), cell(5)), cell(2))));
 }
 
+// Conditional logic with recursion
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+// clang-format off
+static uint64_t equals(const uint64_t x, const uint64_t y)
+    { return x == y; }
+// clang-format on
+
+static struct lambda_term *
+conditionals(void) {
+    struct lambda_term *x;
+
+    return if_then_else(
+        applicator(
+            lambda(
+                x,
+                if_then_else(
+                    binary_call(equals, var(x), cell(100)), cell(0), cell(1))),
+            cell(100)),
+        cell(5),
+        cell(10));
+}
+
+// clang-format off
+static uint64_t is_zero(const uint64_t x) { return 0 == x; }
+
+static uint64_t is_one(const uint64_t x) { return 1 == x; }
+// clang-format on
+
+static struct lambda_term *
+fix_fibonacci_function(void) {
+    struct lambda_term *rec, *n;
+
+    // clang-format off
+    return lambda(rec, lambda(n,
+        if_then_else(
+            unary_call(is_zero, var(n)),
+            cell(0),
+            if_then_else(
+                unary_call(is_one, var(n)),
+                cell(1),
+                binary_call(add,
+                    applicator(var(rec),
+                        binary_call(subtract, var(n), cell(1))),
+                    applicator(var(rec),
+                        binary_call(subtract, var(n), cell(2))))))));
+    // clang-format on
+}
+
+static struct lambda_term *
+fix_fibonacci_term(void) {
+    return fix(fix_fibonacci_function());
+}
+
+static struct lambda_term *
+fix_fibonacci_test(void) {
+    return applicator(fix_fibonacci_term(), cell(10));
+}
+
 // Church booleans
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -513,6 +572,162 @@ factorial_term(void) {
 static struct lambda_term *
 factorial_of_three_test(void) {
     return applicator(factorial_term(), church_three());
+}
+
+// The Y combinator
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+static struct lambda_term *
+y_combinator(void) {
+    struct lambda_term *f, *x, *y;
+
+    return lambda(
+        f,
+        applicator(
+            lambda(x, applicator(var(f), applicator(var(x), var(x)))),
+            lambda(y, applicator(var(f), applicator(var(y), var(y))))));
+}
+
+static struct lambda_term *
+church_is_zero(void) {
+    struct lambda_term *n, *x;
+
+    return lambda(
+        n,
+        applicator(
+            applicator(var(n), lambda(x, church_false())), church_true()));
+}
+
+static struct lambda_term *
+church_is_one(void) {
+    struct lambda_term *n;
+
+    // Assuming that `n` is positive.
+    return lambda(
+        n,
+        applicator(church_is_zero(), applicator(church_predecessor(), var(n))));
+}
+
+static struct lambda_term *
+y_factorial_function(void) {
+    struct lambda_term *f, *n;
+
+    return lambda(
+        f,
+        lambda(
+            n,
+            CHURCH_IF_THEN_ELSE(
+                applicator(church_is_zero(), var(n)),
+                church_one(),
+                applicator(
+                    applicator(church_multiply(), var(n)),
+                    applicator(
+                        var(f), applicator(church_predecessor(), var(n)))))));
+}
+
+static struct lambda_term *
+y_factorial_term(void) {
+    return applicator(y_combinator(), y_factorial_function());
+}
+
+static struct lambda_term *
+y_factorial_test(void) {
+    return applicator(y_factorial_term(), church_three());
+}
+
+static struct lambda_term *
+y_fibonacci_function(void) {
+    struct lambda_term *rec, *n;
+
+    // clang-format off
+    return lambda(rec, lambda(n,
+        CHURCH_IF_THEN_ELSE(
+            applicator(church_is_zero(), var(n)),
+            church_zero(),
+            CHURCH_IF_THEN_ELSE(
+                applicator(church_is_one(), var(n)),
+                church_one(),
+                applicator(applicator(
+                    church_add(),
+                    applicator(var(rec),
+                        applicator(church_predecessor(), var(n)))),
+                    applicator(var(rec),
+                        applicator(church_predecessor2x(), var(n))))))));
+    // clang-format on
+}
+
+static struct lambda_term *
+y_fibonacci_term(void) {
+    return applicator(y_combinator(), y_fibonacci_function());
+}
+
+static struct lambda_term *
+y_fibonacci_test(void) {
+    return applicator(y_fibonacci_term(), church_three());
+}
+
+// The WHY combinator
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+// See the discission in <https://github.com/etiams/optiscope/issues/2>.
+static struct lambda_term *
+why_combinator(void) {
+    struct lambda_term *f, *u, *a, *f2, *d, *u2, *i, *x;
+
+    return lambda(
+        f,
+        applicator(
+            lambda(
+                u,
+                applicator(
+                    applicator(
+                        var(u),
+                        lambda(
+                            a,
+                            lambda(
+                                f2,
+                                applicator(
+                                    applicator(var(f2), var(a)), var(a))))),
+                    var(u))),
+            lambda(
+                d,
+                lambda(
+                    u2,
+                    applicator(
+                        var(f),
+                        lambda(
+                            i,
+                            applicator(
+                                applicator(applicator(var(i), var(d)), var(u2)),
+                                lambda(x, applicator(var(x), var(d))))))))));
+}
+
+static struct lambda_term *
+why_factorial_function(void) {
+    struct lambda_term *rec, *n;
+
+    return lambda(
+        rec,
+        lambda(
+            n,
+            CHURCH_IF_THEN_ELSE(
+                applicator(church_is_zero(), var(n)),
+                church_one(),
+                applicator(
+                    applicator(church_multiply(), var(n)),
+                    applicator(
+                        applicator(var(rec), i_combinator()),
+                        applicator(church_predecessor(), var(n)))))));
+}
+
+static struct lambda_term *
+why_factorial_term(void) {
+    return applicator(why_combinator(), why_factorial_function());
+}
+
+static struct lambda_term *
+why_factorial_test(void) {
+    return applicator(why_factorial_term(), church_three());
 }
 
 // Church lists
@@ -1013,258 +1228,39 @@ scott_tree_map_and_sum_test(void) {
             scott_example_tree()));
 }
 
-// The Y combinator
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-static struct lambda_term *
-y_combinator(void) {
-    struct lambda_term *f, *x, *y;
-
-    return lambda(
-        f,
-        applicator(
-            lambda(x, applicator(var(f), applicator(var(x), var(x)))),
-            lambda(y, applicator(var(f), applicator(var(y), var(y))))));
-}
-
-static struct lambda_term *
-church_is_zero(void) {
-    struct lambda_term *n, *x;
-
-    return lambda(
-        n,
-        applicator(
-            applicator(var(n), lambda(x, church_false())), church_true()));
-}
-
-static struct lambda_term *
-church_is_one(void) {
-    struct lambda_term *n;
-
-    // Assuming that `n` is positive.
-    return lambda(
-        n,
-        applicator(church_is_zero(), applicator(church_predecessor(), var(n))));
-}
-
-static struct lambda_term *
-y_factorial_function(void) {
-    struct lambda_term *f, *n;
-
-    return lambda(
-        f,
-        lambda(
-            n,
-            CHURCH_IF_THEN_ELSE(
-                applicator(church_is_zero(), var(n)),
-                church_one(),
-                applicator(
-                    applicator(church_multiply(), var(n)),
-                    applicator(
-                        var(f), applicator(church_predecessor(), var(n)))))));
-}
-
-static struct lambda_term *
-y_factorial_term(void) {
-    return applicator(y_combinator(), y_factorial_function());
-}
-
-static struct lambda_term *
-y_factorial_test(void) {
-    return applicator(y_factorial_term(), church_three());
-}
-
-static struct lambda_term *
-y_fibonacci_function(void) {
-    struct lambda_term *rec, *n;
-
-    // clang-format off
-    return lambda(rec, lambda(n,
-        CHURCH_IF_THEN_ELSE(
-            applicator(church_is_zero(), var(n)),
-            church_zero(),
-            CHURCH_IF_THEN_ELSE(
-                applicator(church_is_one(), var(n)),
-                church_one(),
-                applicator(applicator(
-                    church_add(),
-                    applicator(var(rec),
-                        applicator(church_predecessor(), var(n)))),
-                    applicator(var(rec),
-                        applicator(church_predecessor2x(), var(n))))))));
-    // clang-format on
-}
-
-static struct lambda_term *
-y_fibonacci_term(void) {
-    return applicator(y_combinator(), y_fibonacci_function());
-}
-
-static struct lambda_term *
-y_fibonacci_test(void) {
-    return applicator(y_fibonacci_term(), church_three());
-}
-
-// The WHY combinator
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-// See the discission in <https://github.com/etiams/optiscope/issues/1>.
-static struct lambda_term *
-why_combinator(void) {
-    struct lambda_term *f, *u, *a, *f2, *d, *u2, *i, *x;
-
-    return lambda(
-        f,
-        applicator(
-            lambda(
-                u,
-                applicator(
-                    applicator(
-                        var(u),
-                        lambda(
-                            a,
-                            lambda(
-                                f2,
-                                applicator(
-                                    applicator(var(f2), var(a)), var(a))))),
-                    var(u))),
-            lambda(
-                d,
-                lambda(
-                    u2,
-                    applicator(
-                        var(f),
-                        lambda(
-                            i,
-                            applicator(
-                                applicator(applicator(var(i), var(d)), var(u2)),
-                                lambda(x, applicator(var(x), var(d))))))))));
-}
-
-static struct lambda_term *
-why_factorial_function(void) {
-    struct lambda_term *f, *n, *a1, *a2;
-
-    return lambda(
-        f,
-        lambda(
-            n,
-            applicator(
-                CHURCH_IF_THEN_ELSE(
-                    applicator(church_is_zero(), var(n)),
-                    lambda(a1, church_one()),
-                    lambda(
-                        a2,
-                        applicator(
-                            applicator(church_multiply(), var(n)),
-                            applicator(
-                                applicator(var(f), var(a2)),
-                                applicator(church_predecessor(), var(n)))))),
-                i_combinator())));
-}
-
-static struct lambda_term *
-why_factorial_term(void) {
-    return applicator(why_combinator(), why_factorial_function());
-}
-
-static struct lambda_term *
-why_factorial_test(void) {
-    return applicator(why_factorial_term(), church_three());
-}
-
-// Conditional logic with recursion
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-// clang-format off
-static uint64_t equals(const uint64_t x, const uint64_t y)
-    { return x == y; }
-// clang-format on
-
-static struct lambda_term *
-conditionals(void) {
-    struct lambda_term *x;
-
-    return if_then_else(
-        applicator(
-            lambda(
-                x,
-                if_then_else(
-                    binary_call(equals, var(x), cell(100)), cell(0), cell(1))),
-            cell(100)),
-        cell(5),
-        cell(10));
-}
-
-// clang-format off
-static uint64_t is_zero(const uint64_t x) { return 0 == x; }
-
-static uint64_t is_one(const uint64_t x) { return 1 == x; }
-// clang-format on
-
-static struct lambda_term *
-fast_y_fibonacci_function(void) {
-    struct lambda_term *rec, *n;
-
-    // clang-format off
-    return lambda(rec, lambda(n,
-        if_then_else(
-            unary_call(is_zero, var(n)),
-            cell(0),
-            if_then_else(
-                unary_call(is_one, var(n)),
-                cell(1),
-                binary_call(add,
-                    applicator(var(rec),
-                        binary_call(subtract, var(n), cell(1))),
-                    applicator(var(rec),
-                        binary_call(subtract, var(n), cell(2))))))));
-    // clang-format on
-}
-
-static struct lambda_term *
-fast_y_fibonacci_term(void) {
-    return fix(fast_y_fibonacci_function());
-}
-
-static struct lambda_term *
-fast_y_fibonacci_test(void) {
-    return applicator(fast_y_fibonacci_term(), cell(10));
-}
-
 // The Ackermann function
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // clang-format off
-static uint64_t incr(const uint64_t x) { return x + 1; }
+static uint64_t plus_one(const uint64_t x) { return x + 1; }
 
-static uint64_t decr(const uint64_t x) { return x - 1; }
+static uint64_t minus_one(const uint64_t x) { return x - 1; }
 // clang-format on
 
 static struct lambda_term *
-ackermann(void) {
+fix_ackermann(void) {
     struct lambda_term *rec, *m, *n;
 
     // clang-format off
     return fix(lambda(rec, lambda(m, lambda(n,
         if_then_else(
             unary_call(is_zero, var(m)),
-            unary_call(incr, var(n)),
+            unary_call(plus_one, var(n)),
             if_then_else(
                 unary_call(is_zero, var(n)),
                 applicator(
-                    applicator(var(rec), unary_call(decr, var(m))), cell(1)),
+                    applicator(var(rec), unary_call(minus_one, var(m))), cell(1)),
                 applicator(
-                    applicator(var(rec), unary_call(decr, var(m))),
+                    applicator(var(rec), unary_call(minus_one, var(m))),
                     applicator(
                         applicator(var(rec), var(m)),
-                        unary_call(decr, var(n))))))))));
+                        unary_call(minus_one, var(n))))))))));
     // clang-format on
 }
 
 static struct lambda_term *
-test_ackermann_3_3(void) {
-    return applicator(applicator(ackermann(), cell(3)), cell(3));
+fix_ackermann_test(void) {
+    return applicator(applicator(fix_ackermann(), cell(3)), cell(3));
 }
 
 // Examples from the literature
@@ -1371,6 +1367,8 @@ main(void) {
     TEST_CASE(bcw_test, "(λ (λ (λ ((2 0) (1 0)))))");
     TEST_CASE(unary_arithmetic, "cell[2048]");
     TEST_CASE(binary_arithmetic, "cell[11]");
+    TEST_CASE(conditionals, "cell[10]");
+    TEST_CASE(fix_fibonacci_test, "cell[55]");
     TEST_CASE(boolean_test, "(λ (λ 1))");
     TEST_CASE(church_two_two_test, "(λ (λ (1 (1 (1 (1 0))))))");
     TEST_CASE(
@@ -1381,6 +1379,9 @@ main(void) {
         "(λ (λ (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 0)))))))))))))))))");
     TEST_CASE(church_five_predecessor2x, "(λ (λ (1 (1 (1 0)))))");
     TEST_CASE(factorial_of_three_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
+    TEST_CASE(y_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
+    TEST_CASE(y_fibonacci_test, "(λ (λ (1 (1 0))))");
+    TEST_CASE(why_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
     TEST_CASE(church_sum_list_test, "cell[6]");
     TEST_CASE(
         church_reverse_test,
@@ -1396,12 +1397,7 @@ main(void) {
     TEST_CASE(scott_quicksort_test, "cell[12347890]");
     TEST_CASE(scott_tree_sum_test, "cell[10]");
     TEST_CASE(scott_tree_map_and_sum_test, "cell[20]");
-    TEST_CASE(y_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
-    TEST_CASE(y_fibonacci_test, "(λ (λ (1 (1 0))))");
-    TEST_CASE(why_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
-    TEST_CASE(conditionals, "cell[10]");
-    TEST_CASE(fast_y_fibonacci_test, "cell[55]");
-    TEST_CASE(test_ackermann_3_3, "cell[61]");
+    TEST_CASE(fix_ackermann_test, "cell[61]");
     TEST_CASE(lamping_example, "(λ 0)");
     TEST_CASE(lamping_example_2, "(λ 0)");
     TEST_CASE(asperti_guerrini_example, "(λ (0 0))");
