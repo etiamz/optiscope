@@ -274,9 +274,34 @@ Total interactions: 515122709
 
 </details>
 
+### [Scott list quicksort](benchmarks/scott-quicksort.c)
+
+Description: Performes an (inefficient) quicksort on a Scott-encoded list of 70 cells, then sums all the cells up.
+
+```
+Benchmark 1: ./scott-quicksort
+  Time (mean ± σ):      8.610 s ±  0.056 s    [User: 8.546 s, System: 0.063 s]
+  Range (min … max):    8.543 s …  8.693 s    5 runs
+```
+
+<details>
+<summary>Interactions count</summary>
+
+```
+Annihilation interactions: 30288516
+Commutation interactions: 315498221
+Beta interactions: 30747
+Native function calls: 9800
+If-then-elses: 4830
+Fixpoints: 286
+Total interactions: 345832400
+```
+
+</details>
+
 ### [Scott trees](benchmarks/scott-tree-map-and-sum.c)
 
-Description: Multiplies by 2 all the cells in a Scott-encoded tree of size 2^14, then sums all the cells up.
+Description: Multiplies by 2 all the cells in a Scott-encoded binary tree of size 2^14, then sums all the cells up.
 
 ```
 Benchmark 1: ./scott-tree-map-and-sum
@@ -301,7 +326,7 @@ Total interactions: 56740940
 
 ### [Owl explosion](benchmarks/owl-explosion.c)
 
-Description: Evaluates an application sequence of 5000 & 1 Owl combinators `(λa. λb. (b (a b)))`.
+Description: Evaluates an application sequence of 5000 + 1 Owl combinators `(λa. λb. (b (a b)))`.
 
 ```
 Benchmark 1: ./owl-explosion

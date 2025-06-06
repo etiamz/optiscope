@@ -825,6 +825,98 @@ scott_insertion_sort_test(void) {
         applicator(scott_insertion_sort(), scott_list_3_1_4_1_5()));
 }
 
+// Scott quicksort
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+// clang-format off
+static uint64_t less_than(const uint64_t x, const uint64_t y)
+    { return x < y; }
+
+static uint64_t greater_than_or_equal(const uint64_t x, const uint64_t y)
+    { return x >= y; }
+// clang-format on
+
+static struct lambda_term *
+scott_filter(void) {
+    struct lambda_term *rec, *f, *list, *x, *xs;
+
+    // clang-format off
+    return fix(lambda(rec, lambda(f, lambda(list,
+        applicator(
+            applicator(var(list), scott_nil()),
+            lambda(x, lambda(xs,
+                if_then_else(
+                    applicator(var(f), var(x)),
+                    applicator(
+                        applicator(scott_cons(), var(x)),
+                        applicator(applicator(var(rec), var(f)), var(xs))),
+                    applicator(applicator(var(rec), var(f)), var(xs))))))))));
+    // clang-format on
+}
+
+static struct lambda_term *
+scott_append(void) {
+    struct lambda_term *rec, *xs, *ys, *x, *xss;
+
+    // clang-format off
+    return fix(lambda(rec, lambda(xs, lambda(ys,
+        applicator(
+            applicator(var(xs), var(ys)),
+            lambda(x, lambda(xss,
+                applicator(applicator(scott_cons(), var(x)),
+                    applicator(applicator(var(rec), var(xss)), var(ys))))))))));
+    // clang-format on
+}
+
+static struct lambda_term *
+scott_quicksort(void) {
+    struct lambda_term *rec, *list, *x, *xs, *y, *z;
+
+    // clang-format off
+    return fix(lambda(rec, lambda(list,
+        applicator(applicator(var(list), scott_nil()),
+            lambda(x, lambda(xs, applicator(applicator(scott_append(),
+                applicator(var(rec),
+                    applicator(
+                        applicator(scott_filter(),
+                            lambda(y, binary_call(less_than, var(y), var(x)))),
+                        var(xs)))),
+                applicator(applicator(scott_cons(), var(x)),
+                    applicator(var(rec),
+                        applicator(
+                            applicator(scott_filter(),
+                                lambda(z, binary_call(greater_than_or_equal,
+                                    var(z), var(x)))),
+                            var(xs)))))))))));
+    // clang-format on
+}
+
+static struct lambda_term *
+scott_list_9_2_7_3_8_1_4(void) {
+    return applicator(
+        applicator(scott_cons(), cell(9)),
+        applicator(
+            applicator(scott_cons(), cell(2)),
+            applicator(
+                applicator(scott_cons(), cell(7)),
+                applicator(
+                    applicator(scott_cons(), cell(3)),
+                    applicator(
+                        applicator(scott_cons(), cell(8)),
+                        applicator(
+                            applicator(scott_cons(), cell(1)),
+                            applicator(
+                                applicator(scott_cons(), cell(4)),
+                                scott_nil())))))));
+}
+
+static struct lambda_term *
+scott_quicksort_test(void) {
+    return applicator(
+        scott_concatenate_list(),
+        applicator(scott_quicksort(), scott_list_9_2_7_3_8_1_4()));
+}
+
 // Scott binary trees
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -1301,6 +1393,7 @@ main(void) {
         "(λ (λ (1 (λ (λ (1 (λ (λ 0))))))))");
     TEST_CASE(scott_sum_list_test, "cell[15]");
     TEST_CASE(scott_insertion_sort_test, "cell[113450]");
+    TEST_CASE(scott_quicksort_test, "cell[12347890]");
     TEST_CASE(scott_tree_sum_test, "cell[10]");
     TEST_CASE(scott_tree_map_and_sum_test, "cell[20]");
     TEST_CASE(y_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
