@@ -2219,7 +2219,7 @@ RULE_DEFINITION(beta, graph, f, g) {
     if (SYMBOL_ERASER == binder.ports[-1]) {
         // There is a chance that the argument is fully disconnected from the
         // root; if so, we must garbage-collect it.
-        collect_garbage(graph, DECODE_ADDRESS(binder.ports[0]));
+        collect_garbage(graph, &rhs.ports[1]);
     }
 
     free_node(f), free_node(g);
