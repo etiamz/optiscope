@@ -520,8 +520,8 @@ Description: Recursively computes the 30th Fibonacci number using native cells &
 
 ```
 Benchmark 1: ./fibonacci-of-30
-  Time (mean ± σ):      6.137 s ±  0.042 s    [User: 5.972 s, System: 0.165 s]
-  Range (min … max):    6.098 s …  6.198 s    5 runs
+  Time (mean ± σ):      6.118 s ±  0.016 s    [User: 5.942 s, System: 0.172 s]
+  Range (min … max):    6.101 s …  6.137 s    5 runs
 ```
 
 <details>
@@ -529,12 +529,12 @@ Benchmark 1: ./fibonacci-of-30
 
 ```
 Annihilation interactions: 17108681
-Commutation interactions: 116357006
+Commutation interactions: 142496609
 Beta interactions: 31
 Native function calls: 12948453
 If-then-elses: 4870845
 Fixpoints: 31
-Total interactions: 151285047
+Total interactions: 177424650
 ```
 
 </details>
@@ -545,21 +545,21 @@ Description: Recursively computes the 20th Fibonacci number using Church numeral
 
 ```
 Benchmark 1: ./church-fibonacci-of-20
-  Time (mean ± σ):     37.079 s ±  0.331 s    [User: 36.767 s, System: 0.303 s]
-  Range (min … max):   36.524 s … 37.331 s    5 runs
+  Time (mean ± σ):     25.578 s ±  0.192 s    [User: 25.532 s, System: 0.043 s]
+  Range (min … max):   25.340 s … 25.839 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 28557153
-Commutation interactions: 2192081466
+Annihilation interactions: 19678250
+Commutation interactions: 4080381458
 Beta interactions: 521847
 Native function calls: 0
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 2221160466
+Total interactions: 4100581555
 ```
 
 </details>
@@ -570,21 +570,21 @@ Description: Reverses the Church-encoded list of 5000 cells & then sums all the 
 
 ```
 Benchmark 1: ./church-list-reverse-and-sum
-  Time (mean ± σ):      4.776 s ±  0.012 s    [User: 4.713 s, System: 0.063 s]
-  Range (min … max):    4.761 s …  4.794 s    5 runs
+  Time (mean ± σ):      5.340 s ±  0.013 s    [User: 5.261 s, System: 0.073 s]
+  Range (min … max):    5.322 s …  5.354 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 25195010
-Commutation interactions: 275470062
+Annihilation interactions: 25184998
+Commutation interactions: 475685085
 Beta interactions: 50006
 Native function calls: 10000
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 300725078
+Total interactions: 500930089
 ```
 
 </details>
@@ -595,8 +595,8 @@ Description: Performes an insertion sort on a Scott-encoded list of 150 cells, t
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):      7.101 s ±  0.019 s    [User: 6.903 s, System: 0.197 s]
-  Range (min … max):    7.070 s …  7.119 s    5 runs
+  Time (mean ± σ):      8.478 s ±  0.094 s    [User: 8.348 s, System: 0.125 s]
+  Range (min … max):    8.389 s …  8.583 s    5 runs
 ```
 
 <details>
@@ -604,12 +604,12 @@ Benchmark 1: ./scott-insertion-sort
 
 ```
 Annihilation interactions: 69548219
-Commutation interactions: 445493102
+Commutation interactions: 789641765
 Beta interactions: 47111
 Native function calls: 22650
 If-then-elses: 11175
 Fixpoints: 452
-Total interactions: 515122709
+Total interactions: 859271372
 ```
 
 </details>
@@ -620,8 +620,8 @@ Description: Performes an (inefficient) quicksort on a Scott-encoded list of 100
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):     27.750 s ±  0.095 s    [User: 27.525 s, System: 0.224 s]
-  Range (min … max):   27.651 s … 27.866 s    5 runs
+  Time (mean ± σ):     32.287 s ±  0.138 s    [User: 32.218 s, System: 0.049 s]
+  Range (min … max):   32.058 s … 32.422 s    5 runs
 ```
 
 <details>
@@ -629,12 +629,12 @@ Benchmark 1: ./scott-quicksort
 
 ```
 Annihilation interactions: 110264556
-Commutation interactions: 1194740481
+Commutation interactions: 2236383253
 Beta interactions: 61917
 Native function calls: 20000
 If-then-elses: 9900
 Fixpoints: 406
-Total interactions: 1305097260
+Total interactions: 2346740032
 ```
 
 </details>
@@ -645,21 +645,21 @@ Description: Multiplies by 2 all the cells in a Scott-encoded binary tree of siz
 
 ```
 Benchmark 1: ./scott-tree-map-and-sum
-  Time (mean ± σ):      3.206 s ±  0.020 s    [User: 3.066 s, System: 0.139 s]
-  Range (min … max):    3.190 s …  3.240 s    5 runs
+  Time (mean ± σ):      3.660 s ±  0.011 s    [User: 3.610 s, System: 0.046 s]
+  Range (min … max):    3.648 s …  3.676 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 41713181
-Commutation interactions: 208464677
+Annihilation interactions: 37191257
+Commutation interactions: 336353979
 Beta interactions: 1179740
 Native function calls: 262142
 If-then-elses: 0
 Fixpoints: 66
-Total interactions: 251619806
+Total interactions: 374987184
 ```
 
 </details>
@@ -670,8 +670,8 @@ Description: Evaluates an application sequence of 5000 + 1 Owl combinators `(λa
 
 ```
 Benchmark 1: ./owl-explosion
-  Time (mean ± σ):      3.497 s ±  0.016 s    [User: 3.316 s, System: 0.180 s]
-  Range (min … max):    3.486 s …  3.524 s    5 runs
+  Time (mean ± σ):      3.451 s ±  0.015 s    [User: 3.255 s, System: 0.191 s]
+  Range (min … max):    3.436 s …  3.472 s    5 runs
 ```
 
 <details>
@@ -679,12 +679,12 @@ Benchmark 1: ./owl-explosion
 
 ```
 Annihilation interactions: 24990000
-Commutation interactions: 124969999
+Commutation interactions: 199954999
 Beta interactions: 9999
 Native function calls: 0
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 149969998
+Total interactions: 224954998
 ```
 
 </details>
@@ -804,7 +804,7 @@ Now, there are two possible avenues to mitigate the performance issue. The first
 
  - **Node layout.** We interpret each graph node as an array `a` of `uint64_t` values. At position `a[-1]`, we store the _node symbol_; at `a[0]`, we store the principal port; at positions from `a[1]` to `a[3]` (inclusively), we store the auxiliary ports; at positions starting from `a[4]`, we store additional data elements, such as function pointers or computed cell values. The number of auxiliary ports & additional data elements determines the total size of the array: for erasers, the size in bytes is `2 * sizeof(uint64_t)`, as they need one position for the symbol & another one for the principal port; for applicators & lambdas having two auxiliary ports, the size is `3 * sizeof(uint64_t)`; for unary function calls, the size is `4 * sizeof(uint64_t)`, as they have one symbol, two auxiliary ports, & one function pointer. Similar calculation can be done for all the other node types.
 
- - **Symbol layout.** The difficulty of representing node symbols is that they may or may not have indices. Therefore, we employ the following scheme: `0` is the root symbol, `1` is an applicator, `2` is a lambda, `3` is an eraser, `4` is a scope (which appears onely during read-back), & so on until value `11`, inclusively; now the next `9223372036854775802` values are occupied by duplicators, & the same number of values is then occupied by delimiters. Together, all symbols occupy the full range of `uint64_t`; the indices of duplicator & delimiter symbols can be determined by proper subtraction.
+ - **Symbol layout.** The difficulty of representing node symbols is that they may or may not have indices. Therefore, we employ the following scheme: `0` is the root symbol, `1` is an applicator, `2` is a lambda, `3` is an eraser, `4` is a scope (which appears onely during read-back), & so on until value `11`, inclusively; now the next `9223372036854775801` values are occupied by duplicators, & the same number of values is then occupied by delimiters. Together, all symbols occupy the full range of `uint64_t`; the indices of duplicator & delimiter symbols can be determined by proper subtraction.
 
  - **Port layout.** Modern x86-64 CPUs utilize the 48-bit addresse space, leaving 16 highermost bits unused (i.e., sign-extended). We therefore utilize the highermost 2 bits for the port offset (relative to the principal port), & then 4 bits for the algorithm phase, which is either `PHASE_REDUCE_WEAKLY = 0`, `PHASE_DISCOVER = 1`, `PHASE_REDUCE_FULLY = 2`, `PHASE_UNWIND = 3`, `PHASE_SCOPE_REMOVE = 4`, `PHASE_LOOP_CUT = 5`, or `PHASE_GARBAGE = 6`. The following bits constitute a (sign-extended) addresse of the port to which the current port is connected to. This layout is particularly space- & time-efficient: given any port addresse, we can retrieve the principal port & from there goe to any neighbouring node in constant time; given a phase, we avoid the need for history lookups during graph traversals. (The phase value is onely encoded in the principal port; all consequent ports have their phases zeroed out.) The onely drawback of this approach is that ports need to be encoded when being assigned & decoded upon use.
 
