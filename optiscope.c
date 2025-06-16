@@ -2212,13 +2212,7 @@ RULE_DEFINITION(identity_beta, graph, f, g) {
     graph->nbetas++;
 #endif
 
-    const struct node lhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
-    const struct node rhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
-
-    connect_ports(&lhs.ports[1], &rhs.ports[1]);
-
-    connect_ports(&lhs.ports[0], DECODE_ADDRESS(f.ports[1]));
-    connect_ports(&rhs.ports[0], DECODE_ADDRESS(f.ports[2]));
+    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
     free_node(f), free_node(g);
 }
