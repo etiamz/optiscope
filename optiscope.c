@@ -1808,7 +1808,16 @@ collect_garbage(
             switch (i) {
             case 0: FOLLOW(f.ports[1]), FOLLOW(f.ports[2]), COLLECT(f); break;
             case 2: FOLLOW(f.ports[0]), FOLLOW(f.ports[1]), COLLECT(f); break;
-            case 1: ERASE(&f.ports[1]); break;
+            case 1: {
+                const struct node gc_lambda =
+                    alloc_node(graph, SYMBOL_GC_LAMBDA);
+                // clang-format off
+                CONNECT_NODE(gc_lambda,
+                    DECODE_ADDRESS(f.ports[0]), DECODE_ADDRESS(f.ports[2]));
+                // clang-format on
+                COLLECT(f);
+                break;
+            }
             default: COMPILER_UNREACHABLE();
             }
             break;
