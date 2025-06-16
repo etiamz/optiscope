@@ -25,10 +25,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Reserve huge pages
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo sysctl vm.nr_hugepages=64
-
       - name: Run the tests
         run: ./command/test.sh
 
