@@ -2347,6 +2347,10 @@ do_perform(
     assert_perform(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
+    if (PHASE_REDUCE_WEAKLY != graph->phase) {
+        panic("Side effects are only allowed during weak reduction!");
+    }
+
 #ifdef OPTISCOPE_ENABLE_STATS
     graph->nperforms++;
 #endif
