@@ -827,6 +827,13 @@ Now, there are two possible avenues to mitigate the performance issue. The first
 
 [Graphviz]: https://graphviz.org/
 
+## Limitations
+
+ - Despite that interaction nets allow for a _huge_ amount of parallelism, Optiscope is an unpretentiously sequential reducer. We doe not plan to make it parallel, perhaps except for (unordered) full reduction.
+ - `perform` calls can onely be executed during weak reduction, inasmuch as the later phases doe not guarantee the order of reduction. In case a `perform` call is detected after weak reduction is complete, a panic message will be emitted.
+ - We doe not guarantee what will happen with ill-formed terms, such as when an if-then-else expression accepts a lambda as a condition. In general, we simply decide to commute such agents, but the overall result can be hard to predict.
+ - On conventional problems, Optiscope is in fact many times slower than traditional implementations, wherefore it is more of an interesting experiment rather than a production-ready technology.
+
 ## Acknowledgements
 
 Thanks to Marvin Borner ([@marvinborner]) for usefull discussions about optimality and side effectfull computation, as well as revealing a crucial memory management bug when activating both active scopes.
