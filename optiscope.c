@@ -2414,6 +2414,8 @@ RULE_DEFINITION(commute_1_2, graph, f, g) {
 
 TYPE_CHECK_RULE(commute_1_2);
 
+#define commute_2_1(graph, f, g) commute_1_2((graph), (g), (f))
+
 RULE_DEFINITION(commute_2_2, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
@@ -2440,6 +2442,8 @@ RULE_DEFINITION(commute_3_2, graph, f, g) {
 
 TYPE_CHECK_RULE(commute_3_2);
 
+#define commute_2_3(graph, f, g) commute_3_2((graph), (g), (f))
+
 RULE_DEFINITION(commute_4_2, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
@@ -2457,6 +2461,8 @@ RULE_DEFINITION(commute_4_2, graph, f, g) {
 }
 
 TYPE_CHECK_RULE(commute_4_2);
+
+#define commute_2_4(graph, f, g) commute_4_2((graph), (g), (f))
 
 RULE_DEFINITION(commute_lambda_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
@@ -2523,6 +2529,8 @@ RULE_DEFINITION(commute_1_3, graph, f, g) {
 }
 
 TYPE_CHECK_RULE(commute_1_3);
+
+#define commute_3_1(graph, f, g) commute_1_3((graph), (g), (f))
 
 RULE_DEFINITION(commute_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
@@ -3212,6 +3220,14 @@ of_lambda_term(
             else if (SYMBOL_APPLICATOR == gsym) COMMUTE_APPL_DUP(graph, g, f); \
             else if (SYMBOL_LAMBDA == gsym) COMMUTE_LAMBDA_DUP(graph, g, f);   \
             else if (SYMBOL_CELL == gsym) COMMUTE_CELL_DUP(graph, g, f);       \
+            else if (SYMBOL_UNARY_CALL == gsym)                                \
+                COMMUTE_UCALL_DUP(graph, g, f);                                \
+            else if (SYMBOL_BINARY_CALL == gsym)                               \
+                COMMUTE_BCALL_DUP(graph, g, f);                                \
+            else if (SYMBOL_BINARY_CALL_AUX == gsym)                           \
+                COMMUTE_BCALL_AUX_DUP(graph, g, f);                            \
+            else if (SYMBOL_IF_THEN_ELSE == gsym)                              \
+                COMMUTE_ITE_DUP(graph, g, f);                                  \
             else if (IS_DELIMITER(gsym)) COMMUTE_DUP_DELIM(graph, f, g);       \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_DUP_DUP(graph, f, g);        \
             else COMMUTE(graph, f, g);                                         \
@@ -3271,21 +3287,25 @@ of_lambda_term(
         case SYMBOL_UNARY_CALL:                                                \
             if (SYMBOL_CELL == gsym) DO_UNARY_CALL(graph, f, g);               \
             else if (IS_DELIMITER(gsym)) COMMUTE_UCALL_DELIM(graph, f, g);     \
+            else if (IS_DUPLICATOR(gsym)) COMMUTE_UCALL_DUP(graph, f, g);      \
             else COMMUTE(graph, f, g);                                         \
             break;                                                             \
         case SYMBOL_BINARY_CALL:                                               \
             if (SYMBOL_CELL == gsym) DO_BINARY_CALL(graph, f, g);              \
             else if (IS_DELIMITER(gsym)) COMMUTE_BCALL_DELIM(graph, f, g);     \
+            else if (IS_DUPLICATOR(gsym)) COMMUTE_BCALL_DUP(graph, f, g);      \
             else COMMUTE(graph, f, g);                                         \
             break;                                                             \
         case SYMBOL_BINARY_CALL_AUX:                                           \
             if (SYMBOL_CELL == gsym) DO_BINARY_CALL_AUX(graph, f, g);          \
             else if (IS_DELIMITER(gsym)) COMMUTE_BCALL_AUX_DELIM(graph, f, g); \
+            else if (IS_DUPLICATOR(gsym)) COMMUTE_BCALL_AUX_DUP(graph, f, g);  \
             else COMMUTE(graph, f, g);                                         \
             break;                                                             \
         case SYMBOL_IF_THEN_ELSE:                                              \
             if (SYMBOL_CELL == gsym) DO_IF_THEN_ELSE(graph, f, g);             \
             else if (IS_DELIMITER(gsym)) COMMUTE_ITE_DELIM(graph, f, g);       \
+            else if (IS_DUPLICATOR(gsym)) COMMUTE_ITE_DUP(graph, f, g);        \
             else COMMUTE(graph, f, g);                                         \
             break;                                                             \
         case SYMBOL_FIX:                                                       \
@@ -3332,6 +3352,10 @@ fire_rule(
 #define COMMUTE_ITE_DELIM       commute_4_2
 #define COMMUTE_APPL_DUP        commute_3_3
 #define COMMUTE_CELL_DUP        commute_1_3
+#define COMMUTE_UCALL_DUP       commute_2_3
+#define COMMUTE_BCALL_DUP       commute_3_3
+#define COMMUTE_BCALL_AUX_DUP   commute_2_3
+#define COMMUTE_ITE_DUP         commute
 #define COMMUTE_DUP_DELIM       commute_dup_delim
 #define COMMUTE_DUP_DUP         commute_3_3
 #define COMMUTE_LAMBDA_DELIM    commute_lambda_delim
@@ -3343,6 +3367,10 @@ fire_rule(
 #undef COMMUTE_LAMBDA_DELIM
 #undef COMMUTE_DUP_DUP
 #undef COMMUTE_DUP_DELIM
+#undef COMMUTE_ITE_DUP
+#undef COMMUTE_BCALL_AUX_DUP
+#undef COMMUTE_BCALL_DUP
+#undef COMMUTE_UCALL_DUP
 #undef COMMUTE_CELL_DUP
 #undef COMMUTE_APPL_DUP
 #undef COMMUTE_ITE_DELIM
@@ -3393,6 +3421,10 @@ register_active_pair(
 #define COMMUTE_ITE_DELIM                   COMMUTE
 #define COMMUTE_APPL_DUP                    COMMUTE
 #define COMMUTE_CELL_DUP                    COMMUTE
+#define COMMUTE_UCALL_DUP                   COMMUTE
+#define COMMUTE_BCALL_DUP                   COMMUTE
+#define COMMUTE_BCALL_AUX_DUP               COMMUTE
+#define COMMUTE_ITE_DUP                     COMMUTE
 #define COMMUTE_DUP_DELIM                   COMMUTE
 #define COMMUTE_DUP_DUP                     COMMUTE
 
@@ -3408,6 +3440,10 @@ register_active_pair(
 
 #undef COMMUTE_DUP_DUP
 #undef COMMUTE_DUP_DELIM
+#undef COMMUTE_ITE_DUP
+#undef COMMUTE_BCALL_AUX_DUP
+#undef COMMUTE_BCALL_DUP
+#undef COMMUTE_UCALL_DUP
 #undef COMMUTE_CELL_DUP
 #undef COMMUTE_APPL_DUP
 #undef COMMUTE_ITE_DELIM
