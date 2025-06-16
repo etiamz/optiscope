@@ -367,12 +367,13 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX, "Every bit of a symbol must be 
 #define SYMBOL_FIX             UINT64_C(10)
 #define SYMBOL_PERFORM         UINT64_C(11)
 #define SYMBOL_IDENTITY_LAMBDA UINT64_C(12)
-#define SYMBOL_UNUSED          UINT64_C(13)
+#define SYMBOL_GC_LAMBDA       UINT64_C(13)
 #define SYMBOL_DUPLICATOR(i)   (MAX_REGULAR_SYMBOL + 1 + (i))
 #define SYMBOL_DELIMITER(i)    (MAX_DUPLICATOR_INDEX + 1 + (i))
 
 #define IS_ANY_LAMBDA(symbol)                                                  \
-    (SYMBOL_LAMBDA == (symbol) || SYMBOL_IDENTITY_LAMBDA == (symbol))
+    (SYMBOL_LAMBDA == (symbol) || SYMBOL_IDENTITY_LAMBDA == (symbol) ||        \
+     SYMBOL_GC_LAMBDA == (symbol))
 
 // clang-format off
 #define IS_DUPLICATOR(symbol) \
@@ -421,6 +422,7 @@ ports_count(const uint64_t symbol) {
     case SYMBOL_ERASER:
     case SYMBOL_CELL:
     case SYMBOL_IDENTITY_LAMBDA: return 1;
+    case SYMBOL_GC_LAMBDA: return 2;
     case SYMBOL_IF_THEN_ELSE: return 4;
     default:
         if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
@@ -488,7 +490,8 @@ symbol_index(const uint64_t symbol) {
     case SYMBOL_IF_THEN_ELSE:
     case SYMBOL_FIX:
     case SYMBOL_PERFORM:
-    case SYMBOL_IDENTITY_LAMBDA: return -1;
+    case SYMBOL_IDENTITY_LAMBDA:
+    case SYMBOL_GC_LAMBDA: return -1;
     default:
         if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
         else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
@@ -521,6 +524,7 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_FIX: sprintf(buffer, "fix"); break;
     case SYMBOL_PERFORM: sprintf(buffer, "perform"); break;
     case SYMBOL_IDENTITY_LAMBDA: sprintf(buffer, "identity"); break;
+    case SYMBOL_GC_LAMBDA: sprintf(buffer, "λ◉"); break;
     default:
         if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
         else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
@@ -796,6 +800,7 @@ POOL_ALLOCATOR(if_then_else, sizeof(uint64_t) * 5)
 POOL_ALLOCATOR(fix, sizeof(uint64_t) * 3)
 POOL_ALLOCATOR(perform, sizeof(uint64_t) * 4)
 POOL_ALLOCATOR(identity_lambda, sizeof(uint64_t) * 2)
+POOL_ALLOCATOR(gc_lambda, sizeof(uint64_t) * 3)
 
 #define ALLOC_POOL_OBJECT(pool_name) pool_name##_alloc(pool_name)
 #define FREE_POOL_OBJECT(pool_name, object)                                    \
@@ -815,7 +820,8 @@ POOL_ALLOCATOR(identity_lambda, sizeof(uint64_t) * 2)
     X(if_then_else_pool)                                                       \
     X(fix_pool)                                                                \
     X(perform_pool)                                                            \
-    X(identity_lambda_pool)
+    X(identity_lambda_pool)                                                    \
+    X(gc_lambda_pool)
 
 #define X(pool_name) static struct pool_name *pool_name = NULL;
 POOLS
@@ -1114,7 +1120,7 @@ unfocus(struct multifocus *const restrict focus) {
     X(betas) X(annihilations) X(commutations) \
     X(unary_calls) X(binary_calls) X(binary_calls_aux) \
     X(if_then_elses) X(fixpoints) X(performs) \
-    X(identity_betas)
+    X(identity_betas) X(gc_betas)
 // clang-format on
 
 struct context {
@@ -1300,6 +1306,9 @@ alloc_node_from(
     case SYMBOL_IDENTITY_LAMBDA:
         ports = ALLOC_POOL_OBJECT(identity_lambda_pool);
         goto set_ports_0;
+    case SYMBOL_GC_LAMBDA:
+        ports = ALLOC_POOL_OBJECT(gc_lambda_pool);
+        goto set_ports_1;
         // clang-format off
     duplicator:
         ports = ALLOC_POOL_OBJECT(duplicator_pool); goto set_ports_2;
@@ -1372,6 +1381,7 @@ free_node(const struct node node) {
     case SYMBOL_IDENTITY_LAMBDA:
         FREE_POOL_OBJECT(identity_lambda_pool, p);
         break;
+    case SYMBOL_GC_LAMBDA: FREE_POOL_OBJECT(gc_lambda_pool, p); break;
     default:
         if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
         else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
@@ -1809,6 +1819,7 @@ collect_garbage(
         case SYMBOL_UNARY_CALL:
         case SYMBOL_BINARY_CALL_AUX:
         case SYMBOL_FIX:
+        case SYMBOL_GC_LAMBDA:
         delimiter:
             switch (i) {
             case 0: FOLLOW(f.ports[1]), COLLECT(f); break;
@@ -1923,6 +1934,18 @@ assert_identity_beta(
 }
 
 static void
+assert_gc_beta(
+    const struct context *const restrict graph,
+    const struct node f,
+    const struct node g) {
+    assert(graph);
+    assert(graph->phase < PHASE_UNWIND);
+    assert(f.ports), assert(g.ports);
+    assert(is_interaction(f, g));
+    assert(SYMBOL_APPLICATOR == f.ports[-1] && SYMBOL_GC_LAMBDA == g.ports[-1]);
+}
+
+static void
 assert_commutation(const struct node f, const struct node g) {
     assert(f.ports), assert(g.ports);
     assert(is_interaction(f, g));
@@ -2013,6 +2036,7 @@ assert_perform(
 #define assert_annihilation(f, g)           ((void)0)
 #define assert_beta(graph, f, g)            ((void)0)
 #define assert_identity_beta(graph, f, g)   ((void)0)
+#define assert_gc_beta(graph, f, g)         ((void)0)
 #define assert_commutation(f, g)            ((void)0)
 #define assert_unary_call(graph, f, g)      ((void)0)
 #define assert_binary_call(graph, f, g)     ((void)0)
@@ -2218,6 +2242,32 @@ RULE_DEFINITION(identity_beta, graph, f, g) {
 }
 
 TYPE_CHECK_RULE(identity_beta);
+
+RULE_DEFINITION(gc_beta, graph, f, g) {
+    XASSERT(f.ports), XASSERT(g.ports);
+    assert_gc_beta(graph, f, g);
+    debug_interaction(__func__, graph, f, g);
+
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->nbetas++;
+#endif
+
+    const struct node lhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+    const struct node rhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+
+    connect_ports(&lhs.ports[0], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&lhs.ports[1], DECODE_ADDRESS(g.ports[1]));
+
+    const struct node eraser = alloc_node(graph, SYMBOL_ERASER);
+    connect_ports(&rhs.ports[0], DECODE_ADDRESS(f.ports[2]));
+    connect_ports(&rhs.ports[1], &eraser.ports[0]);
+
+    collect_garbage(graph, &rhs.ports[1]);
+
+    free_node(f), free_node(g);
+}
+
+TYPE_CHECK_RULE(gc_beta);
 
 RULE_DEFINITION(do_unary_call, graph, f, g) {
     XASSERT(f.ports), XASSERT(g.ports);
@@ -2465,6 +2515,21 @@ TYPE_CHECK_RULE(commute_1_2);
 
 #define commute_2_1(graph, f, g) commute_1_2((graph), (g), (f))
 
+RULE_DEFINITION(commute_1_3, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
+
+    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
+
+    free_node(g);
+}
+
+TYPE_CHECK_RULE(commute_1_3);
+
+#define commute_3_1(graph, f, g) commute_1_3((graph), (g), (f))
+
 RULE_DEFINITION(commute_2_2, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
@@ -2493,6 +2558,25 @@ TYPE_CHECK_RULE(commute_3_2);
 
 #define commute_2_3(graph, f, g) commute_3_2((graph), (g), (f))
 
+RULE_DEFINITION(commute_3_3, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
+    const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
+
+    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
+    connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
+
+    connect_ports(&g.ports[1], &f.ports[1]);
+    connect_ports(&g.ports[2], &fx.ports[1]);
+    connect_ports(&gx.ports[1], &f.ports[2]);
+    connect_ports(&gx.ports[2], &fx.ports[2]);
+}
+
+TYPE_CHECK_RULE(commute_3_3);
+
 RULE_DEFINITION(commute_4_2, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
@@ -2512,49 +2596,6 @@ RULE_DEFINITION(commute_4_2, graph, f, g) {
 TYPE_CHECK_RULE(commute_4_2);
 
 #define commute_2_4(graph, f, g) commute_4_2((graph), (g), (f))
-
-RULE_DEFINITION(commute_lambda_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    g.ports[-1] = bump_index(g.ports[-1]);
-
-    commute_3_2(graph, f, g);
-}
-
-TYPE_CHECK_RULE(commute_lambda_delim);
-
-RULE_DEFINITION(commute_delim_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    if (symbol_index(f.ports[-1]) > symbol_index(g.ports[-1])) {
-        f.ports[-1] = bump_index(f.ports[-1]);
-    } else {
-        g.ports[-1] = bump_index(g.ports[-1]);
-    }
-
-    commute_2_2(graph, f, g);
-}
-
-TYPE_CHECK_RULE(commute_delim_delim);
-
-RULE_DEFINITION(commute_3_3, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
-    const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
-
-    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-    connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
-    connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
-    connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
-
-    connect_ports(&g.ports[1], &f.ports[1]);
-    connect_ports(&g.ports[2], &fx.ports[1]);
-    connect_ports(&gx.ports[1], &f.ports[2]);
-    connect_ports(&gx.ports[2], &fx.ports[2]);
-}
-
-TYPE_CHECK_RULE(commute_3_3);
 
 RULE_DEFINITION(commute_4_3, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
@@ -2581,30 +2622,71 @@ TYPE_CHECK_RULE(commute_4_3);
 
 #define commute_3_4(graph, f, g) commute_4_3((graph), (g), (f))
 
+RULE_DEFINITION(commute_lambda_delim, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    g.ports[-1] = bump_index(g.ports[-1]);
+    commute_3_2(graph, f, g);
+}
+
+TYPE_CHECK_RULE(commute_lambda_delim);
+
 RULE_DEFINITION(commute_lambda_dup, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
     g.ports[-1] = bump_index(g.ports[-1]);
-
     commute_3_3(graph, f, g);
 }
 
 TYPE_CHECK_RULE(commute_lambda_dup);
 
-RULE_DEFINITION(commute_1_3, graph, f, g) {
+RULE_DEFINITION(commute_identity_lambda_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
-    const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
-
-    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-    connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
-
-    free_node(g);
+    g.ports[-1] = bump_index(g.ports[-1]);
+    commute_1_2(graph, f, g);
 }
 
-TYPE_CHECK_RULE(commute_1_3);
+TYPE_CHECK_RULE(commute_identity_lambda_delim);
 
-#define commute_3_1(graph, f, g) commute_1_3((graph), (g), (f))
+RULE_DEFINITION(commute_identity_lambda_dup, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    g.ports[-1] = bump_index(g.ports[-1]);
+    commute_1_3(graph, f, g);
+}
+
+RULE_DEFINITION(commute_gc_lambda_delim, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    g.ports[-1] = bump_index(g.ports[-1]);
+    commute_2_2(graph, f, g);
+}
+
+TYPE_CHECK_RULE(commute_gc_lambda_delim);
+
+RULE_DEFINITION(commute_gc_lambda_dup, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    g.ports[-1] = bump_index(g.ports[-1]);
+    commute_2_3(graph, f, g);
+}
+
+TYPE_CHECK_RULE(commute_gc_lambda_dup);
+
+RULE_DEFINITION(commute_delim_delim, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    if (symbol_index(f.ports[-1]) > symbol_index(g.ports[-1])) {
+        f.ports[-1] = bump_index(f.ports[-1]);
+    } else {
+        g.ports[-1] = bump_index(g.ports[-1]);
+    }
+
+    commute_2_2(graph, f, g);
+}
+
+TYPE_CHECK_RULE(commute_delim_delim);
 
 RULE_DEFINITION(commute_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
@@ -2758,10 +2840,13 @@ to_lambda_string(
         fprintf(stream, ")");
         return;
     case SYMBOL_LAMBDA:
+    case SYMBOL_GC_LAMBDA: {
+        const uint8_t body_port_idx = (SYMBOL_LAMBDA == node.ports[-1]) ? 2 : 1;
         fprintf(stream, "(λ ");
-        to_lambda_string(stream, i, follow_port(&node.ports[2]));
+        to_lambda_string(stream, i, follow_port(&node.ports[body_port_idx]));
         fprintf(stream, ")");
         return;
+    }
     case SYMBOL_IDENTITY_LAMBDA: fprintf(stream, "(λ 0)"); return;
     case SYMBOL_ERASER: fprintf(stream, "%" PRIu64, i); return;
     case SYMBOL_S:
@@ -3135,23 +3220,24 @@ of_lambda_term(
             break;
         }
 
-        const struct node lambda = alloc_node(graph, SYMBOL_LAMBDA);
-        connect_ports(&lambda.ports[0], output_port);
         const uint64_t nvars = count_binder_usage(body, tlambda);
-        uint64_t **dup_ports = NULL;
-        switch (nvars) {
-        case 0: {
+
+        if (0 == nvars) {
             // This is lambda that "garbage-collects" its argument.
-            const struct node eraser = alloc_node(graph, SYMBOL_ERASER);
-            connect_ports(&lambda.ports[1], &eraser.ports[0]);
+            const struct node lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
+            of_lambda_term(graph, body, &lambda.ports[1], lvl + 1);
+            connect_ports(&lambda.ports[0], output_port);
             break;
         }
-        case 1:
+
+        const struct node lambda = alloc_node(graph, SYMBOL_LAMBDA);
+        connect_ports(&lambda.ports[0], output_port);
+        uint64_t **dup_ports = NULL;
+        if (1 == nvars) {
             // This is a linear non-self-referential lambda.
             dup_ports = xmalloc(sizeof dup_ports[0] * 1);
             dup_ports[0] = &lambda.ports[1];
-            break;
-        default:
+        } else {
             // This is a non-linear lambda that needs a duplicator tree.
             dup_ports = build_duplicator_tree(
                 graph, &lambda.ports[1], nvars /* >= 2 */);
@@ -3281,7 +3367,9 @@ of_lambda_term(
             else if (SYMBOL_APPLICATOR == gsym) COMMUTE_APPL_DUP(graph, g, f); \
             else if (SYMBOL_LAMBDA == gsym) COMMUTE_LAMBDA_DUP(graph, g, f);   \
             else if (SYMBOL_IDENTITY_LAMBDA == gsym)                           \
-                COMMUTE_ID_LAMBDA_DUP(graph, g, f);                            \
+                COMMUTE_IDENTITY_LAMBDA_DUP(graph, g, f);                      \
+            else if (SYMBOL_GC_LAMBDA == gsym)                                 \
+                COMMUTE_GC_LAMBDA_DUP(graph, g, f);                            \
             else if (SYMBOL_CELL == gsym) COMMUTE_CELL_DUP(graph, g, f);       \
             else if (SYMBOL_UNARY_CALL == gsym)                                \
                 COMMUTE_UCALL_DUP(graph, g, f);                                \
@@ -3301,7 +3389,9 @@ of_lambda_term(
                 COMMUTE_APPL_DELIM(graph, g, f);                               \
             else if (SYMBOL_LAMBDA == gsym) COMMUTE_LAMBDA_DELIM(graph, g, f); \
             else if (SYMBOL_IDENTITY_LAMBDA == gsym)                           \
-                COMMUTE_ID_LAMBDA_DELIM(graph, g, f);                          \
+                COMMUTE_IDENTITY_LAMBDA_DELIM(graph, g, f);                    \
+            else if (SYMBOL_GC_LAMBDA == gsym)                                 \
+                COMMUTE_GC_LAMBDA_DELIM(graph, g, f);                          \
             else if (SYMBOL_CELL == gsym) COMMUTE_CELL_DELIM(graph, g, f);     \
             else if (SYMBOL_UNARY_CALL == gsym)                                \
                 COMMUTE_UCALL_DELIM(graph, g, f);                              \
@@ -3319,6 +3409,7 @@ of_lambda_term(
             if (SYMBOL_LAMBDA == gsym) BETA(graph, f, g);                      \
             else if (SYMBOL_IDENTITY_LAMBDA == gsym)                           \
                 IDENTITY_BETA(graph, f, g);                                    \
+            else if (SYMBOL_GC_LAMBDA == gsym) GC_BETA(graph, f, g);           \
             else if (IS_DELIMITER(gsym)) COMMUTE_APPL_DELIM(graph, f, g);      \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_APPL_DUP(graph, f, g);       \
             else COMMUTE(graph, f, g);                                         \
@@ -3333,8 +3424,16 @@ of_lambda_term(
             break;                                                             \
         case SYMBOL_IDENTITY_LAMBDA:                                           \
             if (SYMBOL_APPLICATOR == gsym) IDENTITY_BETA(graph, g, f);         \
-            else if (IS_DELIMITER(gsym)) COMMUTE_ID_LAMBDA_DELIM(graph, f, g); \
-            else if (IS_DUPLICATOR(gsym)) COMMUTE_ID_LAMBDA_DUP(graph, f, g);  \
+            else if (IS_DELIMITER(gsym))                                       \
+                COMMUTE_IDENTITY_LAMBDA_DELIM(graph, f, g);                    \
+            else if (IS_DUPLICATOR(gsym))                                      \
+                COMMUTE_IDENTITY_LAMBDA_DUP(graph, f, g);                      \
+            else COMMUTE(graph, g, f); /* same as for `SYMBOL_LAMBDA` */       \
+            break;                                                             \
+        case SYMBOL_GC_LAMBDA:                                                 \
+            if (SYMBOL_APPLICATOR == gsym) GC_BETA(graph, g, f);               \
+            else if (IS_DELIMITER(gsym)) COMMUTE_GC_LAMBDA_DELIM(graph, f, g); \
+            else if (IS_DUPLICATOR(gsym)) COMMUTE_GC_LAMBDA_DUP(graph, f, g);  \
             else COMMUTE(graph, g, f); /* same as for `SYMBOL_LAMBDA` */       \
             break;                                                             \
         case SYMBOL_ERASER:                                                    \
@@ -3406,42 +3505,47 @@ fire_rule(
     XASSERT(f.ports), XASSERT(g.ports);
     assert(is_interaction(f, g));
 
-#define BETA                    beta
-#define IDENTITY_BETA           identity_beta
-#define DO_UNARY_CALL           do_unary_call
-#define DO_BINARY_CALL          do_binary_call
-#define DO_BINARY_CALL_AUX      do_binary_call_aux
-#define DO_IF_THEN_ELSE         do_if_then_else
-#define DO_FIX                  do_fix
-#define DO_PERFORM              do_perform
-#define ANNIHILATE_DELIM_DELIM  annihilate_delim_delim
-#define ANNIHILATE_DUP_DUP      annihilate_dup_dup
-#define COMMUTE                 commute
-#define COMMUTE_APPL_DELIM      commute_3_2
-#define COMMUTE_DELIM_DELIM     commute_delim_delim
-#define COMMUTE_CELL_DELIM      commute_1_2
-#define COMMUTE_UCALL_DELIM     commute_2_2
-#define COMMUTE_BCALL_DELIM     commute_3_2
-#define COMMUTE_BCALL_AUX_DELIM commute_2_2
-#define COMMUTE_ITE_DELIM       commute_4_2
-#define COMMUTE_APPL_DUP        commute_3_3
-#define COMMUTE_CELL_DUP        commute_1_3
-#define COMMUTE_UCALL_DUP       commute_2_3
-#define COMMUTE_BCALL_DUP       commute_3_3
-#define COMMUTE_BCALL_AUX_DUP   commute_2_3
-#define COMMUTE_ITE_DUP         commute_4_3
-#define COMMUTE_DUP_DELIM       commute_dup_delim
-#define COMMUTE_DUP_DUP         commute_3_3
-#define COMMUTE_LAMBDA_DELIM    commute_lambda_delim
-#define COMMUTE_ID_LAMBDA_DELIM commute_1_2
-#define COMMUTE_LAMBDA_DUP      commute_lambda_dup
-#define COMMUTE_ID_LAMBDA_DUP   commute_1_3
+#define BETA                          beta
+#define IDENTITY_BETA                 identity_beta
+#define GC_BETA                       gc_beta
+#define DO_UNARY_CALL                 do_unary_call
+#define DO_BINARY_CALL                do_binary_call
+#define DO_BINARY_CALL_AUX            do_binary_call_aux
+#define DO_IF_THEN_ELSE               do_if_then_else
+#define DO_FIX                        do_fix
+#define DO_PERFORM                    do_perform
+#define ANNIHILATE_DELIM_DELIM        annihilate_delim_delim
+#define ANNIHILATE_DUP_DUP            annihilate_dup_dup
+#define COMMUTE                       commute
+#define COMMUTE_APPL_DELIM            commute_3_2
+#define COMMUTE_DELIM_DELIM           commute_delim_delim
+#define COMMUTE_CELL_DELIM            commute_1_2
+#define COMMUTE_UCALL_DELIM           commute_2_2
+#define COMMUTE_BCALL_DELIM           commute_3_2
+#define COMMUTE_BCALL_AUX_DELIM       commute_2_2
+#define COMMUTE_ITE_DELIM             commute_4_2
+#define COMMUTE_APPL_DUP              commute_3_3
+#define COMMUTE_CELL_DUP              commute_1_3
+#define COMMUTE_UCALL_DUP             commute_2_3
+#define COMMUTE_BCALL_DUP             commute_3_3
+#define COMMUTE_BCALL_AUX_DUP         commute_2_3
+#define COMMUTE_ITE_DUP               commute_4_3
+#define COMMUTE_DUP_DELIM             commute_dup_delim
+#define COMMUTE_DUP_DUP               commute_3_3
+#define COMMUTE_LAMBDA_DELIM          commute_lambda_delim
+#define COMMUTE_LAMBDA_DUP            commute_lambda_dup
+#define COMMUTE_IDENTITY_LAMBDA_DELIM commute_identity_lambda_delim
+#define COMMUTE_IDENTITY_LAMBDA_DUP   commute_identity_lambda_dup
+#define COMMUTE_GC_LAMBDA_DELIM       commute_gc_lambda_delim
+#define COMMUTE_GC_LAMBDA_DUP         commute_gc_lambda_dup
 
     DISPATCH_ACTIVE_PAIR(graph, f, g);
 
-#undef COMMUTE_ID_LAMBDA_DUP
+#undef COMMUTE_GC_LAMBDA_DUP
+#undef COMMUTE_GC_LAMBDA_DELIM
+#undef COMMUTE_IDENTITY_LAMBDA_DUP
+#undef COMMUTE_IDENTITY_LAMBDA_DELIM
 #undef COMMUTE_LAMBDA_DUP
-#undef COMMUTE_ID_LAMBDA_DELIM
 #undef COMMUTE_LAMBDA_DELIM
 #undef COMMUTE_DUP_DUP
 #undef COMMUTE_DUP_DELIM
@@ -3467,6 +3571,7 @@ fire_rule(
 #undef DO_BINARY_CALL_AUX
 #undef DO_BINARY_CALL
 #undef DO_UNARY_CALL
+#undef GC_BETA
 #undef IDENTITY_BETA
 #undef BETA
 }
@@ -3483,6 +3588,7 @@ register_active_pair(
 
 #define BETA(graph, f, g)                   focus_on(graph->betas, f)
 #define IDENTITY_BETA(graph, f, g)          focus_on(graph->identity_betas, f)
+#define GC_BETA(graph, f, g)                focus_on(graph->gc_betas, f)
 #define DO_UNARY_CALL(graph, f, g)          focus_on(graph->unary_calls, f)
 #define DO_BINARY_CALL(graph, f, g)         focus_on(graph->binary_calls, f)
 #define DO_BINARY_CALL_AUX(graph, f, g)     focus_on(graph->binary_calls_aux, f)
@@ -3510,18 +3616,22 @@ register_active_pair(
 
 #define COMMUTE_LAMBDA_DELIM(graph, f, g)                                      \
     COMMUTE(graph, g, f) // delimiters take precedence over lambdas
-#define COMMUTE_ID_LAMBDA_DELIM(graph, f, g)                                   \
-    COMMUTE(graph, g, f) // same as for `COMMUTE_LAMBDA_DELIM`
+#define COMMUTE_IDENTITY_LAMBDA_DELIM(graph, f, g) COMMUTE(graph, g, f)
+#define COMMUTE_GC_LAMBDA_DELIM(graph, f, g)       COMMUTE(graph, g, f)
+
 #define COMMUTE_LAMBDA_DUP(graph, f, g)                                        \
     COMMUTE(graph, g, f) // lambdas must alwaies be the second
-#define COMMUTE_ID_LAMBDA_DUP(graph, f, g)                                     \
-    COMMUTE(graph, g, f) // same as for `COMMUTE_LAMBDA_DUP`
+#define COMMUTE_IDENTITY_LAMBDA_DUP(graph, f, g) COMMUTE(graph, g, f)
+#define COMMUTE_GC_LAMBDA_DUP(graph, f, g)       COMMUTE(graph, g, f)
 
     DISPATCH_ACTIVE_PAIR(graph, f, g);
 
-#undef COMMUTE_ID_LAMBDA_DUP
+#undef COMMUTE_GC_LAMBDA_DUP
+#undef COMMUTE_IDENTITY_LAMBDA_DUP
 #undef COMMUTE_LAMBDA_DUP
-#undef COMMUTE_ID_LAMBDA_DELIM
+
+#undef COMMUTE_GC_LAMBDA_DELIM
+#undef COMMUTE_IDENTITY_LAMBDA_DELIM
 #undef COMMUTE_LAMBDA_DELIM
 
 #undef COMMUTE_DUP_DUP
@@ -3548,6 +3658,7 @@ register_active_pair(
 #undef DO_BINARY_CALL_AUX
 #undef DO_BINARY_CALL
 #undef DO_UNARY_CALL
+#undef GC_BETA
 #undef IDENTITY_BETA
 #undef BETA
 }
@@ -3657,6 +3768,7 @@ repeat:
     // clang-format off
     CONSUME_MULTIFOCUS (graph->betas, f) { interact(graph, beta, f); }
     CONSUME_MULTIFOCUS (graph->identity_betas, f) { interact(graph, identity_beta, f); }
+    CONSUME_MULTIFOCUS (graph->gc_betas, f) { interact(graph, gc_beta, f); }
     CONSUME_MULTIFOCUS (graph->unary_calls, f) { interact(graph, do_unary_call, f); }
     CONSUME_MULTIFOCUS (graph->binary_calls, f) { interact(graph, do_binary_call, f); }
     CONSUME_MULTIFOCUS (graph->binary_calls_aux, f) { interact(graph, do_binary_call_aux, f); }
