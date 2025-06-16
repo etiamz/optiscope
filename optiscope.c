@@ -29,10 +29,6 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// #define OPTISCOPE_ENABLE_STEP_BY_STEP
-// #define OPTISCOPE_ENABLE_TRACING
-// #define OPTISCOPE_ENABLE_GRAPHVIZ
-
 // Header inclusions
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -2566,6 +2562,31 @@ RULE_DEFINITION(commute_3_3, graph, f, g) {
 
 TYPE_CHECK_RULE(commute_3_3);
 
+RULE_DEFINITION(commute_4_3, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
+    const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
+    const struct node gxx = alloc_node_from(graph, g.ports[-1], &g);
+
+    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
+    connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
+    connect_ports(&gxx.ports[0], DECODE_ADDRESS(f.ports[3]));
+
+    connect_ports(&g.ports[1], &f.ports[1]);
+    connect_ports(&g.ports[2], &fx.ports[1]);
+    connect_ports(&gx.ports[1], &f.ports[2]);
+    connect_ports(&gx.ports[2], &fx.ports[2]);
+    connect_ports(&gxx.ports[1], &f.ports[3]);
+    connect_ports(&gxx.ports[2], &fx.ports[3]);
+}
+
+TYPE_CHECK_RULE(commute_4_3);
+
+#define commute_3_4(graph, f, g) commute_4_3((graph), (g), (f))
+
 RULE_DEFINITION(commute_lambda_dup, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
@@ -3414,7 +3435,7 @@ fire_rule(
 #define COMMUTE_UCALL_DUP       commute_2_3
 #define COMMUTE_BCALL_DUP       commute_3_3
 #define COMMUTE_BCALL_AUX_DUP   commute_2_3
-#define COMMUTE_ITE_DUP         commute
+#define COMMUTE_ITE_DUP         commute_4_3
 #define COMMUTE_DUP_DELIM       commute_dup_delim
 #define COMMUTE_DUP_DUP         commute_3_3
 #define COMMUTE_LAMBDA_DELIM    commute_lambda_delim
