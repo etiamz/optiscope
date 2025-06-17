@@ -2262,18 +2262,13 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
 #endif
 
     const struct node lhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
-    const struct node rhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
 
     connect_ports(&lhs.ports[0], DECODE_ADDRESS(f.ports[1]));
     connect_ports(&lhs.ports[1], DECODE_ADDRESS(g.ports[1]));
 
-    const struct node eraser = alloc_node(graph, SYMBOL_ERASER);
-    connect_ports(&rhs.ports[0], DECODE_ADDRESS(f.ports[2]));
-    connect_ports(&rhs.ports[1], &eraser.ports[0]);
-
     // There is a chance that the argument is fully disconnected from the root;
     // if so, we must garbage-collect it.
-    collect_garbage(graph, &rhs.ports[1]);
+    collect_garbage(graph, DECODE_ADDRESS(f.ports[2]));
 
     free_node(f), free_node(g);
 }
