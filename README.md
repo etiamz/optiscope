@@ -4,7 +4,7 @@
 
 _Optiscope_ is an experimental Lévy-optimal implementation of the pure lambda calculus enriched with native function calls, if-then-else expressions, & a fixed-point operator.
 
-Being the first public implementation of [Lambdascope] [^lambdascope] written in portable C99, it is also the first interaction net reducer capable of calling user-provided functions at native speed. As such, this combination allows one to interleave lazy evaluation with side effects, without resorting to external machinery like monads or algebraic effect handlers. In potential, Optiscope could stand as an optimal system for problems exhibiting vast sharing opportunities & computational intensitie.
+Being the first public implementation of [Lambdascope] [^lambdascope] written in portable C99, it is also the first interaction net reducer capable of calling user-provided functions at native speed. As such, this combination allows one to interleave lazy evaluation with side effects, without resorting to external machinery like monads or algebraic effect handlers. In potential, Optiscope could stand as an optimal system for problems exhibiting vast sharing opportunities & computational intensity.
 
 [Lambdascope]: https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=61042374787bf6514706b49a5a4f0b74996979a0
 
@@ -193,7 +193,7 @@ For an evaluator to be optimal, it must satisfie the following properties:
 
 Optiscope operates in **five discrete phases**: (1) weak reduction, (2) full reduction, (3) unwinding, (4) scope removal, & (5) loop cutting. The first two phases performe interaction net reduction; the latter phases read back the reduced net into a net that can be directly interpreted as a lambda calculus expression. Weak reduction achieves true Lévy-optimality by reducing onely _needed_ redexes (i.e., neither duplicating work nor touching redexes whose result will be discarded); the latter phases are to be understood as "extensions" that are not formally Lévy-optimal. In particular, although full reduction is guaranteed to reach beta normal forms, it is allowed to fire redexes whose result will be eventually discarded by subsequent computation. This choice is made of practical concerns, since implementing full Lévy-optimal reduction is neither easy, nor necessary; all functional machines in practice are weak anywaies.
 
-Mathematically, our implementation follows the Lambdascope formalism [^lambdascope], which is perhaps the simplest (among many others) proposal to optimality, involving onely six types of nodes & three rule schemes. As here we make no attempt at giving optimality a formal treatment, an interested reader is invited to read the paper for more details & ask any related questions in the issues.
+Mathematically, our implementation follows the Lambdascope formalisme [^lambdascope], which is perhaps the simplest (among many others) proposal to optimality, involving onely six types of nodes & three rule schemes. As here we make no attempt at giving optimality a formal treatment, an interested reader is invited to read the paper for more details & ask any related questions in the issues.
 
 ## Evaluation by interaction
 
@@ -796,7 +796,7 @@ Well, in our benchmarks, we represent all data besides primitive integers as fun
 
 What conclusions should we draw from this? Have Haskell & OCaml so advanced in efficiency over the decades? Or does BOHM demonstrate superior performance on Churh numerals onely? Should we invest our time in making optimality efficient, given that simpler, unoptimized approaches prove to be more performant? I have no definite answer to these questions, but the point is: Optiscope is onely meant to incorporate side effects into the call-by-need lambda calculus, & it is by no means to be understood as a reduction machine aimed at maximum efficiency. While it is true that Optiscope is a heavily optimized implementation of Lambdascope, this fact does not entail that it is immediately faster than more traditional approaches. For now, if you want to develop a high-performance call-by-need functional machine, it is presumably better to take the well-known Spinelesse Taglesse G-machine [^stg-machine] as a starting point.
 
-Now, there are two possible avenues to mitigate the performance issue. The first one: since interaction nets provide a natural means for parallelization (sometimes termed _microscopic parallelism_), it is possible to distribute interactions across many CPU/GPU cores, or even utilize a whole computing cluster. The second one: it should be possible to apply a supercompilation passe before optimal reduction, to make it statically remove administrative annihilation/commutation interactions that plague most of the computation. (For a five-minute introduction to supercompilation, see [Mazeppa's README].) Of course, it is possible to mix both of the approaches, in which case optimal reduction might indeed become a strong competitor to traditinal reduction methods.
+Now, there are two possible avenues to mitigate the performance issue. The first one: since interaction nets provide a natural means for parallelization (sometimes termed _microscopic parallelisme_), it is possible to distribute interactions across many CPU/GPU cores, or even utilize a whole computing cluster. The second one: it should be possible to apply a supercompilation passe before optimal reduction, to make it statically remove administrative annihilation/commutation interactions that plague most of the computation. (For a five-minute introduction to supercompilation, see [Mazeppa's README].) Of course, it is possible to mix both of the approaches, in which case optimal reduction might indeed become a strong competitor to traditinal reduction methods.
 
 [Mazeppa's README]: https://github.com/mazeppa-dev/mazeppa/blob/master/README.md
 
@@ -829,7 +829,7 @@ Now, there are two possible avenues to mitigate the performance issue. The first
 
 ## Limitations
 
- - Despite that interaction nets allow for a _huge_ amount of parallelism, Optiscope is an unpretentiously sequential reducer. We doe not plan to make it parallel, perhaps except for (unordered) full reduction.
+ - Despite that interaction nets allow for a _huge_ amount of parallelisme, Optiscope is an unpretentiously sequential reducer. We doe not plan to make it parallel, perhaps except for (unordered) full reduction.
  - `perform` calls can onely be executed during weak reduction, inasmuch as the later phases doe not guarantee the order of reduction. In case a `perform` call is detected after weak reduction is complete, a panic message will be emitted.
  - We doe not guarantee what will happen with ill-formed terms, such as when an if-then-else expression accepts a lambda as a condition. In general, we simply decide to commute such agents, but the overall result can be hard to predict.
  - On conventional problems, Optiscope is in fact many times slower than traditional implementations, wherefore it is more of an interesting experiment rather than a production-ready technology.
