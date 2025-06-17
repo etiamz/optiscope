@@ -2099,6 +2099,7 @@ typedef void (*Rule)(
     COMPILER_UNUSED static const Rule name##_type_check = name
 
 RULE_DEFINITION(annihilate, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_annihilation(f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2121,6 +2122,7 @@ RULE_DEFINITION(annihilate, graph, f, g) {
 TYPE_CHECK_RULE(annihilate);
 
 RULE_DEFINITION(commute, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_commutation(f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2200,6 +2202,7 @@ RULE_DEFINITION(commute, graph, f, g) {
 TYPE_CHECK_RULE(commute);
 
 RULE_DEFINITION(beta, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_beta(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2237,6 +2240,7 @@ RULE_DEFINITION(beta, graph, f, g) {
 TYPE_CHECK_RULE(beta);
 
 RULE_DEFINITION(identity_beta, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_identity_beta(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2253,6 +2257,7 @@ RULE_DEFINITION(identity_beta, graph, f, g) {
 TYPE_CHECK_RULE(identity_beta);
 
 RULE_DEFINITION(gc_beta, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_gc_beta(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2279,6 +2284,7 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
 TYPE_CHECK_RULE(gc_beta);
 
 RULE_DEFINITION(do_unary_call, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_unary_call(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2299,6 +2305,7 @@ RULE_DEFINITION(do_unary_call, graph, f, g) {
 TYPE_CHECK_RULE(do_unary_call);
 
 RULE_DEFINITION(do_binary_call, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_binary_call(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2319,6 +2326,7 @@ RULE_DEFINITION(do_binary_call, graph, f, g) {
 TYPE_CHECK_RULE(do_binary_call);
 
 RULE_DEFINITION(do_binary_call_aux, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_binary_call_aux(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2359,6 +2367,7 @@ connect_branch(
 }
 
 RULE_DEFINITION(do_if_then_else, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_if_then_else(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2382,6 +2391,7 @@ RULE_DEFINITION(do_if_then_else, graph, f, g) {
 TYPE_CHECK_RULE(do_if_then_else);
 
 RULE_DEFINITION(do_fix, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_fix(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2412,7 +2422,7 @@ RULE_DEFINITION(do_fix, graph, f, g) {
 TYPE_CHECK_RULE(do_fix);
 
 RULE_DEFINITION(do_perform, graph, f, g) {
-    // clang-format on
+    assert(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_perform(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2459,6 +2469,7 @@ interact(
 
 #define ANNIHILATION_PROLOGUE(graph, f, g)                                     \
     do {                                                                       \
+        assert(graph);                                                         \
         XASSERT(f.ports), XASSERT(g.ports);                                    \
         assert_annihilation(f, g);                                             \
         debug_interaction(__func__, graph, f, g);                              \
@@ -2500,6 +2511,7 @@ TYPE_CHECK_RULE(annihilate_dup_dup);
 
 #define COMMUTATION_PROLOGUE(graph, f, g)                                      \
     do {                                                                       \
+        assert(graph);                                                         \
         XASSERT(f.ports), XASSERT(g.ports);                                    \
         assert_commutation(f, g);                                              \
         debug_interaction(__func__, graph, f, g);                              \
@@ -2631,60 +2643,25 @@ TYPE_CHECK_RULE(commute_4_3);
 
 #define commute_3_4(graph, f, g) commute_4_3((graph), (g), (f))
 
-RULE_DEFINITION(commute_lambda_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
+#undef NCOMMUTATIONS_PLUS_PLUS
+#undef COMMUTATION_PROLOGUE
 
-    g.ports[-1] = bump_index(g.ports[-1]);
+RULE_DEFINITION(commute_dup_delim, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
+
+    if (symbol_index(f.ports[-1]) >= symbol_index(g.ports[-1])) {
+        f.ports[-1] = bump_index(f.ports[-1]);
+    }
+
     commute_3_2(graph, f, g);
 }
 
-TYPE_CHECK_RULE(commute_lambda_delim);
-
-RULE_DEFINITION(commute_lambda_dup, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    g.ports[-1] = bump_index(g.ports[-1]);
-    commute_3_3(graph, f, g);
-}
-
-TYPE_CHECK_RULE(commute_lambda_dup);
-
-RULE_DEFINITION(commute_identity_lambda_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    g.ports[-1] = bump_index(g.ports[-1]);
-    commute_1_2(graph, f, g);
-}
-
-TYPE_CHECK_RULE(commute_identity_lambda_delim);
-
-RULE_DEFINITION(commute_identity_lambda_dup, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    g.ports[-1] = bump_index(g.ports[-1]);
-    commute_1_3(graph, f, g);
-}
-
-RULE_DEFINITION(commute_gc_lambda_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    g.ports[-1] = bump_index(g.ports[-1]);
-    commute_2_2(graph, f, g);
-}
-
-TYPE_CHECK_RULE(commute_gc_lambda_delim);
-
-RULE_DEFINITION(commute_gc_lambda_dup, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    g.ports[-1] = bump_index(g.ports[-1]);
-    commute_2_3(graph, f, g);
-}
-
-TYPE_CHECK_RULE(commute_gc_lambda_dup);
+TYPE_CHECK_RULE(commute_dup_delim);
 
 RULE_DEFINITION(commute_delim_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
+    assert(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
 
     if (symbol_index(f.ports[-1]) > symbol_index(g.ports[-1])) {
         f.ports[-1] = bump_index(f.ports[-1]);
@@ -2697,20 +2674,63 @@ RULE_DEFINITION(commute_delim_delim, graph, f, g) {
 
 TYPE_CHECK_RULE(commute_delim_delim);
 
-RULE_DEFINITION(commute_dup_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
+RULE_DEFINITION(commute_lambda_delim, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
 
-    if (symbol_index(f.ports[-1]) >= symbol_index(g.ports[-1])) {
-        f.ports[-1] = bump_index(f.ports[-1]);
-    }
-
+    g.ports[-1] = bump_index(g.ports[-1]);
     commute_3_2(graph, f, g);
 }
 
-TYPE_CHECK_RULE(commute_dup_delim);
+TYPE_CHECK_RULE(commute_lambda_delim);
 
-#undef NCOMMUTATIONS_PLUS_PLUS
-#undef COMMUTATION_PROLOGUE
+RULE_DEFINITION(commute_lambda_dup, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
+
+    g.ports[-1] = bump_index(g.ports[-1]);
+    commute_3_3(graph, f, g);
+}
+
+TYPE_CHECK_RULE(commute_lambda_dup);
+
+RULE_DEFINITION(commute_identity_lambda_delim, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
+
+    g.ports[-1] = bump_index(g.ports[-1]);
+    commute_1_2(graph, f, g);
+}
+
+TYPE_CHECK_RULE(commute_identity_lambda_delim);
+
+RULE_DEFINITION(commute_identity_lambda_dup, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
+
+    g.ports[-1] = bump_index(g.ports[-1]);
+    commute_1_3(graph, f, g);
+}
+
+RULE_DEFINITION(commute_gc_lambda_delim, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
+
+    g.ports[-1] = bump_index(g.ports[-1]);
+    commute_2_2(graph, f, g);
+}
+
+TYPE_CHECK_RULE(commute_gc_lambda_delim);
+
+RULE_DEFINITION(commute_gc_lambda_dup, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
+
+    g.ports[-1] = bump_index(g.ports[-1]);
+    commute_2_3(graph, f, g);
+}
+
+TYPE_CHECK_RULE(commute_gc_lambda_dup);
 
 #undef TYPE_CHECK_RULE
 
@@ -3527,7 +3547,6 @@ fire_rule(
 #define ANNIHILATE_DUP_DUP            annihilate_dup_dup
 #define COMMUTE                       commute
 #define COMMUTE_APPL_DELIM            commute_3_2
-#define COMMUTE_DELIM_DELIM           commute_delim_delim
 #define COMMUTE_CELL_DELIM            commute_1_2
 #define COMMUTE_UCALL_DELIM           commute_2_2
 #define COMMUTE_BCALL_DELIM           commute_3_2
@@ -3540,6 +3559,7 @@ fire_rule(
 #define COMMUTE_BCALL_AUX_DUP         commute_2_3
 #define COMMUTE_ITE_DUP               commute_4_3
 #define COMMUTE_DUP_DELIM             commute_dup_delim
+#define COMMUTE_DELIM_DELIM           commute_delim_delim
 #define COMMUTE_DUP_DUP               commute_3_3
 #define COMMUTE_LAMBDA_DELIM          commute_lambda_delim
 #define COMMUTE_LAMBDA_DUP            commute_lambda_dup
@@ -3557,6 +3577,7 @@ fire_rule(
 #undef COMMUTE_LAMBDA_DUP
 #undef COMMUTE_LAMBDA_DELIM
 #undef COMMUTE_DUP_DUP
+#undef COMMUTE_DELIM_DELIM
 #undef COMMUTE_DUP_DELIM
 #undef COMMUTE_ITE_DUP
 #undef COMMUTE_BCALL_AUX_DUP
@@ -3569,7 +3590,6 @@ fire_rule(
 #undef COMMUTE_BCALL_DELIM
 #undef COMMUTE_UCALL_DELIM
 #undef COMMUTE_CELL_DELIM
-#undef COMMUTE_DELIM_DELIM
 #undef COMMUTE_APPL_DELIM
 #undef COMMUTE
 #undef ANNIHILATE_DUP_DUP
@@ -3608,7 +3628,6 @@ register_active_pair(
 #define ANNIHILATE_DUP_DUP(graph, f, g)     focus_on(graph->annihilations, f)
 #define COMMUTE(graph, f, g)                focus_on(graph->commutations, f)
 #define COMMUTE_APPL_DELIM                  COMMUTE
-#define COMMUTE_DELIM_DELIM                 COMMUTE
 #define COMMUTE_CELL_DELIM                  COMMUTE
 #define COMMUTE_UCALL_DELIM                 COMMUTE
 #define COMMUTE_BCALL_DELIM                 COMMUTE
@@ -3621,6 +3640,7 @@ register_active_pair(
 #define COMMUTE_BCALL_AUX_DUP               COMMUTE
 #define COMMUTE_ITE_DUP                     COMMUTE
 #define COMMUTE_DUP_DELIM                   COMMUTE
+#define COMMUTE_DELIM_DELIM                 COMMUTE
 #define COMMUTE_DUP_DUP                     COMMUTE
 
 #define COMMUTE_LAMBDA_DELIM(graph, f, g)                                      \
@@ -3644,6 +3664,7 @@ register_active_pair(
 #undef COMMUTE_LAMBDA_DELIM
 
 #undef COMMUTE_DUP_DUP
+#undef COMMUTE_DELIM_DELIM
 #undef COMMUTE_DUP_DELIM
 #undef COMMUTE_ITE_DUP
 #undef COMMUTE_BCALL_AUX_DUP
@@ -3656,7 +3677,6 @@ register_active_pair(
 #undef COMMUTE_BCALL_DELIM
 #undef COMMUTE_UCALL_DELIM
 #undef COMMUTE_CELL_DELIM
-#undef COMMUTE_DELIM_DELIM
 #undef COMMUTE_APPL_DELIM
 #undef COMMUTE
 #undef ANNIHILATE_DUP_DUP

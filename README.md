@@ -529,12 +529,12 @@ Benchmark 1: ./fibonacci-of-30
 
 ```
 Annihilation interactions: 17108681
-Commutation interactions: 142496609
+Commutation interactions: 116357006
 Beta interactions: 31
 Native function calls: 12948453
 If-then-elses: 4870845
 Fixpoints: 31
-Total interactions: 177424650
+Total interactions: 151285047
 ```
 
 </details>
@@ -554,12 +554,12 @@ Benchmark 1: ./church-fibonacci-of-20
 
 ```
 Annihilation interactions: 19678250
-Commutation interactions: 4080381458
+Commutation interactions: 2053499914
 Beta interactions: 521847
 Native function calls: 0
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 4100581555
+Total interactions: 2073700011
 ```
 
 </details>
@@ -579,12 +579,12 @@ Benchmark 1: ./church-list-reverse-and-sum
 
 ```
 Annihilation interactions: 25184998
-Commutation interactions: 475685085
+Commutation interactions: 275430055
 Beta interactions: 50006
 Native function calls: 10000
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 500930089
+Total interactions: 300675059
 ```
 
 </details>
@@ -604,12 +604,12 @@ Benchmark 1: ./scott-insertion-sort
 
 ```
 Annihilation interactions: 69548219
-Commutation interactions: 789641765
+Commutation interactions: 445493102
 Beta interactions: 47111
 Native function calls: 22650
 If-then-elses: 11175
 Fixpoints: 452
-Total interactions: 859271372
+Total interactions: 515122709
 ```
 
 </details>
@@ -629,12 +629,12 @@ Benchmark 1: ./scott-quicksort
 
 ```
 Annihilation interactions: 110264556
-Commutation interactions: 2236383253
+Commutation interactions: 1194740481
 Beta interactions: 61917
 Native function calls: 20000
 If-then-elses: 9900
 Fixpoints: 406
-Total interactions: 2346740032
+Total interactions: 1305097260
 ```
 
 </details>
@@ -654,12 +654,12 @@ Benchmark 1: ./scott-tree-map-and-sum
 
 ```
 Annihilation interactions: 37191257
-Commutation interactions: 336353979
+Commutation interactions: 203811681
 Beta interactions: 1179740
 Native function calls: 262142
 If-then-elses: 0
 Fixpoints: 66
-Total interactions: 374987184
+Total interactions: 242444886
 ```
 
 </details>
@@ -679,12 +679,12 @@ Benchmark 1: ./owl-explosion
 
 ```
 Annihilation interactions: 24990000
-Commutation interactions: 199954999
+Commutation interactions: 124969999
 Beta interactions: 9999
 Native function calls: 0
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 224954998
+Total interactions: 149969998
 ```
 
 </details>
