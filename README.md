@@ -176,7 +176,7 @@ _Optimal evaluation_ (in Lévy's sense [^levy-thesis] [^levy-optimal-reductions]
 In practice, this is how the complete reduction of Church numeral 2^2 looks like:
 
 <div align="center">
-  <a href="https://github.com/user-attachments/assets/cf104bf4-247e-4849-b111-285aa6dbae81">
+  <a href="https://github.com/user-attachments/assets/52abf13b-0a39-4eaa-857e-4a5f24764365">
     <img src="media/2-power-2-preview.png" width="350px" alt="Church 2^2 reduction" />
   </a>
 </div>
