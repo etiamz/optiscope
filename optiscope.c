@@ -2917,9 +2917,11 @@ struct apply_data {
 
 struct lambda_data {
     struct lambda_term *body;
-    uint64_t **dup_ports; // the pointer to the next duplicator tree
-                          // port; dynamically assigned
-    uint64_t lvl;         // the de Bruijn level; dynamically assigned
+    uint64_t binder_usages; // the number of times the lambda body refers to its
+                            // binder
+    uint64_t **dup_ports;   // the pointer to the next duplicator tree
+                            // port; dynamically assigned
+    uint64_t lvl;           // the de Bruijn level; dynamically assigned
 };
 
 struct unary_call_data {
@@ -2979,6 +2981,7 @@ prelambda(void) {
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_LAMBDA;
     term->data.lambda.body = NULL;
+    term->data.lambda.binder_usages = 0;
     term->data.lambda.dup_ports = NULL;
     term->data.lambda.lvl = 0;
 
@@ -3003,6 +3006,8 @@ var(const restrict LambdaTerm binder) {
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_VAR;
     term->data.var = &binder->data.lambda;
+
+    binder->data.lambda.binder_usages++;
 
     return term;
 }
@@ -3108,40 +3113,6 @@ is_identity_lambda(struct lambda_term *const restrict term) {
                : false /* cannot directly point to the binder */;
 }
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
-static uint64_t
-count_binder_usage(
-    const struct lambda_term *const restrict term,
-    const struct lambda_data *const restrict lambda) {
-    assert(term);
-    assert(lambda);
-
-    switch (term->ty) {
-    case LAMBDA_TERM_APPLY:
-        return count_binder_usage(term->data.apply.rator, lambda) +
-               count_binder_usage(term->data.apply.rand, lambda);
-    case LAMBDA_TERM_LAMBDA:
-        return count_binder_usage(term->data.lambda.body, lambda);
-    case LAMBDA_TERM_VAR: return lambda == term->data.var;
-    case LAMBDA_TERM_CELL: return 0;
-    case LAMBDA_TERM_UNARY_CALL:
-        return count_binder_usage(term->data.u_call.rand, lambda);
-    case LAMBDA_TERM_BINARY_CALL:
-        return count_binder_usage(term->data.b_call.lhs, lambda) +
-               count_binder_usage(term->data.b_call.rhs, lambda);
-    case LAMBDA_TERM_IF_THEN_ELSE:
-        return count_binder_usage(term->data.ite.condition, lambda) +
-               count_binder_usage(term->data.ite.if_then, lambda) +
-               count_binder_usage(term->data.ite.if_else, lambda);
-    case LAMBDA_TERM_FIX: //
-        return count_binder_usage(term->data.fix.f, lambda);
-    case LAMBDA_TERM_PERFORM:
-        return count_binder_usage(term->data.perform.action, lambda) +
-               count_binder_usage(term->data.perform.k, lambda);
-    default: COMPILER_UNREACHABLE();
-    }
-}
-
 COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
 static uint64_t *
 build_delimiter_sequence(
@@ -3183,9 +3154,8 @@ build_duplicator_tree(
     ports[1] = &current.ports[2];
 
     for (uint64_t i = 2; i < n; i++) {
-        // clang-format off
-        const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(UINT64_C(0)));
-        // clang-format on
+        const struct node dup =
+            alloc_node(graph, SYMBOL_DUPLICATOR(UINT64_C(0)));
         ports[i] = &dup.ports[1];
         connect_ports(&dup.ports[2], &current.ports[0]);
         current = dup;
@@ -3241,9 +3211,9 @@ of_lambda_term(
             break;
         }
 
-        const uint64_t nvars = count_binder_usage(body, tlambda);
+        const uint64_t nusages = tlambda->binder_usages;
 
-        if (0 == nvars) {
+        if (0 == nusages) {
             // This is lambda that "garbage-collects" its argument.
             const struct node lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
             of_lambda_term(graph, body, &lambda.ports[1], lvl + 1);
@@ -3254,14 +3224,14 @@ of_lambda_term(
         const struct node lambda = alloc_node(graph, SYMBOL_LAMBDA);
         connect_ports(&lambda.ports[0], output_port);
         uint64_t **dup_ports = NULL;
-        if (1 == nvars) {
+        if (1 == nusages) {
             // This is a linear non-self-referential lambda.
             dup_ports = xmalloc(sizeof dup_ports[0] * 1);
             dup_ports[0] = &lambda.ports[1];
         } else {
             // This is a non-linear lambda that needs a duplicator tree.
             dup_ports = build_duplicator_tree(
-                graph, &lambda.ports[1], nvars /* >= 2 */);
+                graph, &lambda.ports[1], nusages /* >= 2 */);
         }
         tlambda->dup_ports = dup_ports;
         tlambda->lvl = lvl;
