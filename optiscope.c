@@ -2214,25 +2214,20 @@ RULE_DEFINITION(beta, graph, f, g) {
     const struct node lhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
     const struct node rhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
 
-    // clang-format off
-    uint64_t *const target_ports[] = {
-        DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]),
-        DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[1]),
-    };
-    // clang-format on
+    connect_ports(&lhs.ports[0], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&rhs.ports[0], DECODE_ADDRESS(f.ports[2]));
 
-    connect_ports(&lhs.ports[0], target_ports[0]);
-    connect_ports(&rhs.ports[0], target_ports[2]);
+    connect_ports(&lhs.ports[1], DECODE_ADDRESS(g.ports[2]));
+    connect_ports(&rhs.ports[1], DECODE_ADDRESS(g.ports[1]));
 
-    connect_ports(&lhs.ports[1], target_ports[1]);
-    connect_ports(&rhs.ports[1], target_ports[3]);
-
-    const struct node binder = node_of_port(target_ports[3]);
-    if (SYMBOL_ERASER == binder.ports[-1]) {
-        // There is a chance that the argument is fully disconnected from the
-        // root; if so, we must garbage-collect it.
-        collect_garbage(graph, &rhs.ports[1]);
+#ifndef NDEBUG
+    // There should be no possibility that the lambda is connected to an eraser;
+    // `SYMBOL_GC_LAMBDA` should be used instead.
+    {
+        const struct node binder = follow_port(&g.ports[1]);
+        assert(SYMBOL_ERASER != binder.ports[-1]);
     }
+#endif
 
     free_node(f), free_node(g);
 }
@@ -2276,6 +2271,8 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
     connect_ports(&rhs.ports[0], DECODE_ADDRESS(f.ports[2]));
     connect_ports(&rhs.ports[1], &eraser.ports[0]);
 
+    // There is a chance that the argument is fully disconnected from the root;
+    // if so, we must garbage-collect it.
     collect_garbage(graph, &rhs.ports[1]);
 
     free_node(f), free_node(g);
