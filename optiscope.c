@@ -662,12 +662,13 @@ free_chunk(void *const memory) {
     };                                                                         \
                                                                                \
     COMPILER_NONNULL(1) COMPILER_COLD /* */                                    \
-    static void prefix##_pool_close(                                           \
-        struct prefix##_pool *const restrict self);                            \
+    static void                                                                \
+    prefix##_pool_close(struct prefix##_pool *const restrict self);            \
                                                                                \
     COMPILER_MALLOC(prefix##_pool_close, 1)                                    \
     COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_COLD /* */   \
-    static struct prefix##_pool *prefix##_pool_create(void) {                  \
+    static struct prefix##_pool *                                              \
+    prefix##_pool_create(void) {                                               \
         struct prefix##_pool *const self = xmalloc(sizeof *self);              \
                                                                                \
         union prefix##_chunk *chunks =                                         \
@@ -687,8 +688,8 @@ free_chunk(void *const memory) {
     }                                                                          \
                                                                                \
     COMPILER_NONNULL(1) COMPILER_COLD /* */                                    \
-    static void prefix##_pool_close(                                           \
-        struct prefix##_pool *const restrict self) {                           \
+    static void                                                                \
+    prefix##_pool_close(struct prefix##_pool *const restrict self) {           \
         assert(self);                                                          \
         XASSERT(self->buckets);                                                \
                                                                                \
@@ -705,8 +706,8 @@ free_chunk(void *const memory) {
     }                                                                          \
                                                                                \
     COMPILER_NONNULL(1) COMPILER_COLD /* */                                    \
-    static void prefix##_pool_expand(                                          \
-        struct prefix##_pool *const restrict self) {                           \
+    static void                                                                \
+    prefix##_pool_expand(struct prefix##_pool *const restrict self) {          \
         assert(self);                                                          \
         XASSERT(self->buckets);                                                \
                                                                                \
@@ -726,14 +727,15 @@ free_chunk(void *const memory) {
     }                                                                          \
                                                                                \
     COMPILER_NONNULL(1, 2) COMPILER_HOT /* */                                  \
-    static void prefix##_pool_free(                                            \
+    static void                                                                \
+    prefix##_pool_free(                                                        \
         struct prefix##_pool *const restrict self, uint64_t *restrict object); \
                                                                                \
     COMPILER_MALLOC(prefix##_pool_free, 1)                                     \
     COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1)   \
     COMPILER_HOT /* */                                                         \
-    static uint64_t *prefix##_pool_alloc(                                      \
-        struct prefix##_pool *const restrict self) {                           \
+    static uint64_t *                                                          \
+    prefix##_pool_alloc(struct prefix##_pool *const restrict self) {           \
         assert(self);                                                          \
         XASSERT(self->buckets);                                                \
                                                                                \
@@ -748,7 +750,8 @@ free_chunk(void *const memory) {
     }                                                                          \
                                                                                \
     COMPILER_NONNULL(1, 2) COMPILER_HOT /* */                                  \
-    static void prefix##_pool_free(                                            \
+    static void                                                                \
+    prefix##_pool_free(                                                        \
         struct prefix##_pool *const restrict self,                             \
         uint64_t *restrict object) {                                           \
         assert(self);                                                          \
