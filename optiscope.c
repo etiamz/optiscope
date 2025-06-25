@@ -2819,22 +2819,25 @@ iterate_nodes(
 
     focus_on(focus, graph->root);
 
-    CONSUME_MULTIFOCUS (focus, node) {
-        XASSERT(node.ports);
+    CONSUME_MULTIFOCUS (focus, f) {
+        XASSERT(f.ports);
 
-        if (DECODE_PHASE_METADATA(node.ports[0]) == graph->phase) { continue; }
-        set_phase(&node.ports[0], graph->phase);
+        if (DECODE_PHASE_METADATA(f.ports[0]) == graph->phase) { continue; }
+        set_phase(&f.ports[0], graph->phase);
 
-        if (symbol_is_in_range(range, node.ports[-1])) {
-            collection = visit(collection, node);
+        if (symbol_is_in_range(range, f.ports[-1])) {
+            collection = visit(collection, f);
         }
 
-        const uint8_t nports = ports_count(node.ports[-1]);
+        const uint8_t nports = ports_count(f.ports[-1]);
         XASSERT(nports <= MAX_PORTS);
 
-        // For some reason, the order of iteration matters here...
-        for (int8_t i = nports - 1; i >= 0; i--) {
-            focus_on(focus, follow_port(&node.ports[i]));
+        for (uint8_t i = 0; i < nports; i++) {
+            const struct node g = follow_port(&f.ports[i]);
+
+            if (DECODE_PHASE_METADATA(g.ports[0]) != graph->phase) {
+                focus_on(focus, g);
+            }
         }
     }
 
