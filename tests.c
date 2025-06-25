@@ -2,10 +2,13 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // The testing machinery
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+static int exit_code = EXIT_SUCCESS;
 
 #define TEST_CASE(f, expected) test_case(#f, f, expected)
 
@@ -46,6 +49,8 @@ test_case(
         fprintf(stderr, "\n");
 
 #undef TAB
+
+        exit_code = EXIT_FAILURE;
 
         goto close_fp;
     }
@@ -1362,6 +1367,8 @@ main(void) {
     TEST_CASE(asperti_guerrini_example, "(λ (0 0))");
     TEST_CASE(wadsworth_example, "(λ (0 0))");
     TEST_CASE(wadsworth_counterexample, "(λ (λ (1 0)))");
+
+    return exit_code;
 }
 
 #endif // OPTISCOPE_TESTS_NO_MAIN
