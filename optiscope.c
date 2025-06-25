@@ -2457,23 +2457,16 @@ RULE_DEFINITION(do_fix, graph, f, g) {
     graph->nfixpoints++;
 #endif
 
-    const struct node lhs_delim =
-        alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
-    const struct node rhs_delim =
-        alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
-
     const struct node body_dup = alloc_node(graph, SYMBOL_DUPLICATOR(0));
     const struct node binder_dup = alloc_node(graph, SYMBOL_DUPLICATOR(0));
 
-    connect_ports(&lhs_delim.ports[0], DECODE_ADDRESS(f.ports[1]));
     connect_ports(&body_dup.ports[0], DECODE_ADDRESS(g.ports[2]));
+    connect_ports(&body_dup.ports[1], DECODE_ADDRESS(f.ports[1]));
     connect_ports(&binder_dup.ports[0], DECODE_ADDRESS(g.ports[1]));
 
-    connect_ports(&lhs_delim.ports[1], &body_dup.ports[1]);
-    connect_ports(&rhs_delim.ports[1], &binder_dup.ports[1]);
-    connect_ports(&f.ports[1], &rhs_delim.ports[0]);
-    connect_ports(&g.ports[1], &binder_dup.ports[2]);
-    connect_ports(&g.ports[2], &body_dup.ports[2]);
+    connect_ports(&body_dup.ports[2], &g.ports[2]);
+    connect_ports(&binder_dup.ports[1], &f.ports[1]);
+    connect_ports(&binder_dup.ports[2], &g.ports[1]);
 }
 
 TYPE_CHECK_RULE(do_fix);

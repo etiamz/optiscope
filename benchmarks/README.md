@@ -44,13 +44,13 @@ Benchmark 1: ./fibonacci-of-30
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 17108681
-Commutation interactions: 116357006
+Annihilation interactions: 17108651
+Commutation interactions: 116357003
 Beta interactions: 31
 Native function calls: 12948453
 If-then-elses: 4870845
 Fixpoints: 31
-Total interactions: 151285047
+Total interactions: 151285014
 ```
 
 </details>
@@ -119,13 +119,13 @@ Benchmark 1: ./scott-insertion-sort
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 64777513
-Commutation interactions: 370693967
+Annihilation interactions: 64821613
+Commutation interactions: 370771136
 Beta interactions: 46958
 Native function calls: 22650
 If-then-elses: 11175
 Fixpoints: 452
-Total interactions: 435552715
+Total interactions: 435673984
 ```
 
 </details>
@@ -144,13 +144,13 @@ Benchmark 1: ./scott-quicksort
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 106108120
-Commutation interactions: 1076209000
+Annihilation interactions: 104534500
+Commutation interactions: 1062496348
 Beta interactions: 61814
 Native function calls: 20000
 If-then-elses: 9900
 Fixpoints: 406
-Total interactions: 1182409240
+Total interactions: 1167122968
 ```
 
 </details>
@@ -169,13 +169,13 @@ Benchmark 1: ./scott-tree-map-and-sum
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 40992285
-Commutation interactions: 234842274
+Annihilation interactions: 40861148
+Commutation interactions: 234219681
 Beta interactions: 1048667
 Native function calls: 262142
 If-then-elses: 0
 Fixpoints: 66
-Total interactions: 277145434
+Total interactions: 276391704
 ```
 
 </details>
