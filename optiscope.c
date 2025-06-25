@@ -387,26 +387,6 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX, "Every bit of a symbol must be 
     ((symbol) >= SYMBOL_DELIMITER(UINT64_C(0)))
 // clang-format on
 
-struct symbol_range {
-    uint64_t min, max;
-};
-
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
-inline static bool
-symbol_is_in_range(const struct symbol_range range, const uint64_t symbol) {
-    return range.min <= symbol && symbol <= range.max;
-}
-
-// clang-format off
-#define SYMBOL_RANGE(min, max) ((struct symbol_range){(min), (max)})
-#define SYMBOL_RANGE_1(symbol) SYMBOL_RANGE((symbol), (symbol))
-#define SYMBOL_FULL_RANGE SYMBOL_RANGE(SYMBOL_ROOT, UINT64_MAX)
-#define DUPLICATOR_RANGE \
-    SYMBOL_RANGE(SYMBOL_DUPLICATOR(UINT64_C(0)), MAX_DUPLICATOR_INDEX)
-#define DELIMITER_RANGE \
-    SYMBOL_RANGE(SYMBOL_DELIMITER(UINT64_C(0)), MAX_DELIMITER_INDEX)
-// clang-format on
-
 #define FOR_ALL_PORTS(node, i, seed)                                           \
     for (uint8_t i = seed; i < ports_count((node).ports[-1]); i++)
 
@@ -2804,124 +2784,101 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
 
 #undef TYPE_CHECK_RULE
 
-// The read-back phases
+// The graph traversal procedure
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+// This procedure is onely used _after_ weak reduction, in order to transforme
+// nodes & collect active pairs.
 COMPILER_NONNULL(1) COMPILER_HOT //
-static struct node_list *
-iterate_nodes(
-    const struct context *const graph, const struct symbol_range range) {
+static void
+walk_graph(
+    struct context *const graph,
+    void (*const cb)(struct context *const, const struct node)) {
     assert(graph);
     XASSERT(graph->root.ports);
 
     struct multifocus *focus = xcalloc(1, sizeof *focus);
-    struct node_list *collection = NULL;
 
     focus_on(focus, graph->root);
+    set_phase(&graph->root.ports[0], graph->phase);
 
     CONSUME_MULTIFOCUS (focus, f) {
         XASSERT(f.ports);
 
-        if (DECODE_PHASE_METADATA(f.ports[0]) == graph->phase) { continue; }
-        set_phase(&f.ports[0], graph->phase);
-
-        if (symbol_is_in_range(range, f.ports[-1])) {
-            collection = visit(collection, f);
-        }
-
-        const uint8_t nports = ports_count(f.ports[-1]);
-        XASSERT(nports <= MAX_PORTS);
-
-        for (uint8_t i = 0; i < nports; i++) {
+        FOR_ALL_PORTS (f, i, 0) {
             const struct node g = follow_port(&f.ports[i]);
 
             if (DECODE_PHASE_METADATA(g.ports[0]) != graph->phase) {
+                set_phase(&g.ports[0], graph->phase);
                 focus_on(focus, g);
             }
         }
+
+        if (cb) { cb(graph, f); }
     }
 
     free(focus);
-
-    return collection;
 }
 
-#define PROCESS_NODE_IN_PHASE(graph, node)                                     \
-    do {                                                                       \
-        debug("%s(%s)", __func__, print_node((node)));                         \
-        wait_for_user((graph));                                                \
-    } while (false)
+// The read-back phases
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_NONNULL(1) //
 static void
-unwind(struct context *const restrict graph) {
+unwind_cb(struct context *const graph, const struct node node) {
     assert(graph);
-    assert(is_normalized_graph(graph));
+    XASSERT(node.ports);
 
-    graph->phase = PHASE_UNWIND;
+    if (SYMBOL_APPLICATOR != node.ports[-1]) { return; }
 
-    CONSUME_LIST (
-        iter, iterate_nodes(graph, SYMBOL_RANGE_1(SYMBOL_APPLICATOR))) {
-        const struct node f = iter->node;
-        XASSERT(f.ports);
-        PROCESS_NODE_IN_PHASE(graph, f);
+    debug("%s(%s)", __func__, print_node(node));
+    wait_for_user(graph);
 
-        CONNECT_NODE(
-            f,
-            DECODE_ADDRESS(f.ports[1]),
-            DECODE_ADDRESS(f.ports[2]),
-            DECODE_ADDRESS(f.ports[0]));
-    }
+    // clang-format off
+    CONNECT_NODE(node,
+        DECODE_ADDRESS(node.ports[1]), DECODE_ADDRESS(node.ports[2]), DECODE_ADDRESS(node.ports[0]));
+    // clang-format on
 }
 
 COMPILER_NONNULL(1) //
 static void
-scope_remove(struct context *const restrict graph) {
+scope_remove_cb(struct context *const graph, const struct node node) {
     assert(graph);
-    assert(is_normalized_graph(graph));
+    XASSERT(node.ports);
 
-    graph->phase = PHASE_SCOPE_REMOVE;
+    if (!IS_DELIMITER(node.ports[-1])) { return; }
 
-    CONSUME_LIST (iter, iterate_nodes(graph, DELIMITER_RANGE)) {
-        const struct node node = iter->node;
-        XASSERT(node.ports);
-        PROCESS_NODE_IN_PHASE(graph, node);
+    debug("%s(%s)", __func__, print_node(node));
+    wait_for_user(graph);
 
-        const struct node scope = alloc_node(graph, SYMBOL_S);
-        CONNECT_NODE(
-            scope,
-            DECODE_ADDRESS(node.ports[1]),
-            DECODE_ADDRESS(node.ports[0]));
+    const struct node scope = alloc_node(graph, SYMBOL_S);
+    // clang-format off
+    CONNECT_NODE(scope,
+        DECODE_ADDRESS(node.ports[1]), DECODE_ADDRESS(node.ports[0]));
+    // clang-format on
 
-        free_node(node);
-    }
+    free_node(node);
 }
 
 COMPILER_NONNULL(1) //
 static void
-loop_cut(struct context *const restrict graph) {
+loop_cut_cb(struct context *const graph, const struct node node) {
     assert(graph);
-    assert(is_normalized_graph(graph));
+    XASSERT(node.ports);
 
-    graph->phase = PHASE_LOOP_CUT;
+    if (!IS_RELEVANT_LAMBDA(node.ports[-1])) { return; }
 
-    CONSUME_LIST (iter, iterate_nodes(graph, SYMBOL_FULL_RANGE)) {
-        const struct node node = iter->node;
-        XASSERT(node.ports);
+    debug("%s(%s)", __func__, print_node(node));
+    wait_for_user(graph);
 
-        if (!IS_RELEVANT_LAMBDA(node.ports[-1])) { continue; }
-        PROCESS_NODE_IN_PHASE(graph, node);
+    struct node side_eraser = alloc_node(graph, SYMBOL_ERASER);
+    struct node bottom_eraser = alloc_node(graph, SYMBOL_ERASER);
 
-        struct node side_eraser = alloc_node(graph, SYMBOL_ERASER);
-        struct node bottom_eraser = alloc_node(graph, SYMBOL_ERASER);
-        uint64_t *const binder_port = DECODE_ADDRESS(node.ports[1]);
+    uint64_t *const binder_port = DECODE_ADDRESS(node.ports[1]);
 
-        connect_ports(&node.ports[1], &side_eraser.ports[0]);
-        connect_ports(&bottom_eraser.ports[0], binder_port);
-    }
+    connect_ports(&node.ports[1], &side_eraser.ports[0]);
+    connect_ports(&bottom_eraser.ports[0], binder_port);
 }
-
-#undef PROCESS_NODE_IN_PHASE
 
 // Conversion to a lambda term string
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -3835,44 +3792,39 @@ finish:
 
 COMPILER_NONNULL(1) //
 static void
+multifocus_cb(struct context *const graph, const struct node f) {
+    assert(graph);
+    XASSERT(f.ports);
+
+    const struct node g = follow_port(&f.ports[0]);
+    XASSERT(g.ports);
+
+    if (SYMBOL_ROOT == f.ports[-1] || SYMBOL_ROOT == g.ports[-1]) { return; }
+
+    if (is_interacting_with(f, g)) {
+        // Protect from focusing on both active nodes.
+        // Thanks to Marvin Borner <git@marvinborner.de> for
+        // pointing this out!
+        if (compare_node_ptrs(f, g) < 0) { //
+            register_active_pair(graph, f, g);
+        }
+    }
+}
+
+COMPILER_NONNULL(1) //
+static void
 multifocus(struct context *const restrict graph) {
     debug("%s()", __func__);
 
     assert(graph);
 
-    ITERATE_ONCE (
-        finish,
-        graph->phase = PHASE_DISCOVER,
-        graph->phase = PHASE_REDUCE_FULLY) {
-        struct node_list *nodes = iterate_nodes(graph, SYMBOL_FULL_RANGE);
+    // Register all the active pairs in the graph in corresponding multifocuses.
+    graph->phase = PHASE_DISCOVER;
+    walk_graph(graph, multifocus_cb);
 
-        ITERATE_LIST (iter, nodes) {
-            const struct node f = iter->node;
-            XASSERT(f.ports);
-
-            const struct node g = follow_port(&f.ports[0]);
-            XASSERT(g.ports);
-
-            // The root node must not interact with any other node!
-            if (SYMBOL_ROOT != f.ports[-1] && SYMBOL_ROOT != g.ports[-1]) {
-                // Check not onely that `f` wants to interact with `g`, but also
-                // vice versa.
-                if (is_interacting_with(f, g)) {
-                    // Protect from focusing on both active nodes.
-                    // Thanks to Marvin Borner <git@marvinborner.de> for
-                    // pointing this out!
-                    if (compare_node_ptrs(f, g) < 0) {
-                        register_active_pair(graph, f, g);
-                    }
-                }
-            }
-        }
-
-        // Reset the nodes' phase metadata we have just touched.
-        CONSUME_LIST (iter, nodes) {
-            set_phase(&iter->node.ports[0], PHASE_REDUCE_FULLY);
-        }
-    }
+    // Reset the nodes' phase metadata we have just touched.
+    graph->phase = PHASE_REDUCE_FULLY;
+    walk_graph(graph, NULL);
 }
 
 COMPILER_NONNULL(1) //
@@ -3939,7 +3891,8 @@ optiscope_algorithm(
 
     // Phase #3: unwinding.
     {
-        unwind(graph);
+        graph->phase = PHASE_UNWIND;
+        walk_graph(graph, unwind_cb);
         graphviz(graph, "target/3-unwound.dot");
         normalize_x_rules(graph);
         graphviz(graph, "target/3-unwoundx.dot");
@@ -3947,7 +3900,8 @@ optiscope_algorithm(
 
     // Phase #4: scope removal.
     {
-        scope_remove(graph);
+        graph->phase = PHASE_SCOPE_REMOVE;
+        walk_graph(graph, scope_remove_cb);
         graphviz(graph, "target/4-unscoped.dot");
         normalize_x_rules(graph);
         graphviz(graph, "target/4-unscopedx.dot");
@@ -3955,7 +3909,8 @@ optiscope_algorithm(
 
     // Phase #5: loop cutting.
     {
-        loop_cut(graph);
+        graph->phase = PHASE_LOOP_CUT;
+        walk_graph(graph, loop_cut_cb);
         graphviz(graph, "target/5-unlooped.dot");
         normalize_x_rules(graph);
         graphviz(graph, "target/5-unloopedx.dot");
