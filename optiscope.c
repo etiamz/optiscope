@@ -2829,7 +2829,12 @@ walk_graph(
 COMPILER_NONNULL(1) //
 static void
 unwind_cb(struct context *const graph, const struct node node) {
+#ifndef NDEBUG
     assert(graph);
+#else
+    (void)graph;
+#endif
+
     XASSERT(node.ports);
 
     if (SYMBOL_APPLICATOR != node.ports[-1]) { return; }
