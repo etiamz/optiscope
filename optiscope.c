@@ -619,8 +619,6 @@ static void *alloc_chunk(const size_t size) {
         return xmalloc(size);
     }
 
-    IO_CALL(madvise, memory, HUGE_PAGE_SIZE_2MB, MADV_WILLNEED);
-
     return memory;
 }
 
