@@ -2220,8 +2220,7 @@ RULE_DEFINITION(commute, graph, f, g) {
     const bool update_symbol = (IS_ANY_LAMBDA(g.ports[-1]) && i >= 0) ||
                                (IS_DELIMITER(g.ports[-1]) && i >= j);
 
-    const uint64_t fsym =
-                       (update_symbol ? bump_index(f.ports[-1]) : f.ports[-1]),
+    const uint64_t fsym = update_symbol ? bump_index(f.ports[-1]) : f.ports[-1],
                    gsym = g.ports[-1];
 
     const uint8_t n = ports_count(f.ports[-1]) - 1,
