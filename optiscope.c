@@ -3464,7 +3464,7 @@ of_lambda_term(
                 COMMUTE_ITE_DELIM(graph, g, f);                                \
             else if (IS_DELIMITER(gsym)) COMMUTE_DELIM_DELIM(graph, f, g);     \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_DUP_DELIM(graph, g, f);      \
-            else COMMUTE(graph, g, f); /* delimiters must be the second */     \
+            else COMMUTE(graph, f, g);                                         \
             break;                                                             \
         case SYMBOL_APPLICATOR:                                                \
             if (SYMBOL_LAMBDA == gsym || SYMBOL_LAMBDA_C == gsym)              \
@@ -3505,10 +3505,7 @@ of_lambda_term(
             else if (IS_DUPLICATOR(gsym)) COMMUTE_LAMBDA_C_DUP(graph, f, g);   \
             else COMMUTE(graph, g, f); /* same as for `SYMBOL_LAMBDA` */       \
             break;                                                             \
-        case SYMBOL_ERASER:                                                    \
-            if (SYMBOL_ERASER == gsym) free_node(f), free_node(g);             \
-            else COMMUTE(graph, f, g);                                         \
-            break;                                                             \
+        case SYMBOL_ERASER: COMMUTE(graph, f, g); break;                       \
         case SYMBOL_S:                                                         \
             if (SYMBOL_S == gsym) ANNIHILATE_DELIM_DELIM(graph, f, g);         \
             else COMMUTE(graph, f, g);                                         \
