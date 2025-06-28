@@ -1765,6 +1765,23 @@ wait_for_user(struct context *const restrict graph) {
 // Mark & sweep garbage collection
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+#define FOLLOW(graph, port)                                                    \
+    focus_on((graph)->gc_focus, FAKE_NODE(DECODE_ADDRESS((port))))
+
+#define ERASE(graph, port)                                                     \
+    do {                                                                       \
+        const struct node eraser = alloc_node((graph), SYMBOL_ERASER);         \
+        connect_ports((port), &eraser.ports[0]);                               \
+    } while (false)
+
+#define COLLECT(graph, f)                                                      \
+    do {                                                                       \
+        set_phase(&(f).ports[0], PHASE_GARBAGE);                               \
+        if (!is_active((f))) { focus_on((graph)->gc_history, (f)); }           \
+    } while (false)
+
+#define FAKE_NODE(port) ((struct node){(port)})
+
 COMPILER_NONNULL(1, 2) //
 static void
 collect_garbage(
@@ -1774,21 +1791,6 @@ collect_garbage(
     assert(graph);
     assert(port);
     XASSERT(graph->gc_focus), XASSERT(graph->gc_history);
-
-    // clang-format off
-#define FOLLOW(port) \
-    focus_on(graph->gc_focus, FAKE_NODE(DECODE_ADDRESS((port))))
-#define ERASE(port) \
-    do { \
-        const struct node eraser = alloc_node(graph, SYMBOL_ERASER); \
-        connect_ports((port), &eraser.ports[0]); \
-    } while (false)
-#define COLLECT(f) \
-    (set_phase(&(f).ports[0], PHASE_GARBAGE), \
-     (is_active((f)) ? (void)0 : focus_on(graph->gc_history, (f))))
-    // clang-format on
-
-#define FAKE_NODE(port) ((struct node){(port)})
 
     // This multifocus conteyns the ports _to be followed_, not necessarily
     // nodes' _principal_ ports!
@@ -1808,8 +1810,8 @@ collect_garbage(
         case SYMBOL_LAMBDA:
         case SYMBOL_LAMBDA_C:
             switch (i) {
-            case 0: FOLLOW(f.ports[1]), FOLLOW(f.ports[2]); break;
-            case 2: FOLLOW(f.ports[0]), FOLLOW(f.ports[1]); break;
+            case 0: FOLLOW(graph, f.ports[1]), FOLLOW(graph, f.ports[2]); break;
+            case 2: FOLLOW(graph, f.ports[0]), FOLLOW(graph, f.ports[1]); break;
             case 1: {
                 const struct node gc_lambda =
                     alloc_node(graph, SYMBOL_GC_LAMBDA);
@@ -1821,19 +1823,24 @@ collect_garbage(
             }
             default: COMPILER_UNREACHABLE();
             }
-            COLLECT(f);
+            COLLECT(graph, f);
             break;
         duplicator:
             switch (i) {
-            case 0: FOLLOW(f.ports[1]), FOLLOW(f.ports[2]), COLLECT(f); break;
+            case 0:
+                FOLLOW(graph, f.ports[1]), FOLLOW(graph, f.ports[2]);
+                COLLECT(graph, f);
+                break;
             case 1:
             case 2: {
                 const uint8_t other_idx = 1 == i ? 2 : 1;
                 const struct node other = follow_port(&f.ports[other_idx]);
                 if (SYMBOL_ERASER == other.ports[-1]) {
-                    FOLLOW(f.ports[0]), COLLECT(other), COLLECT(f);
+                    FOLLOW(graph, f.ports[0]);
+                    COLLECT(graph, other);
+                    COLLECT(graph, f);
                 } else {
-                    ERASE(&f.ports[i]);
+                    ERASE(graph, &f.ports[i]);
                 }
                 break;
             }
@@ -1851,13 +1858,13 @@ collect_garbage(
         case SYMBOL_GC_LAMBDA:
         delimiter:
             FOR_ALL_PORTS (f, j, 0) {
-                if (j != i) { FOLLOW(f.ports[j]); }
+                if (j != i) { FOLLOW(graph, f.ports[j]); }
             }
-            COLLECT(f);
+            COLLECT(graph, f);
             break;
         case SYMBOL_ERASER:
         case SYMBOL_CELL:
-        case SYMBOL_IDENTITY_LAMBDA: COLLECT(f); break;
+        case SYMBOL_IDENTITY_LAMBDA: COLLECT(graph, f); break;
         default:
             if (f.ports[-1] <= MAX_DUPLICATOR_INDEX) goto duplicator;
             else if (f.ports[-1] <= MAX_DELIMITER_INDEX) goto delimiter;
@@ -1865,15 +1872,12 @@ collect_garbage(
         }
     }
 
-#undef FAKE_NODE
+    CONSUME_MULTIFOCUS (graph->gc_history, node) { free_node(node); }
+}
+
 #undef COLLECT
 #undef ERASE
 #undef FOLLOW
-
-    CONSUME_MULTIFOCUS (graph->gc_history, node) {
-        free_node(node); //
-    }
-}
 
 // Eliminates a (higher-order) sharing structure, thus reducing the graph size.
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
@@ -1894,8 +1898,6 @@ try_unshare(
 #define FOLLOW(port)                                                           \
     focus_on(graph->unsharing_focus, FAKE_NODE(DECODE_ADDRESS((port))))
 
-#define FAKE_NODE(port) ((struct node){(port)})
-
     focus_on(graph->unsharing_focus, FAKE_NODE(port));
 
     CONSUME_MULTIFOCUS (graph->unsharing_focus, node) {
@@ -1914,11 +1916,12 @@ try_unshare(
         }
     }
 
-#undef FAKE_NODE
 #undef FOLLOW
 
     return true;
 }
+
+#undef FAKE_NODE
 
 // The core interaction rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
