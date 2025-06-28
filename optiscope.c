@@ -1805,19 +1805,11 @@ collect_garbage(
         }
 
         switch (f.ports[-1]) {
-        case SYMBOL_APPLICATOR:
-            switch (i) {
-            case 0: FOLLOW(f.ports[1]), FOLLOW(f.ports[2]), COLLECT(f); break;
-            case 1: FOLLOW(f.ports[0]), FOLLOW(f.ports[2]), COLLECT(f); break;
-            case 2: FOLLOW(f.ports[0]), FOLLOW(f.ports[1]), COLLECT(f); break;
-            default: COMPILER_UNREACHABLE();
-            }
-            break;
         case SYMBOL_LAMBDA:
         case SYMBOL_LAMBDA_C:
             switch (i) {
-            case 0: FOLLOW(f.ports[1]), FOLLOW(f.ports[2]), COLLECT(f); break;
-            case 2: FOLLOW(f.ports[0]), FOLLOW(f.ports[1]), COLLECT(f); break;
+            case 0: FOLLOW(f.ports[1]), FOLLOW(f.ports[2]); break;
+            case 2: FOLLOW(f.ports[0]), FOLLOW(f.ports[1]); break;
             case 1: {
                 const struct node gc_lambda =
                     alloc_node(graph, SYMBOL_GC_LAMBDA);
@@ -1825,50 +1817,11 @@ collect_garbage(
                 CONNECT_NODE(gc_lambda,
                     DECODE_ADDRESS(f.ports[0]), DECODE_ADDRESS(f.ports[2]));
                 // clang-format on
-                COLLECT(f);
                 break;
             }
             default: COMPILER_UNREACHABLE();
             }
-            break;
-        case SYMBOL_ERASER:
-        case SYMBOL_CELL:
-        case SYMBOL_IDENTITY_LAMBDA: COLLECT(f); break;
-        case SYMBOL_S:
-        case SYMBOL_UNARY_CALL:
-        case SYMBOL_BINARY_CALL_AUX:
-        case SYMBOL_FIX:
-        case SYMBOL_GC_LAMBDA:
-        delimiter:
-            switch (i) {
-            case 0: FOLLOW(f.ports[1]), COLLECT(f); break;
-            case 1: FOLLOW(f.ports[0]), COLLECT(f); break;
-            default: COMPILER_UNREACHABLE();
-            }
-            break;
-        case SYMBOL_BINARY_CALL:
-        case SYMBOL_PERFORM:
-            switch (i) {
-            case 0: FOLLOW(f.ports[1]), FOLLOW(f.ports[2]), COLLECT(f); break;
-            case 1: FOLLOW(f.ports[0]), FOLLOW(f.ports[2]), COLLECT(f); break;
-            case 2: FOLLOW(f.ports[0]), FOLLOW(f.ports[1]), COLLECT(f); break;
-            default: COMPILER_UNREACHABLE();
-            }
-            break;
-        case SYMBOL_IF_THEN_ELSE:
-            switch (i) {
-            case 0:
-                FOLLOW(f.ports[1]), FOLLOW(f.ports[2]), FOLLOW(f.ports[3]),
-                    COLLECT(f);
-                break;
-            case 1:
-                FOLLOW(f.ports[0]), FOLLOW(f.ports[2]), FOLLOW(f.ports[3]),
-                    COLLECT(f);
-                break;
-            case 2:
-            case 3: ERASE(&f.ports[i]); break;
-            default: COMPILER_UNREACHABLE();
-            }
+            COLLECT(f);
             break;
         duplicator:
             switch (i) {
@@ -1887,6 +1840,24 @@ collect_garbage(
             default: COMPILER_UNREACHABLE();
             }
             break;
+        case SYMBOL_APPLICATOR:
+        case SYMBOL_S:
+        case SYMBOL_UNARY_CALL:
+        case SYMBOL_BINARY_CALL:
+        case SYMBOL_BINARY_CALL_AUX:
+        case SYMBOL_IF_THEN_ELSE:
+        case SYMBOL_FIX:
+        case SYMBOL_PERFORM:
+        case SYMBOL_GC_LAMBDA:
+        delimiter:
+            FOR_ALL_PORTS (f, j, 0) {
+                if (j != i) { FOLLOW(f.ports[j]); }
+            }
+            COLLECT(f);
+            break;
+        case SYMBOL_ERASER:
+        case SYMBOL_CELL:
+        case SYMBOL_IDENTITY_LAMBDA: COLLECT(f); break;
         default:
             if (f.ports[-1] <= MAX_DUPLICATOR_INDEX) goto duplicator;
             else if (f.ports[-1] <= MAX_DELIMITER_INDEX) goto delimiter;
