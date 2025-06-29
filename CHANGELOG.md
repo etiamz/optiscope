@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Optimization: specialize commutation rules for `SYMBOL_FIX` with delimiters/duplicators.
+
 ## 0.3.0 - 2025-06-25
 
 ### Added

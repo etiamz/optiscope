@@ -3412,6 +3412,7 @@ of_lambda_term(
                 COMMUTE_BCALL_AUX_DUP(graph, g, f);                            \
             else if (SYMBOL_IF_THEN_ELSE == gsym)                              \
                 COMMUTE_ITE_DUP(graph, g, f);                                  \
+            else if (SYMBOL_FIX == gsym) COMMUTE_FIX_DUP(graph, g, f);         \
             else if (IS_DELIMITER(gsym)) COMMUTE_DUP_DELIM(graph, f, g);       \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_DUP_DUP(graph, f, g);        \
             else COMMUTE(graph, f, g);                                         \
@@ -3436,6 +3437,7 @@ of_lambda_term(
                 COMMUTE_BCALL_AUX_DELIM(graph, g, f);                          \
             else if (SYMBOL_IF_THEN_ELSE == gsym)                              \
                 COMMUTE_ITE_DELIM(graph, g, f);                                \
+            else if (SYMBOL_FIX == gsym) COMMUTE_FIX_DELIM(graph, g, f);       \
             else if (IS_DELIMITER(gsym)) COMMUTE_DELIM_DELIM(graph, f, g);     \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_DUP_DELIM(graph, g, f);      \
             else COMMUTE(graph, f, g);                                         \
@@ -3522,6 +3524,8 @@ of_lambda_term(
             break;                                                             \
         case SYMBOL_FIX:                                                       \
             if (IS_RELEVANT_LAMBDA(gsym)) DO_FIX(graph, f, g);                 \
+            else if (IS_DELIMITER(gsym)) COMMUTE_FIX_DELIM(graph, f, g);       \
+            else if (IS_DUPLICATOR(gsym)) COMMUTE_FIX_DUP(graph, f, g);        \
             else COMMUTE(graph, f, g);                                         \
             break;                                                             \
         case SYMBOL_PERFORM:                                                   \
@@ -3563,12 +3567,14 @@ fire_rule(
 #define COMMUTE_BCALL_DELIM           commute_3_2
 #define COMMUTE_BCALL_AUX_DELIM       commute_2_2
 #define COMMUTE_ITE_DELIM             commute_4_2
+#define COMMUTE_FIX_DELIM             commute_2_2
 #define COMMUTE_APPL_DUP              commute_3_3
 #define COMMUTE_CELL_DUP              commute_1_3
 #define COMMUTE_UCALL_DUP             commute_2_3
 #define COMMUTE_BCALL_DUP             commute_3_3
 #define COMMUTE_BCALL_AUX_DUP         commute_2_3
 #define COMMUTE_ITE_DUP               commute_4_3
+#define COMMUTE_FIX_DUP               commute_2_3
 #define COMMUTE_DUP_DELIM             commute_dup_delim
 #define COMMUTE_DELIM_DELIM           commute_delim_delim
 #define COMMUTE_DUP_DUP               commute_3_3
@@ -3594,12 +3600,14 @@ fire_rule(
 #undef COMMUTE_DUP_DUP
 #undef COMMUTE_DELIM_DELIM
 #undef COMMUTE_DUP_DELIM
+#undef COMMUTE_FIX_DUP
 #undef COMMUTE_ITE_DUP
 #undef COMMUTE_BCALL_AUX_DUP
 #undef COMMUTE_BCALL_DUP
 #undef COMMUTE_UCALL_DUP
 #undef COMMUTE_CELL_DUP
 #undef COMMUTE_APPL_DUP
+#undef COMMUTE_FIX_DELIM
 #undef COMMUTE_ITE_DELIM
 #undef COMMUTE_BCALL_AUX_DELIM
 #undef COMMUTE_BCALL_DELIM
@@ -3648,12 +3656,14 @@ register_active_pair(
 #define COMMUTE_BCALL_DELIM                 COMMUTE
 #define COMMUTE_BCALL_AUX_DELIM             COMMUTE
 #define COMMUTE_ITE_DELIM                   COMMUTE
+#define COMMUTE_FIX_DELIM                   COMMUTE
 #define COMMUTE_APPL_DUP                    COMMUTE
 #define COMMUTE_CELL_DUP                    COMMUTE
 #define COMMUTE_UCALL_DUP                   COMMUTE
 #define COMMUTE_BCALL_DUP                   COMMUTE
 #define COMMUTE_BCALL_AUX_DUP               COMMUTE
 #define COMMUTE_ITE_DUP                     COMMUTE
+#define COMMUTE_FIX_DUP                     COMMUTE
 #define COMMUTE_DUP_DELIM                   COMMUTE
 #define COMMUTE_DELIM_DELIM                 COMMUTE
 #define COMMUTE_DUP_DUP                     COMMUTE
@@ -3685,12 +3695,14 @@ register_active_pair(
 #undef COMMUTE_DUP_DUP
 #undef COMMUTE_DELIM_DELIM
 #undef COMMUTE_DUP_DELIM
+#undef COMMUTE_FIX_DUP
 #undef COMMUTE_ITE_DUP
 #undef COMMUTE_BCALL_AUX_DUP
 #undef COMMUTE_BCALL_DUP
 #undef COMMUTE_UCALL_DUP
 #undef COMMUTE_CELL_DUP
 #undef COMMUTE_APPL_DUP
+#undef COMMUTE_FIX_DELIM
 #undef COMMUTE_ITE_DELIM
 #undef COMMUTE_BCALL_AUX_DELIM
 #undef COMMUTE_BCALL_DELIM
