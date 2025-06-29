@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Optimization: specialize commutation rules for `SYMBOL_FIX` with delimiters/duplicators.
 
+### Removed
+
+ - Miscellaneous: prune the `media/` directory using `git-filter-repo`, transfer the files to [`optiscope-media`].
+
+[`optiscope-media`]: https://github.com/etiams/optiscope-media
+
 ## 0.3.0 - 2025-06-25
 
 ### Added
