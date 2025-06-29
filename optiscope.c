@@ -2572,8 +2572,8 @@ TYPE_CHECK_RULE(commute_1_3);
 
 #define commute_3_1(graph, f, g) commute_1_3((graph), (g), (f))
 
-RULE_DEFINITION(commute_2_2, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
+RULE_DEFINITION(commute_2_2_core, graph, f, g) {
+    (void)graph;
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
     connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
@@ -2581,11 +2581,16 @@ RULE_DEFINITION(commute_2_2, graph, f, g) {
     connect_ports(&f.ports[1], &g.ports[1]);
 }
 
+TYPE_CHECK_RULE(commute_2_2_core);
+
+RULE_DEFINITION(commute_2_2, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+    commute_2_2_core(graph, f, g);
+}
+
 TYPE_CHECK_RULE(commute_2_2);
 
-RULE_DEFINITION(commute_3_2, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
+RULE_DEFINITION(commute_3_2_core, graph, f, g) {
     const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
@@ -2596,13 +2601,20 @@ RULE_DEFINITION(commute_3_2, graph, f, g) {
     connect_ports(&f.ports[2], &gx.ports[1]);
 }
 
+TYPE_CHECK_RULE(commute_3_2_core);
+
+#define commute_2_3_core(graph, f, g) commute_3_2_core((graph), (g), (f))
+
+RULE_DEFINITION(commute_3_2, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+    commute_3_2_core(graph, f, g);
+}
+
 TYPE_CHECK_RULE(commute_3_2);
 
 #define commute_2_3(graph, f, g) commute_3_2((graph), (g), (f))
 
-RULE_DEFINITION(commute_3_3, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
+RULE_DEFINITION(commute_3_3_core, graph, f, g) {
     const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
     const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
 
@@ -2615,6 +2627,13 @@ RULE_DEFINITION(commute_3_3, graph, f, g) {
     connect_ports(&g.ports[2], &fx.ports[1]);
     connect_ports(&gx.ports[1], &f.ports[2]);
     connect_ports(&gx.ports[2], &fx.ports[2]);
+}
+
+TYPE_CHECK_RULE(commute_3_3_core);
+
+RULE_DEFINITION(commute_3_3, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+    commute_3_3_core(graph, f, g);
 }
 
 TYPE_CHECK_RULE(commute_3_3);
@@ -2664,25 +2683,20 @@ TYPE_CHECK_RULE(commute_4_3);
 
 #define commute_3_4(graph, f, g) commute_4_3((graph), (g), (f))
 
-#undef NCOMMUTATIONS_PLUS_PLUS
-#undef COMMUTATION_PROLOGUE
-
 RULE_DEFINITION(commute_dup_delim, graph, f, g) {
-    assert(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    COMMUTATION_PROLOGUE(graph, f, g);
 
     if (symbol_index(f.ports[-1]) >= symbol_index(g.ports[-1])) {
         f.ports[-1] = bump_index(f.ports[-1]);
     }
 
-    commute_3_2(graph, f, g);
+    commute_3_2_core(graph, f, g);
 }
 
 TYPE_CHECK_RULE(commute_dup_delim);
 
 RULE_DEFINITION(commute_delim_delim, graph, f, g) {
-    assert(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    COMMUTATION_PROLOGUE(graph, f, g);
 
     if (symbol_index(f.ports[-1]) > symbol_index(g.ports[-1])) {
         f.ports[-1] = bump_index(f.ports[-1]);
@@ -2690,35 +2704,39 @@ RULE_DEFINITION(commute_delim_delim, graph, f, g) {
         g.ports[-1] = bump_index(g.ports[-1]);
     }
 
-    commute_2_2(graph, f, g);
+    commute_2_2_core(graph, f, g);
 }
 
 TYPE_CHECK_RULE(commute_delim_delim);
 
 RULE_DEFINITION(commute_lambda_delim, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
     g.ports[-1] = bump_index(g.ports[-1]);
-    commute_3_2(graph, f, g);
+    commute_3_2_core(graph, f, g);
 }
 
 TYPE_CHECK_RULE(commute_lambda_delim);
 
 RULE_DEFINITION(commute_lambda_dup, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
     g.ports[-1] = bump_index(g.ports[-1]);
-    commute_3_3(graph, f, g);
+    commute_3_3_core(graph, f, g);
 }
 
 TYPE_CHECK_RULE(commute_lambda_dup);
 
 RULE_DEFINITION(commute_gc_lambda_delim, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
     g.ports[-1] = bump_index(g.ports[-1]);
-    commute_2_2(graph, f, g);
+    commute_2_2_core(graph, f, g);
 }
 
 TYPE_CHECK_RULE(commute_gc_lambda_delim);
 
 RULE_DEFINITION(commute_gc_lambda_dup, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
     g.ports[-1] = bump_index(g.ports[-1]);
-    commute_2_3(graph, f, g);
+    commute_2_3_core(graph, f, g);
 }
 
 TYPE_CHECK_RULE(commute_gc_lambda_dup);
@@ -2743,11 +2761,15 @@ RULE_DEFINITION(commute_lambda_c_delim, graph, f, g) {
 TYPE_CHECK_RULE(commute_lambda_c_delim);
 
 RULE_DEFINITION(commute_lambda_c_dup, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
     g.ports[-1] = bump_index(g.ports[-1]);
-    commute_3_3(graph, f, g);
+    commute_3_3_core(graph, f, g);
 }
 
 TYPE_CHECK_RULE(commute_lambda_c_dup);
+
+#undef NCOMMUTATIONS_PLUS_PLUS
+#undef COMMUTATION_PROLOGUE
 
 #undef TYPE_CHECK_RULE
 
