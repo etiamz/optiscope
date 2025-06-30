@@ -36,8 +36,8 @@ Description: Recursively computes the 30th Fibonacci number using native cells &
 
 ```
 Benchmark 1: ./fibonacci-of-30
-  Time (mean ± σ):      6.321 s ±  0.017 s    [User: 5.829 s, System: 0.491 s]
-  Range (min … max):    6.297 s …  6.340 s    5 runs
+  Time (mean ± σ):      6.071 s ±  0.004 s    [User: 5.884 s, System: 0.186 s]
+  Range (min … max):    6.066 s …  6.075 s    5 runs
 ```
 
 <details>
@@ -61,21 +61,21 @@ Description: Recursively computes the 20th Fibonacci number using Church numeral
 
 ```
 Benchmark 1: ./church-fibonacci-of-20
-  Time (mean ± σ):     25.223 s ±  0.154 s    [User: 25.179 s, System: 0.043 s]
-  Range (min … max):   24.998 s … 25.355 s    5 runs
+  Time (mean ± σ):     853.3 ms ±   2.4 ms    [User: 830.2 ms, System: 23.0 ms]
+  Range (min … max):   850.1 ms … 856.7 ms    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 20464077
-Commutation interactions: 2238539577
+Annihilation interactions: 7725926
+Commutation interactions: 39696913
 Beta interactions: 521833
 Native function calls: 0
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 2259525487
+Total interactions: 47944672
 ```
 
 </details>
@@ -86,21 +86,21 @@ Description: Reverses the Church-encoded list of 5000 cells & then sums all the 
 
 ```
 Benchmark 1: ./church-list-reverse-and-sum
-  Time (mean ± σ):      4.799 s ±  0.063 s    [User: 4.687 s, System: 0.111 s]
-  Range (min … max):    4.722 s …  4.861 s    5 runs
+  Time (mean ± σ):      1.722 s ±  0.031 s    [User: 1.674 s, System: 0.048 s]
+  Range (min … max):    1.686 s …  1.760 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 25179997
-Commutation interactions: 275405052
+Annihilation interactions: 12642491
+Commutation interactions: 100280016
 Beta interactions: 45004
 Native function calls: 10000
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 300640053
+Total interactions: 112977511
 ```
 
 </details>
@@ -111,21 +111,21 @@ Description: Performes an insertion sort on a Scott-encoded list of 150 cells, t
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):      6.905 s ±  0.056 s    [User: 6.621 s, System: 0.282 s]
-  Range (min … max):    6.825 s …  6.974 s    5 runs
+  Time (mean ± σ):      9.833 s ±  0.105 s    [User: 9.596 s, System: 0.237 s]
+  Range (min … max):    9.699 s …  9.938 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 64821613
-Commutation interactions: 370771136
-Beta interactions: 46958
-Native function calls: 22650
-If-then-elses: 11175
-Fixpoints: 452
-Total interactions: 435673984
+Annihilation interactions: 68763750
+Commutation interactions: 334503089
+Beta interactions: 183908
+Native function calls: 90300
+If-then-elses: 44850
+Fixpoints: 902
+Total interactions: 403586799
 ```
 
 </details>
@@ -136,21 +136,21 @@ Description: Performes an (inefficient) quicksort on a Scott-encoded list of 100
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):     26.940 s ±  0.214 s    [User: 26.888 s, System: 0.050 s]
-  Range (min … max):   26.740 s … 27.299 s    5 runs
+  Time (mean ± σ):     15.161 s ±  0.210 s    [User: 14.811 s, System: 0.350 s]
+  Range (min … max):   14.852 s … 15.416 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 104534500
-Commutation interactions: 1062496348
-Beta interactions: 61814
-Native function calls: 20000
-If-then-elses: 9900
-Fixpoints: 406
-Total interactions: 1167122968
+Annihilation interactions: 103271654
+Commutation interactions: 788087056
+Beta interactions: 545414
+Native function calls: 180000
+If-then-elses: 89700
+Fixpoints: 1206
+Total interactions: 892175030
 ```
 
 </details>
@@ -161,46 +161,21 @@ Description: Multiplies by 2 all the cells in a Scott-encoded binary tree of siz
 
 ```
 Benchmark 1: ./scott-tree-map-and-sum
-  Time (mean ± σ):      3.799 s ±  0.028 s    [User: 3.735 s, System: 0.064 s]
-  Range (min … max):    3.784 s …  3.849 s    5 runs
+  Time (mean ± σ):      1.533 s ±  0.031 s    [User: 1.485 s, System: 0.048 s]
+  Range (min … max):    1.499 s …  1.564 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 40861148
-Commutation interactions: 234219681
+Annihilation interactions: 14221231
+Commutation interactions: 64568480
 Beta interactions: 1048667
 Native function calls: 262142
 If-then-elses: 0
 Fixpoints: 66
-Total interactions: 276391704
-```
-
-</details>
-
-### [Owl explosion](benchmarks/owl-explosion.c)
-
-Description: Evaluates an application sequence of 5000 + 1 Owl combinators `(λa. λb. (b (a b)))`.
-
-```
-Benchmark 1: ./owl-explosion
-  Time (mean ± σ):      3.712 s ±  0.034 s    [User: 3.119 s, System: 0.593 s]
-  Range (min … max):    3.673 s …  3.743 s    5 runs
-```
-
-<details>
-<summary>Interactions count</summary>
-
-```
-Annihilation interactions: 24985002
-Commutation interactions: 124945006
-Beta interactions: 9998
-Native function calls: 0
-If-then-elses: 0
-Fixpoints: 0
-Total interactions: 149940006
+Total interactions: 80100586
 ```
 
 </details>
