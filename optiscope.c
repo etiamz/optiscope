@@ -53,7 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef NDEBUG
 #define CLEAR_MEMORY(object) memset((object), '\0', sizeof *(object))
 #else
-#define CLEAR_MEMORY(object) /* empty */
+#define CLEAR_MEMORY(object) ((void)0)
 #endif
 
 #define ITERATE_ONCE(finish, before, after)                                    \
