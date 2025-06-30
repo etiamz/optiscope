@@ -961,7 +961,8 @@ is_interacting_with(const struct node f, const struct node g) {
     XASSERT(f.ports), XASSERT(g.ports);
 
     // Supposing that `g` is derived from `f` by `follow_port(&f.ports[0])`.
-    return DECODE_ADDRESS(g.ports[0]) == &f.ports[0];
+    return (g.ports[0] & ADDRESS_MASK) ==
+           ((uint64_t)&f.ports[0] & ADDRESS_MASK);
 }
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
