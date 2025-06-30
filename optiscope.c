@@ -521,14 +521,15 @@ print_symbol(const uint64_t symbol) {
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
 inline static uint64_t
-bump_index(const uint64_t symbol) {
+bump_index(const uint64_t symbol, const uint64_t offset) {
     XASSERT(symbol > MAX_REGULAR_SYMBOL);
 
-    if (MAX_DELIMITER_INDEX == symbol || MAX_DUPLICATOR_INDEX == symbol) {
+    if ((IS_DUPLICATOR(symbol) && offset > MAX_DUPLICATOR_INDEX - symbol) ||
+        (IS_DELIMITER(symbol) && offset > MAX_DELIMITER_INDEX - symbol)) {
         panic("Maximum index of %" PRIu64 " is reached!", INDEX_RANGE);
     }
 
-    return symbol + 1;
+    return symbol + offset;
 }
 
 #define PHASE_REDUCE_WEAKLY UINT64_C(0)
@@ -769,7 +770,7 @@ POOL_ALLOCATOR(lambda, sizeof(uint64_t) * 4)
 POOL_ALLOCATOR(eraser, sizeof(uint64_t) * 2)
 POOL_ALLOCATOR(scope, sizeof(uint64_t) * 3)
 POOL_ALLOCATOR(duplicator, sizeof(uint64_t) * 4)
-POOL_ALLOCATOR(delimiter, sizeof(uint64_t) * 3)
+POOL_ALLOCATOR(delimiter, sizeof(uint64_t) * 4)
 POOL_ALLOCATOR(cell, sizeof(uint64_t) * 3)
 POOL_ALLOCATOR(unary_call, sizeof(uint64_t) * 4)
 POOL_ALLOCATOR(binary_call, sizeof(uint64_t) * 5)
@@ -975,6 +976,33 @@ is_active(const struct node node) {
 // clang-format off
 COMPILER_HOT static void free_node(const struct node node);
 // clang-format on
+
+COMPILER_HOT //
+static void
+try_merge_delimiter(const struct node f) {
+    XASSERT(f.ports);
+    XASSERT(IS_DELIMITER(f.ports[-1]));
+
+    uint64_t *const principal_target_port = DECODE_ADDRESS(f.ports[0]);
+    XASSERT(principal_target_port);
+
+    if (1 == DECODE_OFFSET_METADATA(*principal_target_port)) {
+        const struct node g = {principal_target_port - 1};
+        if (IS_DELIMITER(g.ports[-1]) && f.ports[-1] == g.ports[-1]) {
+            g.ports[2] += f.ports[2];
+            connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
+            free_node(f);
+        }
+    }
+}
+
+COMPILER_HOT //
+static void
+try_merge_if_delimiter(const struct node f) {
+    XASSERT(f.ports);
+
+    if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(f); }
+}
 
 // Linked lists functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -1302,9 +1330,11 @@ alloc_node_from(
         ports = ALLOC_POOL_OBJECT(lambda_c_pool); goto set_ports_2;
     duplicator:
         ports = ALLOC_POOL_OBJECT(duplicator_pool); goto set_ports_2;
-    delimiter:
-        ports = ALLOC_POOL_OBJECT(delimiter_pool); goto set_ports_1;
         // clang-format on
+    delimiter:
+        ports = ALLOC_POOL_OBJECT(delimiter_pool);
+        if (prototype) { ports[2] = prototype->ports[2]; }
+        goto set_ports_1;
     default:
         if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
         else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
@@ -2192,7 +2222,8 @@ RULE_DEFINITION(commute, graph, f, g) {
     const bool update_symbol = (IS_ANY_LAMBDA(g.ports[-1]) && i >= 0) ||
                                (IS_DELIMITER(g.ports[-1]) && i >= j);
 
-    const uint64_t fsym = update_symbol ? bump_index(f.ports[-1]) : f.ports[-1],
+    const uint64_t fsym =
+                       update_symbol ? bump_index(f.ports[-1], 1) : f.ports[-1],
                    gsym = g.ports[-1];
 
     const uint8_t n = ports_count(f.ports[-1]) - 1,
@@ -2242,8 +2273,10 @@ RULE_DEFINITION(beta, graph, f, g) {
 #endif
 
     const struct node lhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+    lhs.ports[2] = 1;
     connect_ports(&lhs.ports[0], DECODE_ADDRESS(f.ports[1]));
     connect_ports(&lhs.ports[1], DECODE_ADDRESS(g.ports[2]));
+    if (PHASE_REDUCE_WEAKLY == graph->phase) { try_merge_delimiter(lhs); }
 
     uint64_t *const binder_port = DECODE_ADDRESS(g.ports[1]), //
         *const rand_port = DECODE_ADDRESS(f.ports[2]);
@@ -2253,8 +2286,12 @@ RULE_DEFINITION(beta, graph, f, g) {
     } else if (!try_unshare(graph, binder_port, rand)) {
         const struct node rhs =
             alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+        rhs.ports[2] = 1;
         connect_ports(&rhs.ports[0], rand_port);
         connect_ports(&rhs.ports[1], binder_port);
+        if (PHASE_REDUCE_WEAKLY == graph->phase) { //
+            try_merge_delimiter(rhs);
+        }
     }
 
 #ifndef NDEBUG
@@ -2299,8 +2336,10 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
 #endif
 
     const struct node lhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+    lhs.ports[2] = 1;
     connect_ports(&lhs.ports[0], DECODE_ADDRESS(f.ports[1]));
     connect_ports(&lhs.ports[1], DECODE_ADDRESS(g.ports[1]));
+    if (PHASE_REDUCE_WEAKLY == graph->phase) { try_merge_delimiter(lhs); }
 
     // There is a chance that the argument is fully disconnected from the root;
     // if so, we must garbage-collect it.
@@ -2505,10 +2544,20 @@ interact(
 
 RULE_DEFINITION(annihilate_delim_delim, graph, f, g) {
     ANNIHILATION_PROLOGUE(graph, f, g);
+    XASSERT(f.ports[2] > 0), XASSERT(g.ports[2] > 0);
 
-    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
-
-    free_node(f), free_node(g);
+    if (f.ports[2] > g.ports[2]) {
+        f.ports[2] -= g.ports[2];
+        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+        free_node(g);
+    } else if (g.ports[2] > f.ports[2]) {
+        g.ports[2] -= f.ports[2];
+        connect_ports(DECODE_ADDRESS(f.ports[1]), &g.ports[0]);
+        free_node(f);
+    } else {
+        connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
+        free_node(f), free_node(g);
+    }
 }
 
 TYPE_CHECK_RULE(annihilate_delim_delim);
@@ -2579,6 +2628,11 @@ RULE_DEFINITION(commute_2_2_core, graph, f, g) {
     connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 
     connect_ports(&f.ports[1], &g.ports[1]);
+
+    if (PHASE_REDUCE_WEAKLY == graph->phase) {
+        try_merge_if_delimiter(f);
+        try_merge_if_delimiter(g);
+    }
 }
 
 TYPE_CHECK_RULE(commute_2_2_core);
@@ -2599,6 +2653,11 @@ RULE_DEFINITION(commute_3_2_core, graph, f, g) {
 
     connect_ports(&f.ports[1], &g.ports[1]);
     connect_ports(&f.ports[2], &gx.ports[1]);
+
+    if (PHASE_REDUCE_WEAKLY == graph->phase && IS_DELIMITER(g.ports[-1])) {
+        try_merge_delimiter(g);
+        try_merge_delimiter(gx);
+    }
 }
 
 TYPE_CHECK_RULE(commute_3_2_core);
@@ -2652,6 +2711,12 @@ RULE_DEFINITION(commute_4_2, graph, f, g) {
     connect_ports(&f.ports[1], &g.ports[1]);
     connect_ports(&f.ports[2], &gx.ports[1]);
     connect_ports(&f.ports[3], &gxx.ports[1]);
+
+    if (PHASE_REDUCE_WEAKLY == graph->phase && IS_DELIMITER(g.ports[-1])) {
+        try_merge_delimiter(g);
+        try_merge_delimiter(gx);
+        try_merge_delimiter(gxx);
+    }
 }
 
 TYPE_CHECK_RULE(commute_4_2);
@@ -2687,7 +2752,7 @@ RULE_DEFINITION(commute_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
     if (symbol_index(f.ports[-1]) >= symbol_index(g.ports[-1])) {
-        f.ports[-1] = bump_index(f.ports[-1]);
+        f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
     }
 
     commute_3_2_core(graph, f, g);
@@ -2699,9 +2764,9 @@ RULE_DEFINITION(commute_delim_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
     if (symbol_index(f.ports[-1]) > symbol_index(g.ports[-1])) {
-        f.ports[-1] = bump_index(f.ports[-1]);
+        f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
     } else {
-        g.ports[-1] = bump_index(g.ports[-1]);
+        g.ports[-1] = bump_index(g.ports[-1], f.ports[2]);
     }
 
     commute_2_2_core(graph, f, g);
@@ -2711,7 +2776,7 @@ TYPE_CHECK_RULE(commute_delim_delim);
 
 RULE_DEFINITION(commute_lambda_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    g.ports[-1] = bump_index(g.ports[-1]);
+    g.ports[-1] = bump_index(g.ports[-1], 1);
     commute_3_2_core(graph, f, g);
 }
 
@@ -2719,7 +2784,7 @@ TYPE_CHECK_RULE(commute_lambda_delim);
 
 RULE_DEFINITION(commute_lambda_dup, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    g.ports[-1] = bump_index(g.ports[-1]);
+    g.ports[-1] = bump_index(g.ports[-1], 1);
     commute_3_3_core(graph, f, g);
 }
 
@@ -2727,7 +2792,7 @@ TYPE_CHECK_RULE(commute_lambda_dup);
 
 RULE_DEFINITION(commute_gc_lambda_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    g.ports[-1] = bump_index(g.ports[-1]);
+    g.ports[-1] = bump_index(g.ports[-1], 1);
     commute_2_2_core(graph, f, g);
 }
 
@@ -2735,7 +2800,7 @@ TYPE_CHECK_RULE(commute_gc_lambda_delim);
 
 RULE_DEFINITION(commute_gc_lambda_dup, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    g.ports[-1] = bump_index(g.ports[-1]);
+    g.ports[-1] = bump_index(g.ports[-1], 1);
     commute_2_3_core(graph, f, g);
 }
 
@@ -2762,7 +2827,7 @@ TYPE_CHECK_RULE(commute_lambda_c_delim);
 
 RULE_DEFINITION(commute_lambda_c_dup, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    g.ports[-1] = bump_index(g.ports[-1]);
+    g.ports[-1] = bump_index(g.ports[-1], 1);
     commute_3_3_core(graph, f, g);
 }
 
@@ -3140,27 +3205,26 @@ perform(const restrict LambdaTerm action, const restrict LambdaTerm k) {
     return term;
 }
 
-// Conversion from a lambda term
+// Higher-order control structures
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-#define CONTROL_BUILDER_ATTRS                                                  \
-    COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2)
-
-CONTROL_BUILDER_ATTRS
+COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
 static uint64_t *
 build_delimiter_sequence(
     struct context *const restrict graph,
     uint64_t *const restrict binder_port,
+    const uint64_t idx,
     const uint64_t n) {
     assert(graph);
     assert(binder_port);
     XASSERT(n > 0);
 
-    struct node current = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+    struct node current = alloc_node(graph, SYMBOL_DELIMITER(idx));
+    current.ports[2] = 1;
     uint64_t *const result = &current.ports[1];
     for (uint64_t i = 1; i < n; i++) {
-        const struct node delim =
-            alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+        const struct node delim = alloc_node(graph, SYMBOL_DELIMITER(idx));
+        delim.ports[2] = 1;
         connect_ports(&current.ports[0], &delim.ports[1]);
         current = delim;
     }
@@ -3170,11 +3234,12 @@ build_delimiter_sequence(
     return result;
 }
 
-CONTROL_BUILDER_ATTRS
+COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
 static uint64_t **
 build_duplicator_tree(
     struct context *const restrict graph,
     uint64_t *const restrict binder_port,
+    const uint64_t idx,
     const uint64_t n) {
     assert(graph);
     assert(binder_port);
@@ -3182,13 +3247,12 @@ build_duplicator_tree(
 
     uint64_t **const ports = xmalloc(sizeof ports[0] * n);
 
-    struct node current = alloc_node(graph, SYMBOL_DUPLICATOR(UINT64_C(0)));
+    struct node current = alloc_node(graph, SYMBOL_DUPLICATOR(idx));
     ports[0] = &current.ports[1];
     ports[1] = &current.ports[2];
 
     for (uint64_t i = 2; i < n; i++) {
-        const struct node dup =
-            alloc_node(graph, SYMBOL_DUPLICATOR(UINT64_C(0)));
+        const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(idx));
         ports[i] = &dup.ports[1];
         connect_ports(&dup.ports[2], &current.ports[0]);
         current = dup;
@@ -3199,7 +3263,8 @@ build_duplicator_tree(
     return ports;
 }
 
-#undef CONTROL_BUILDER_ATTRS
+// Conversion from a lambda term
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) //
 inline static bool
@@ -3292,7 +3357,7 @@ of_lambda_term(
         } else {
             // This is a non-linear lambda that needs a duplicator tree.
             dup_ports = build_duplicator_tree(
-                graph, &lambda.ports[1], tlambda->nusages /* >= 2 */);
+                graph, &lambda.ports[1], 0, tlambda->nusages /* >= 2 */);
         }
         tlambda->dup_ports = dup_ports;
         tlambda->lvl = lvl;
@@ -3311,9 +3376,11 @@ of_lambda_term(
         if (0 == idx) {
             connect_ports(lambda->dup_ports[0], output_port);
         } else {
-            uint64_t *const delimiter_port =
-                build_delimiter_sequence(graph, lambda->dup_ports[0], idx);
-            connect_ports(delimiter_port, output_port);
+            struct node delim =
+                alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+            delim.ports[2] = idx;
+            connect_ports(&delim.ports[0], lambda->dup_ports[0]);
+            connect_ports(&delim.ports[1], output_port);
         }
         lambda->dup_ports++;
 
@@ -3771,16 +3838,16 @@ rescan:;
 progress:
     XASSERT(f.ports != apex.ports);
 
-    uint64_t *const target_port = DECODE_ADDRESS(f.ports[0]);
+    uint64_t *const principal_target_port = DECODE_ADDRESS(f.ports[0]);
 
-    const struct node g = node_of_port(target_port);
+    const struct node g = node_of_port(principal_target_port);
 
     if (is_interacting_with(f, g)) {
         fire_rule(graph, f, g);
         TRANSITION(stack->count > 0, f = unfocus(stack), progress, rescan);
     }
 
-    if (target_port == &apex.ports[1]) {
+    if (principal_target_port == &apex.ports[1]) {
         TRANSITION(IS_DELIMITER(f.ports[-1]), apex = f, rescan, finish);
     }
 
@@ -3791,6 +3858,25 @@ progress:
 
 finish:
     free(stack);
+}
+
+COMPILER_NONNULL(1) //
+static void
+normalize_delimiters_cb(struct context *const graph, const struct node node) {
+    assert(graph);
+    XASSERT(node.ports);
+
+    if (!IS_DELIMITER(node.ports[-1])) { return; }
+
+    uint64_t *const output_port = build_delimiter_sequence(
+        graph,
+        DECODE_ADDRESS(node.ports[0]),
+        symbol_index(node.ports[-1]),
+        node.ports[2]);
+
+    connect_ports(output_port, DECODE_ADDRESS(node.ports[1]));
+
+    free_node(node);
 }
 
 COMPILER_NONNULL(1) //
@@ -3806,28 +3892,12 @@ multifocus_cb(struct context *const graph, const struct node f) {
 
     if (is_interacting_with(f, g)) {
         // Protect from focusing on both active nodes.
-        // Thanks to Marvin Borner <git@marvinborner.de> for
-        // pointing this out!
+        // Thanks to Marvin Borner <git@marvinborner.de> for pointing
+        // this out!
         if (compare_node_ptrs(f, g) < 0) { //
             register_active_pair(graph, f, g);
         }
     }
-}
-
-COMPILER_NONNULL(1) //
-static void
-multifocus(struct context *const restrict graph) {
-    debug("%s()", __func__);
-
-    assert(graph);
-
-    // Register all the active pairs in the graph in corresponding multifocuses.
-    graph->phase = PHASE_DISCOVER;
-    walk_graph(graph, multifocus_cb);
-
-    // Reset the nodes' phase metadata we have just touched.
-    graph->phase = PHASE_REDUCE_FULLY;
-    walk_graph(graph, NULL);
 }
 
 COMPILER_NONNULL(1) //
@@ -3838,7 +3908,13 @@ normalize_x_rules(struct context *const restrict graph) {
     assert(graph);
 
 repeat:
-    multifocus(graph);
+    // Register all the active pairs in the graph in corresponding multifocuses.
+    graph->phase = PHASE_DISCOVER;
+    walk_graph(graph, multifocus_cb);
+
+    // Reset the nodes' phase metadata we have just touched.
+    graph->phase = PHASE_REDUCE_FULLY;
+    walk_graph(graph, NULL);
 
     if (is_normalized_graph(graph)) { return; }
 
@@ -3888,6 +3964,8 @@ optiscope_algorithm(
 
     // Phase #2: full reduction.
     {
+        graph->phase = PHASE_REDUCE_FULLY;
+        walk_graph(graph, normalize_delimiters_cb);
         normalize_x_rules(graph);
         graphviz(graph, "target/2-fully-reduced.dot");
     }
