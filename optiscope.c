@@ -983,11 +983,11 @@ try_merge_delimiter(const struct node f) {
     XASSERT(f.ports);
     XASSERT(IS_DELIMITER(f.ports[-1]));
 
-    uint64_t *const principal_target_port = DECODE_ADDRESS(f.ports[0]);
-    XASSERT(principal_target_port);
+    uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
+    XASSERT(points_to);
 
-    if (1 == DECODE_OFFSET_METADATA(*principal_target_port)) {
-        const struct node g = {principal_target_port - 1};
+    if (1 == DECODE_OFFSET_METADATA(*points_to)) {
+        const struct node g = {points_to - 1};
         if (IS_DELIMITER(g.ports[-1]) && f.ports[-1] == g.ports[-1]) {
             g.ports[2] += f.ports[2];
             connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
@@ -3853,16 +3853,16 @@ rescan:;
 progress:
     XASSERT(f.ports != apex.ports);
 
-    uint64_t *const principal_target_port = DECODE_ADDRESS(f.ports[0]);
+    uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
 
-    const struct node g = node_of_port(principal_target_port);
+    const struct node g = node_of_port(points_to);
 
     if (is_interacting_with(f, g)) {
         fire_rule(graph, f, g);
         TRANSITION(stack->count > 0, f = unfocus(stack), progress, rescan);
     }
 
-    if (principal_target_port == &apex.ports[1]) {
+    if (points_to == &apex.ports[1]) {
         TRANSITION(IS_DELIMITER(f.ports[-1]), apex = f, rescan, finish);
     }
 
