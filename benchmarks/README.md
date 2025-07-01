@@ -107,7 +107,7 @@ Total interactions: 112977511
 
 ### [Scott list insertion sort](benchmarks/scott-insertion-sort.c)
 
-Description: Performes an insertion sort on a Scott-encoded list of 150 cells, then sums all the cells up.
+Description: Performes an insertion sort on a Scott-encoded list of 300 cells, then sums all the cells up.
 
 ```
 Benchmark 1: ./scott-insertion-sort
@@ -132,7 +132,7 @@ Total interactions: 403586799
 
 ### [Scott list quicksort](benchmarks/scott-quicksort.c)
 
-Description: Performes an (inefficient) quicksort on a Scott-encoded list of 100 cells, then sums all the cells up.
+Description: Performes an (inefficient) quicksort on a Scott-encoded list of 300 cells, then sums all the cells up.
 
 ```
 Benchmark 1: ./scott-quicksort
