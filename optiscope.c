@@ -1941,9 +1941,9 @@ collect_garbage(
     graph->gc_history->count = 0;
 }
 
-#undef COLLECT
 #undef ERASE
 #undef FOLLOW
+#undef COLLECT
 
 // Eliminates a (higher-order) sharing structure, thus reducing the graph size.
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
