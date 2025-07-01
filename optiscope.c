@@ -1650,9 +1650,24 @@ graphviz_draw_node(
     assert(ctx), XASSERT(ctx->stream);
     XASSERT(node.ports);
 
+    const uint64_t *const p = node.ports;
+
     const bool is_active = graphviz_is_active_node(node),
                is_current = graphviz_is_current_node(ctx, node),
-               is_root = SYMBOL_ROOT == node.ports[-1];
+               is_root = SYMBOL_ROOT == p[-1];
+
+    char extended_ssymbol[MAX_SSYMBOL_SIZE + 64] = {0};
+    sprintf(extended_ssymbol, "%s", print_symbol(p[-1]));
+#define SPRINTF(fmt, ...)                                                      \
+    sprintf(extended_ssymbol + strlen(extended_ssymbol), fmt, __VA_ARGS__)
+    if (SYMBOL_CELL == p[-1]) {
+        SPRINTF(" %" PRIu64, p[1]);
+    } else if (SYMBOL_BINARY_CALL_AUX == p[-1]) {
+        SPRINTF(" %" PRIu64, p[3]);
+    } else if (IS_DELIMITER(p[-1])) {
+        SPRINTF(" %" PRIu64, p[2]);
+    }
+#undef SPRINTF
 
     fprintf(
         ctx->stream,
@@ -1662,8 +1677,8 @@ graphviz_draw_node(
         ", xlabel=<<FONT FACE=\"Courier\" COLOR=\"blue\" POINT-SIZE=\"8\">%s</FONT>>"
         "%s%s%s];\n",
         // clang-format on
-        (void *)node.ports,
-        print_symbol(node.ports[-1]),
+        (void *)p,
+        extended_ssymbol,
         graphviz_node_xlabel(node),
         (is_current ? ", color=darkred"
                     : (is_active ? ", color=darkgreen" : "")),
