@@ -2248,7 +2248,7 @@ RULE_DEFINITION(commute, graph, f, g) {
     if (IS_DELIMITER(f.ports[-1]) && IS_DELIMITER(g.ports[-1]) && j > i) {
         const struct node h = f;
         f = g, g = h;
-        const uint64_t k = i;
+        const int64_t k = i;
         i = j, j = k;
     }
 
@@ -3904,7 +3904,7 @@ normalize_delimiters_cb(struct context *const graph, const struct node node) {
     uint64_t *const output_port = build_delimiter_sequence(
         graph,
         DECODE_ADDRESS(node.ports[0]),
-        symbol_index(node.ports[-1]),
+        (uint64_t)symbol_index(node.ports[-1]),
         node.ports[2]);
 
     connect_ports(output_port, DECODE_ADDRESS(node.ports[1]));
