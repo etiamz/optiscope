@@ -1840,8 +1840,8 @@ collect_garbage(
         case SYMBOL_LAMBDA:
         case SYMBOL_LAMBDA_C:
             switch (i) {
-            case 0: FOLLOW(graph, f.ports[1]), FOLLOW(graph, f.ports[2]); break;
-            case 2: FOLLOW(graph, f.ports[0]), FOLLOW(graph, f.ports[1]); break;
+            case 0:
+            case 2: goto propagate;
             case 1: {
                 const struct node gc_lambda =
                     alloc_node(graph, SYMBOL_GC_LAMBDA);
@@ -1857,10 +1857,7 @@ collect_garbage(
             break;
         duplicator:
             switch (i) {
-            case 0:
-                FOLLOW(graph, f.ports[1]), FOLLOW(graph, f.ports[2]);
-                COLLECT(graph, f);
-                break;
+            case 0: goto propagate;
             case 1:
             case 2: {
                 const uint8_t other_idx = 1 == i ? 2 : 1;
@@ -1887,6 +1884,7 @@ collect_garbage(
         case SYMBOL_PERFORM:
         case SYMBOL_GC_LAMBDA:
         delimiter:
+        propagate:
             FOR_ALL_PORTS (f, j, 0) {
                 if (j != i) { FOLLOW(graph, f.ports[j]); }
             }
