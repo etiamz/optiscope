@@ -7,16 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
-### Added
-
- - Graphviz: display relevant metadata for cells, partially applied binary calls, & delimiters.
-
 ### Changed
 
  - Optimization: specialize commutation rules for `SYMBOL_FIX` with delimiters/duplicators.
- - Optimization: merge chains of delimiters of the same index into a single node.
- - Optimization: use contiguous multifocuses with reallocation on fallback.
- - Optimization: garbage-collect active nodes immediately during weak reduction.
 
 ### Removed
 
