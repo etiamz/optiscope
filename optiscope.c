@@ -2140,7 +2140,9 @@ debug_interaction(
     assert(caller);
     assert(graph);
 
+#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
     graph->current_pair[0] = f, graph->current_pair[1] = g;
+#endif
 
     char f_ssymbol[MAX_SSYMBOL_SIZE] = {0}, g_ssymbol[MAX_SSYMBOL_SIZE] = {0};
     strcpy(f_ssymbol, print_symbol(f.ports[-1])),
