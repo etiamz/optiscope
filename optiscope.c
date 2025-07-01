@@ -1828,6 +1828,14 @@ wait_for_user(struct context *const restrict graph) {
 // Mark & sweep garbage collection
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+#define COLLECT(graph, f)                                                      \
+    do {                                                                       \
+        set_phase(&(f).ports[0], PHASE_GARBAGE);                               \
+        if (PHASE_REDUCE_WEAKLY == (graph)->phase || !is_active((f))) {        \
+            focus_on((graph)->gc_history, (f));                                \
+        }                                                                      \
+    } while (false)
+
 #define FOLLOW(graph, port)                                                    \
     focus_on((graph)->gc_focus, FAKE_NODE(DECODE_ADDRESS((port))))
 
@@ -1835,12 +1843,6 @@ wait_for_user(struct context *const restrict graph) {
     do {                                                                       \
         const struct node eraser = alloc_node((graph), SYMBOL_ERASER);         \
         connect_ports((port), &eraser.ports[0]);                               \
-    } while (false)
-
-#define COLLECT(graph, f)                                                      \
-    do {                                                                       \
-        set_phase(&(f).ports[0], PHASE_GARBAGE);                               \
-        if (!is_active((f))) { focus_on((graph)->gc_history, (f)); }           \
     } while (false)
 
 #define FAKE_NODE(port) ((struct node){(port)})
@@ -1933,7 +1935,10 @@ collect_garbage(
         }
     }
 
-    CONSUME_MULTIFOCUS (graph->gc_history, node) { free_node(node); }
+    for (size_t i = 0; i < graph->gc_history->count; i++) {
+        free_node(graph->gc_history->array[i]);
+    }
+    graph->gc_history->count = 0;
 }
 
 #undef COLLECT
