@@ -1033,20 +1033,6 @@ visit(struct node_list *const restrict self, const struct node node) {
     return cons;
 }
 
-COMPILER_NONNULL(1) //
-static struct node
-unvisit(struct node_list **const restrict self) {
-    assert(self);
-    XASSERT(*self);
-
-    const struct node node = (*self)->node;
-    struct node_list *const cons = (*self)->cons;
-
-    free(*self), *self = cons;
-
-    return node;
-}
-
 COMPILER_WARN_UNUSED_RESULT //
 static struct node_list *
 unvisit_all(struct node_list *const restrict self) {
