@@ -1007,6 +1007,8 @@ try_merge_if_delimiter(const struct node f) {
 // Linked lists functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
+
 struct node_list {
     struct node node;
     struct node_list *cons;
@@ -1045,8 +1047,6 @@ unvisit(struct node_list **const restrict self) {
     return node;
 }
 
-#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
-
 COMPILER_WARN_UNUSED_RESULT //
 static struct node_list *
 unvisit_all(struct node_list *const restrict self) {
@@ -1083,36 +1083,68 @@ is_visited(
 #endif
 
 struct multifocus {
-    size_t count;
-    struct node initial[OPTISCOPE_MULTIFOCUS_COUNT];
-    struct node_list *fallback;
+    size_t count, capacity;
+    struct node *array;
 };
 
-COMPILER_NONNULL(1) COMPILER_HOT COMPILER_FLATTEN //
+COMPILER_RETURNS_NONNULL COMPILER_COLD //
+static struct multifocus *
+alloc_focus(const size_t initial_capacity) {
+    XASSERT(initial_capacity > 0);
+
+    struct multifocus *const focus = xmalloc(sizeof *focus);
+    focus->count = 0;
+    focus->capacity = initial_capacity;
+    focus->array = xmalloc(sizeof focus->array[0] * initial_capacity);
+
+    return focus;
+}
+
+COMPILER_COLD //
 static void
+free_focus(struct multifocus *const restrict focus) {
+    assert(focus);
+
+    if (focus) {
+        XASSERT(focus->count <= focus->capacity);
+        free(focus->array);
+        free(focus);
+    }
+}
+
+COMPILER_NONNULL(1) COMPILER_COLD //
+static void
+expand_focus(struct multifocus *const restrict focus) {
+    assert(focus);
+    XASSERT(focus->count == focus->capacity);
+
+    focus->array =
+        realloc(focus->array, sizeof focus->array[0] * (focus->capacity *= 2));
+    if (NULL == focus->array) { //
+        panic("Failed to reallocate the multifocus!");
+    }
+}
+
+COMPILER_NONNULL(1) COMPILER_HOT //
+inline static void
 focus_on(struct multifocus *const restrict focus, const struct node node) {
     assert(focus);
     XASSERT(node.ports);
+    XASSERT(focus->count <= focus->capacity);
 
-    if (focus->count < ARRAY_LENGTH(focus->initial)) {
-        focus->initial[focus->count] = node;
-    } else {
-        focus->fallback = visit(focus->fallback, node);
-    }
+    if (focus->count == focus->capacity) { expand_focus(focus); }
 
-    focus->count++;
+    focus->array[focus->count++] = node;
 }
 
-COMPILER_NONNULL(1) COMPILER_HOT COMPILER_FLATTEN //
-static struct node
+COMPILER_NONNULL(1) COMPILER_HOT //
+inline static struct node
 unfocus(struct multifocus *const restrict focus) {
     assert(focus);
     XASSERT(focus->count > 0);
+    XASSERT(focus->count <= focus->capacity);
 
-    focus->count--;
-    return focus->count < ARRAY_LENGTH(focus->initial)
-               ? focus->initial[focus->count]
-               : unvisit(&focus->fallback);
+    return focus->array[--focus->count];
 }
 
 #define CONSUME_MULTIFOCUS(focus, f)                                           \
@@ -1184,10 +1216,10 @@ static struct context *alloc_context(void) {
 #undef X
 #endif
 
-    graph->gc_focus = xcalloc(1, sizeof *graph->gc_focus);
-    graph->gc_history = xcalloc(1, sizeof *graph->gc_history);
+    graph->gc_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
+    graph->gc_history = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
 
-    graph->unsharing_focus = xcalloc(1, sizeof *graph->unsharing_focus);
+    graph->unsharing_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
     CLEAR_MEMORY(graph->current_pair);
@@ -1207,7 +1239,7 @@ free_context(struct context *const restrict graph) {
     free(DECODE_ADDRESS(graph->root.ports[0]) - 1 /* back to the symbol */);
     free(graph->root.ports - 1 /* back to the symbol */);
 
-#define X(focus_name) free(graph->focus_name);
+#define X(focus_name) free_focus(graph->focus_name);
 
     CONTEXT_MULTIFOCUSES
     X(gc_focus)
@@ -2866,7 +2898,7 @@ walk_graph(
     assert(graph);
     XASSERT(graph->root.ports);
 
-    struct multifocus *focus = xcalloc(1, sizeof *focus);
+    struct multifocus *focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
 
     focus_on(focus, graph->root);
     set_phase(&graph->root.ports[0], graph->phase);
@@ -2886,7 +2918,7 @@ walk_graph(
         if (cb) { cb(graph, f); }
     }
 
-    free(focus);
+    free_focus(focus);
 }
 
 // The read-back phases
@@ -3840,7 +3872,7 @@ weak_reduction(struct context *const restrict graph) {
     assert(graph);
 
     struct node apex = graph->root;
-    struct multifocus *stack = xcalloc(1, sizeof *stack);
+    struct multifocus *stack = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
 
 rescan:;
     struct node f = follow_port(&apex.ports[1]);
@@ -3872,7 +3904,7 @@ progress:
 #undef TRANSITION
 
 finish:
-    free(stack);
+    free_focus(stack);
 }
 
 COMPILER_NONNULL(1) //
@@ -3973,7 +4005,8 @@ optiscope_algorithm(
 
     if (NULL == stream) { goto finish; }
 
-#define X(focus_name) graph->focus_name = xcalloc(1, sizeof *graph->focus_name);
+#define X(focus_name)                                                          \
+    graph->focus_name = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
     CONTEXT_MULTIFOCUSES
 #undef X
 
