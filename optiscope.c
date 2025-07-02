@@ -1163,7 +1163,7 @@ struct context {
 #undef X
 #endif
 
-    struct multifocus *gc_focus, *gc_history;
+    struct multifocus *mark_focus, *sweep_focus;
 
     struct multifocus *unsharing_focus;
 
@@ -1202,8 +1202,8 @@ static struct context *alloc_context(void) {
 #undef X
 #endif
 
-    graph->gc_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
-    graph->gc_history = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
+    graph->mark_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
+    graph->sweep_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
 
     graph->unsharing_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
 
@@ -1228,8 +1228,8 @@ free_context(struct context *const restrict graph) {
 #define X(focus_name) free_focus(graph->focus_name);
 
     CONTEXT_MULTIFOCUSES
-    X(gc_focus)
-    X(gc_history)
+    X(mark_focus)
+    X(sweep_focus)
     X(unsharing_focus)
 
 #undef X
@@ -1832,12 +1832,12 @@ wait_for_user(struct context *const restrict graph) {
     do {                                                                       \
         set_phase(&(f).ports[0], PHASE_GARBAGE);                               \
         if (PHASE_REDUCE_WEAKLY == (graph)->phase || !is_active((f))) {        \
-            focus_on((graph)->gc_history, (f));                                \
+            focus_on((graph)->sweep_focus, (f));                               \
         }                                                                      \
     } while (false)
 
 #define FOLLOW(graph, port)                                                    \
-    focus_on((graph)->gc_focus, FAKE_NODE(DECODE_ADDRESS((port))))
+    focus_on((graph)->mark_focus, FAKE_NODE(DECODE_ADDRESS((port))))
 
 #define ERASE(graph, port)                                                     \
     do {                                                                       \
@@ -1855,13 +1855,13 @@ collect_garbage(
 
     assert(graph);
     assert(port);
-    XASSERT(graph->gc_focus), XASSERT(graph->gc_history);
+    XASSERT(graph->mark_focus), XASSERT(graph->sweep_focus);
 
     // This multifocus conteyns the ports _to be followed_, not necessarily
     // nodes' _principal_ ports!
-    focus_on(graph->gc_focus, FAKE_NODE(port));
+    focus_on(graph->mark_focus, FAKE_NODE(port));
 
-    CONSUME_MULTIFOCUS (graph->gc_focus, node) {
+    CONSUME_MULTIFOCUS (graph->mark_focus, node) {
         XASSERT(node.ports);
 
         const struct node f = node_of_port(&node.ports[0]);
@@ -1935,10 +1935,10 @@ collect_garbage(
         }
     }
 
-    for (size_t i = 0; i < graph->gc_history->count; i++) {
-        free_node(graph->gc_history->array[i]);
+    for (size_t i = 0; i < graph->sweep_focus->count; i++) {
+        free_node(graph->sweep_focus->array[i]);
     }
-    graph->gc_history->count = 0;
+    graph->sweep_focus->count = 0;
 }
 
 #undef ERASE
