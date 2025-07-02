@@ -3112,7 +3112,7 @@ apply(const restrict LambdaTerm rator, const restrict LambdaTerm rand) {
     term->ty = LAMBDA_TERM_APPLY;
     term->data.apply.rator = rator;
     term->data.apply.rand = rand;
-    rator->nfree_vars = rator->nfree_vars + rand->nfree_vars;
+    term->nfree_vars = rator->nfree_vars + rand->nfree_vars;
 
     return term;
 }
@@ -3134,8 +3134,7 @@ link_lambda_body(
     assert(LAMBDA_TERM_LAMBDA == binder->ty);
 
     binder->data.lambda->body = body;
-    binder->nfree_vars =
-        body->nfree_vars - (binder->data.lambda->nusages > 0 ? 1 : 0);
+    binder->nfree_vars = body->nfree_vars - binder->data.lambda->nusages;
 
     return binder;
 }

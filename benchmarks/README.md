@@ -36,8 +36,8 @@ Description: Recursively computes the 30th Fibonacci number using native cells &
 
 ```
 Benchmark 1: ./fibonacci-of-30
-  Time (mean ± σ):      5.897 s ±  0.031 s    [User: 5.716 s, System: 0.180 s]
-  Range (min … max):    5.864 s …  5.939 s    5 runs
+  Time (mean ± σ):      6.000 s ±  0.033 s    [User: 5.818 s, System: 0.182 s]
+  Range (min … max):    5.964 s …  6.028 s    5 runs
 ```
 
 <details>
@@ -61,21 +61,21 @@ Description: Recursively computes the 20th Fibonacci number using Church numeral
 
 ```
 Benchmark 1: ./church-fibonacci-of-20
-  Time (mean ± σ):     830.6 ms ±   3.4 ms    [User: 809.4 ms, System: 21.0 ms]
-  Range (min … max):   825.8 ms … 833.8 ms    5 runs
+  Time (mean ± σ):     847.8 ms ±   4.0 ms    [User: 821.8 ms, System: 25.8 ms]
+  Range (min … max):   843.5 ms … 854.3 ms    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 7725926
-Commutation interactions: 39696913
+Annihilation interactions: 7633137
+Commutation interactions: 39511166
 Beta interactions: 521833
 Native function calls: 0
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 47944672
+Total interactions: 47666136
 ```
 
 </details>
@@ -86,21 +86,21 @@ Description: Reverses the Church-encoded list of 5000 cells & then sums all the 
 
 ```
 Benchmark 1: ./church-list-reverse-and-sum
-  Time (mean ± σ):      1.441 s ±  0.002 s    [User: 1.390 s, System: 0.051 s]
-  Range (min … max):    1.439 s …  1.445 s    5 runs
+  Time (mean ± σ):      1.477 s ±  0.009 s    [User: 1.427 s, System: 0.050 s]
+  Range (min … max):    1.466 s …  1.487 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 12642491
-Commutation interactions: 100280016
+Annihilation interactions: 12592493
+Commutation interactions: 100145018
 Beta interactions: 45004
 Native function calls: 10000
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 112977511
+Total interactions: 112792515
 ```
 
 </details>
@@ -111,8 +111,8 @@ Description: Performes an insertion sort on a Scott-encoded list of 300 cells, t
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):      6.954 s ±  0.024 s    [User: 6.716 s, System: 0.237 s]
-  Range (min … max):    6.934 s …  6.995 s    5 runs
+  Time (mean ± σ):      7.010 s ±  0.058 s    [User: 6.763 s, System: 0.247 s]
+  Range (min … max):    6.948 s …  7.073 s    5 runs
 ```
 
 <details>
@@ -136,8 +136,8 @@ Description: Performes an (inefficient) quicksort on a Scott-encoded list of 300
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):     13.254 s ±  0.102 s    [User: 12.909 s, System: 0.344 s]
-  Range (min … max):   13.121 s … 13.367 s    5 runs
+  Time (mean ± σ):     13.333 s ±  0.132 s    [User: 12.985 s, System: 0.347 s]
+  Range (min … max):   13.178 s … 13.471 s    5 runs
 ```
 
 <details>
@@ -161,8 +161,8 @@ Description: Multiplies by 2 all the cells in a Scott-encoded binary tree of siz
 
 ```
 Benchmark 1: ./scott-tree-map-and-sum
-  Time (mean ± σ):      1.449 s ±  0.018 s    [User: 1.397 s, System: 0.051 s]
-  Range (min … max):    1.435 s …  1.480 s    5 runs
+  Time (mean ± σ):      1.476 s ±  0.016 s    [User: 1.427 s, System: 0.048 s]
+  Range (min … max):    1.453 s …  1.497 s    5 runs
 ```
 
 <details>

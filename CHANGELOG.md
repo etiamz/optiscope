@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Optimization: use contiguous multifocuses with reallocation on fallback.
  - Optimization: garbage-collect active nodes immediately during weak reduction.
 
+### Fixed
+
+ - Translation: the computation of free variables in applicators & lambdas.
+
 ### Removed
 
  - Miscellaneous: prune the `media/` directory using `git-filter-repo`, transfer the files to [`optiscope-media`].
