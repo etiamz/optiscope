@@ -2849,12 +2849,7 @@ TYPE_CHECK_RULE(commute_gc_lambda_dup);
 //   the size of the term in our implementation, whereas one observes that in
 //   such cases it would be safe to simply remove the scope.
 RULE_DEFINITION(commute_lambda_c_delim, graph, f, g) {
-#ifndef NDEBUG
-    assert(graph);
-#else
-    (void)graph;
-#endif
-    XASSERT(f.ports), XASSERT(g.ports);
+    COMMUTATION_PROLOGUE(graph, f, g);
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
 

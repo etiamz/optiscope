@@ -70,12 +70,12 @@ Benchmark 1: ./church-fibonacci-of-20
 
 ```
 Annihilation interactions: 7633137
-Commutation interactions: 39511166
+Commutation interactions: 40077129
 Beta interactions: 521833
 Native function calls: 0
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 47666136
+Total interactions: 48232099
 ```
 
 </details>
@@ -95,12 +95,12 @@ Benchmark 1: ./church-list-reverse-and-sum
 
 ```
 Annihilation interactions: 12592493
-Commutation interactions: 100145018
+Commutation interactions: 100155018
 Beta interactions: 45004
 Native function calls: 10000
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 112792515
+Total interactions: 112802515
 ```
 
 </details>
@@ -120,12 +120,12 @@ Benchmark 1: ./scott-insertion-sort
 
 ```
 Annihilation interactions: 68763750
-Commutation interactions: 334503089
+Commutation interactions: 334685485
 Beta interactions: 183908
 Native function calls: 90300
 If-then-elses: 44850
 Fixpoints: 902
-Total interactions: 403586799
+Total interactions: 403769195
 ```
 
 </details>
@@ -145,12 +145,12 @@ Benchmark 1: ./scott-quicksort
 
 ```
 Annihilation interactions: 103271654
-Commutation interactions: 788087056
+Commutation interactions: 788632153
 Beta interactions: 545414
 Native function calls: 180000
 If-then-elses: 89700
 Fixpoints: 1206
-Total interactions: 892175030
+Total interactions: 892720127
 ```
 
 </details>
