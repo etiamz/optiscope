@@ -3569,8 +3569,7 @@ of_lambda_term(
             else COMMUTE(graph, f, g);                                         \
             break;                                                             \
         case SYMBOL_APPLICATOR:                                                \
-            if (SYMBOL_LAMBDA == gsym || SYMBOL_LAMBDA_C == gsym)              \
-                BETA(graph, f, g);                                             \
+            if (IS_RELEVANT_LAMBDA(gsym)) BETA(graph, f, g);                   \
             else if (SYMBOL_IDENTITY_LAMBDA == gsym)                           \
                 IDENTITY_BETA(graph, f, g);                                    \
             else if (SYMBOL_GC_LAMBDA == gsym) GC_BETA(graph, f, g);           \
