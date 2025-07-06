@@ -61,21 +61,21 @@ Description: Recursively computes the 20th Fibonacci number using Church numeral
 
 ```
 Benchmark 1: ./church-fibonacci-of-20
-  Time (mean ± σ):     847.8 ms ±   4.0 ms    [User: 821.8 ms, System: 25.8 ms]
-  Range (min … max):   843.5 ms … 854.3 ms    5 runs
+  Time (mean ± σ):     840.2 ms ±   6.2 ms    [User: 818.3 ms, System: 21.7 ms]
+  Range (min … max):   832.6 ms … 847.0 ms    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 7633137
-Commutation interactions: 40077129
-Beta interactions: 521833
+Annihilation interactions: 7604496
+Commutation interactions: 39991628
+Beta interactions: 515068
 Native function calls: 0
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 48232099
+Total interactions: 48111192
 ```
 
 </details>

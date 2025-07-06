@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Added
+
+ - Translation: eta-reduce `(λx. (M x))` into `M`, where `x` does not occur free in `M`.
+
 ### Fixed
 
  - Statistics: count commutation of `SYMBOL_LAMBDA_C` with a delimiter as an interaction.
