@@ -86,21 +86,21 @@ Description: Reverses the Church-encoded list of 5000 cells & then sums all the 
 
 ```
 Benchmark 1: ./church-list-reverse-and-sum
-  Time (mean ± σ):      1.477 s ±  0.009 s    [User: 1.427 s, System: 0.050 s]
-  Range (min … max):    1.466 s …  1.487 s    5 runs
+  Time (mean ± σ):      1.530 s ±  0.003 s    [User: 1.481 s, System: 0.049 s]
+  Range (min … max):    1.528 s …  1.534 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 12592493
-Commutation interactions: 100155018
+Annihilation interactions: 12572493
+Commutation interactions: 100130017
 Beta interactions: 45004
 Native function calls: 10000
 If-then-elses: 0
 Fixpoints: 0
-Total interactions: 112802515
+Total interactions: 112757514
 ```
 
 </details>
@@ -161,21 +161,21 @@ Description: Multiplies by 2 all the cells in a Scott-encoded binary tree of siz
 
 ```
 Benchmark 1: ./scott-tree-map-and-sum
-  Time (mean ± σ):      1.476 s ±  0.016 s    [User: 1.427 s, System: 0.048 s]
-  Range (min … max):    1.453 s …  1.497 s    5 runs
+  Time (mean ± σ):      1.454 s ±  0.015 s    [User: 1.397 s, System: 0.056 s]
+  Range (min … max):    1.438 s …  1.477 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 14221231
-Commutation interactions: 64568480
+Annihilation interactions: 12386224
+Commutation interactions: 57654433
 Beta interactions: 1048667
 Native function calls: 262142
 If-then-elses: 0
 Fixpoints: 66
-Total interactions: 80100586
+Total interactions: 71351532
 ```
 
 </details>

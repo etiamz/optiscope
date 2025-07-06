@@ -3096,7 +3096,6 @@ union lambda_term_data {
 struct lambda_term {
     enum lambda_term_type ty;
     union lambda_term_data data;
-    uint64_t nfree_vars;
 };
 
 extern LambdaTerm
@@ -3107,7 +3106,6 @@ apply(const restrict LambdaTerm rator, const restrict LambdaTerm rand) {
     term->ty = LAMBDA_TERM_APPLY;
     term->data.apply.rator = rator;
     term->data.apply.rand = rand;
-    term->nfree_vars = rator->nfree_vars + rand->nfree_vars;
 
     return term;
 }
@@ -3129,7 +3127,6 @@ link_lambda_body(
     assert(LAMBDA_TERM_LAMBDA == binder->ty);
 
     binder->data.lambda->body = body;
-    binder->nfree_vars = body->nfree_vars - binder->data.lambda->nusages;
 
     return binder;
 }
@@ -3142,7 +3139,6 @@ var(const restrict LambdaTerm binder) {
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_VAR;
     term->data.var = &binder->data.lambda;
-    term->nfree_vars = 1;
 
     binder->data.lambda->nusages++;
     binder->data.lambda->usage = term;
@@ -3155,7 +3151,6 @@ cell(const uint64_t value) {
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_CELL;
     term->data.cell = value;
-    term->nfree_vars = 0;
 
     return term;
 }
@@ -3170,7 +3165,6 @@ unary_call(
     term->ty = LAMBDA_TERM_UNARY_CALL;
     term->data.u_call.function = function;
     term->data.u_call.rand = rand;
-    rand->nfree_vars = rand->nfree_vars;
 
     return term;
 }
@@ -3188,7 +3182,6 @@ binary_call(
     term->data.b_call.function = function;
     term->data.b_call.lhs = lhs;
     term->data.b_call.rhs = rhs;
-    lhs->nfree_vars = lhs->nfree_vars + rhs->nfree_vars;
 
     return term;
 }
@@ -3206,8 +3199,6 @@ if_then_else(
     term->data.ite.condition = condition;
     term->data.ite.if_then = if_then;
     term->data.ite.if_else = if_else;
-    condition->nfree_vars =
-        condition->nfree_vars + if_then->nfree_vars + if_else->nfree_vars;
 
     return term;
 }
@@ -3219,7 +3210,6 @@ fix(const restrict LambdaTerm f) {
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_FIX;
     term->data.fix.f = f;
-    term->nfree_vars = f->nfree_vars;
 
     return term;
 }
@@ -3232,7 +3222,6 @@ perform(const restrict LambdaTerm action, const restrict LambdaTerm k) {
     term->ty = LAMBDA_TERM_PERFORM;
     term->data.perform.action = action;
     term->data.perform.k = k;
-    action->nfree_vars = action->nfree_vars + k->nfree_vars;
 
     return term;
 }
@@ -3321,6 +3310,35 @@ is_eta_reducible(
            1 == lambda->nusages;
 }
 
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) //
+static uint64_t
+fv_count(struct lambda_term *const restrict term) {
+    assert(term);
+
+    switch (term->ty) {
+    case LAMBDA_TERM_APPLY:
+        return fv_count(term->data.apply.rator) +
+               fv_count(term->data.apply.rand);
+    case LAMBDA_TERM_LAMBDA:
+        return fv_count(term->data.lambda->body) - term->data.lambda->nusages;
+    case LAMBDA_TERM_VAR: return 1;
+    case LAMBDA_TERM_CELL: return 0;
+    case LAMBDA_TERM_UNARY_CALL: return fv_count(term->data.u_call.rand);
+    case LAMBDA_TERM_BINARY_CALL:
+        return fv_count(term->data.b_call.lhs) +
+               fv_count(term->data.b_call.rhs);
+    case LAMBDA_TERM_IF_THEN_ELSE:
+        return fv_count(term->data.ite.condition) +
+               fv_count(term->data.ite.if_then) +
+               fv_count(term->data.ite.if_else);
+    case LAMBDA_TERM_FIX: return fv_count(term->data.fix.f);
+    case LAMBDA_TERM_PERFORM:
+        return fv_count(term->data.perform.action) +
+               fv_count(term->data.perform.k);
+    default: COMPILER_UNREACHABLE();
+    }
+}
+
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
 inline static uint64_t
 de_bruijn_level_to_index(const uint64_t lvl, const uint64_t var) {
@@ -3398,7 +3416,7 @@ of_lambda_term(
         }
 
         const uint64_t symbol =
-            term->nfree_vars > 0 ? SYMBOL_LAMBDA : SYMBOL_LAMBDA_C;
+            fv_count(term) > 0 ? SYMBOL_LAMBDA : SYMBOL_LAMBDA_C;
 
         const struct node lambda = alloc_node(graph, symbol);
         connect_ports(&lambda.ports[0], output_port);
