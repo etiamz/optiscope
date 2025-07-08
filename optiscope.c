@@ -1304,71 +1304,85 @@ alloc_node_from(
 
     uint64_t *ports = NULL;
 
+#define SET_PORTS_0()                                                          \
+    (ports[0] = PORT_VALUE(UINT64_C(0), graph->phase, UINT64_C(0)))
+#define SET_PORTS_1()                                                          \
+    (SET_PORTS_0(),                                                            \
+     ports[1] = PORT_VALUE(UINT64_C(1), UINT64_C(0), UINT64_C(0)))
+#define SET_PORTS_2()                                                          \
+    (SET_PORTS_1(),                                                            \
+     ports[2] = PORT_VALUE(UINT64_C(2), UINT64_C(0), UINT64_C(0)))
+#define SET_PORTS_3()                                                          \
+    (SET_PORTS_2(),                                                            \
+     ports[3] = PORT_VALUE(UINT64_C(3), UINT64_C(0), UINT64_C(0)))
+
     switch (symbol) {
-        // clang-format off
     case SYMBOL_APPLICATOR:
-        ports = ALLOC_POOL_OBJECT(applicator_pool); goto set_ports_2;
+        ports = ALLOC_POOL_OBJECT(applicator_pool), SET_PORTS_2();
+        break;
     case SYMBOL_LAMBDA:
-        ports = ALLOC_POOL_OBJECT(lambda_pool); goto set_ports_2;
+        ports = ALLOC_POOL_OBJECT(lambda_pool), SET_PORTS_2();
+        break;
     case SYMBOL_ERASER:
-        ports = ALLOC_POOL_OBJECT(eraser_pool); goto set_ports_0;
+        ports = ALLOC_POOL_OBJECT(eraser_pool), SET_PORTS_0();
+        break;
     case SYMBOL_S:
-        ports = ALLOC_POOL_OBJECT(scope_pool); goto set_ports_1;
+        ports = ALLOC_POOL_OBJECT(scope_pool), SET_PORTS_1();
+        break;
         // clang-format on
     case SYMBOL_CELL:
         ports = ALLOC_POOL_OBJECT(cell_pool);
         if (prototype) { ports[1] = prototype->ports[1]; }
-        goto set_ports_0;
+        SET_PORTS_0();
+        break;
     case SYMBOL_UNARY_CALL:
         ports = ALLOC_POOL_OBJECT(unary_call_pool);
         if (prototype) { ports[2] = prototype->ports[2]; }
-        goto set_ports_1;
+        SET_PORTS_1();
+        break;
     case SYMBOL_BINARY_CALL:
         ports = ALLOC_POOL_OBJECT(binary_call_pool);
         if (prototype) { ports[3] = prototype->ports[3]; }
-        goto set_ports_2;
+        SET_PORTS_2();
+        break;
     case SYMBOL_BINARY_CALL_AUX:
         ports = ALLOC_POOL_OBJECT(binary_call_aux_pool);
         if (prototype) {
             ports[2] = prototype->ports[2], ports[3] = prototype->ports[3];
         }
-        goto set_ports_1;
-        // clang-format off
+        SET_PORTS_1();
+        break;
     case SYMBOL_IF_THEN_ELSE:
-        ports = ALLOC_POOL_OBJECT(if_then_else_pool); goto set_ports_3;
-    case SYMBOL_FIX:
-        ports = ALLOC_POOL_OBJECT(fix_pool); goto set_ports_1;
+        ports = ALLOC_POOL_OBJECT(if_then_else_pool), SET_PORTS_3();
+        break;
+    case SYMBOL_FIX: //
+        ports = ALLOC_POOL_OBJECT(fix_pool), SET_PORTS_1();
+        break;
     case SYMBOL_PERFORM:
-        ports = ALLOC_POOL_OBJECT(perform_pool); goto set_ports_2;
+        ports = ALLOC_POOL_OBJECT(perform_pool), SET_PORTS_2();
+        break;
     case SYMBOL_IDENTITY_LAMBDA:
-        ports = ALLOC_POOL_OBJECT(identity_lambda_pool); goto set_ports_0;
+        ports = ALLOC_POOL_OBJECT(identity_lambda_pool), SET_PORTS_0();
+        break;
     case SYMBOL_GC_LAMBDA:
-        ports = ALLOC_POOL_OBJECT(gc_lambda_pool); goto set_ports_1;
+        ports = ALLOC_POOL_OBJECT(gc_lambda_pool), SET_PORTS_1();
+        break;
     case SYMBOL_LAMBDA_C:
-        ports = ALLOC_POOL_OBJECT(lambda_c_pool); goto set_ports_2;
+        ports = ALLOC_POOL_OBJECT(lambda_c_pool), SET_PORTS_2();
+        break;
     duplicator:
-        ports = ALLOC_POOL_OBJECT(duplicator_pool); goto set_ports_2;
-        // clang-format on
+        ports = ALLOC_POOL_OBJECT(duplicator_pool), SET_PORTS_2();
+        break;
     delimiter:
         ports = ALLOC_POOL_OBJECT(delimiter_pool);
         if (prototype) { ports[2] = prototype->ports[2]; }
-        goto set_ports_1;
+        SET_PORTS_1();
+        break;
     default:
         if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
         else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
         else COMPILER_UNREACHABLE();
     }
-
-    COMPILER_UNREACHABLE();
-
-set_ports_3:
-    ports[3] = PORT_VALUE(UINT64_C(3), UINT64_C(0), UINT64_C(0));
-set_ports_2:
-    ports[2] = PORT_VALUE(UINT64_C(2), UINT64_C(0), UINT64_C(0));
-set_ports_1:
-    ports[1] = PORT_VALUE(UINT64_C(1), UINT64_C(0), UINT64_C(0));
-set_ports_0:
-    ports[0] = PORT_VALUE(UINT64_C(0), graph->phase, UINT64_C(0));
 
     ports[-1] = symbol;
 
