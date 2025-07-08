@@ -36,21 +36,20 @@ Description: Recursively computes the 30th Fibonacci number using native cells &
 
 ```
 Benchmark 1: ./fibonacci-of-30
-  Time (mean ± σ):      6.000 s ±  0.033 s    [User: 5.818 s, System: 0.182 s]
-  Range (min … max):    5.964 s …  6.028 s    5 runs
+  Time (mean ± σ):      5.573 s ±  0.010 s    [User: 5.398 s, System: 0.174 s]
+  Range (min … max):    5.556 s …  5.581 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 17108651
-Commutation interactions: 116357003
-Beta interactions: 31
+Annihilation interactions: 14098276
+Commutation interactions: 97856050
+Beta interactions: 4
 Native function calls: 12948453
 If-then-elses: 4870845
-Fixpoints: 31
-Total interactions: 151285014
+Total interactions: 129773628
 ```
 
 </details>
@@ -61,8 +60,8 @@ Description: Recursively computes the 20th Fibonacci number using Church numeral
 
 ```
 Benchmark 1: ./church-fibonacci-of-20
-  Time (mean ± σ):     840.2 ms ±   6.2 ms    [User: 818.3 ms, System: 21.7 ms]
-  Range (min … max):   832.6 ms … 847.0 ms    5 runs
+  Time (mean ± σ):     808.4 ms ±   3.0 ms    [User: 785.2 ms, System: 22.7 ms]
+  Range (min … max):   805.7 ms … 813.5 ms    5 runs
 ```
 
 <details>
@@ -74,7 +73,6 @@ Commutation interactions: 39991628
 Beta interactions: 515068
 Native function calls: 0
 If-then-elses: 0
-Fixpoints: 0
 Total interactions: 48111192
 ```
 
@@ -86,8 +84,8 @@ Description: Reverses the Church-encoded list of 5000 cells & then sums all the 
 
 ```
 Benchmark 1: ./church-list-reverse-and-sum
-  Time (mean ± σ):      1.530 s ±  0.003 s    [User: 1.481 s, System: 0.049 s]
-  Range (min … max):    1.528 s …  1.534 s    5 runs
+  Time (mean ± σ):      1.408 s ±  0.008 s    [User: 1.356 s, System: 0.051 s]
+  Range (min … max):    1.403 s …  1.421 s    5 runs
 ```
 
 <details>
@@ -99,7 +97,6 @@ Commutation interactions: 100130017
 Beta interactions: 45004
 Native function calls: 10000
 If-then-elses: 0
-Fixpoints: 0
 Total interactions: 112757514
 ```
 
@@ -111,21 +108,20 @@ Description: Performes an insertion sort on a Scott-encoded list of 300 cells, t
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):      7.010 s ±  0.058 s    [User: 6.763 s, System: 0.247 s]
-  Range (min … max):    6.948 s …  7.073 s    5 runs
+  Time (mean ± σ):      4.861 s ±  0.056 s    [User: 4.670 s, System: 0.190 s]
+  Range (min … max):    4.809 s …  4.943 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 68763750
-Commutation interactions: 334685485
-Beta interactions: 183908
+Annihilation interactions: 46264000
+Commutation interactions: 230883145
+Beta interactions: 182717
 Native function calls: 90300
 If-then-elses: 44850
-Fixpoints: 902
-Total interactions: 403769195
+Total interactions: 277465012
 ```
 
 </details>
@@ -136,21 +132,20 @@ Description: Performes an (inefficient) quicksort on a Scott-encoded list of 300
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):     13.333 s ±  0.132 s    [User: 12.985 s, System: 0.347 s]
-  Range (min … max):   13.178 s … 13.471 s    5 runs
+  Time (mean ± σ):     13.686 s ±  0.089 s    [User: 13.336 s, System: 0.346 s]
+  Range (min … max):   13.562 s … 13.809 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 103271654
-Commutation interactions: 788632153
-Beta interactions: 545414
+Annihilation interactions: 102957105
+Commutation interactions: 787790164
+Beta interactions: 543927
 Native function calls: 180000
 If-then-elses: 89700
-Fixpoints: 1206
-Total interactions: 892720127
+Total interactions: 891560896
 ```
 
 </details>
@@ -161,21 +156,20 @@ Description: Multiplies by 2 all the cells in a Scott-encoded binary tree of siz
 
 ```
 Benchmark 1: ./scott-tree-map-and-sum
-  Time (mean ± σ):      1.454 s ±  0.015 s    [User: 1.397 s, System: 0.056 s]
-  Range (min … max):    1.438 s …  1.477 s    5 runs
+  Time (mean ± σ):      1.398 s ±  0.004 s    [User: 1.347 s, System: 0.050 s]
+  Range (min … max):    1.393 s …  1.402 s    5 runs
 ```
 
 <details>
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 12386224
-Commutation interactions: 57654433
-Beta interactions: 1048667
+Annihilation interactions: 11861843
+Commutation interactions: 55033610
+Beta interactions: 1048579
 Native function calls: 262142
 If-then-elses: 0
-Fixpoints: 66
-Total interactions: 71351532
+Total interactions: 68206174
 ```
 
 </details>

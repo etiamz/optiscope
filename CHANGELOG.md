@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Translation: eta-reduce `(λx. (M x))` into `M`, where `x` does not occur free in `M`.
 
+### Changed
+
+ - Implement `fix` without a dedicated `SYMBOL_FIX` node, using onely a duplicator & an applicator.
+
 ### Fixed
 
  - Statistics: count commutation of `SYMBOL_LAMBDA_C` with a delimiter as an interaction.
