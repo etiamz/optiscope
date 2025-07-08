@@ -1379,6 +1379,37 @@ set_ports_0:
 
 #define alloc_node(graph, symbol) alloc_node_from((graph), (symbol), NULL)
 
+COMPILER_NONNULL(1, 3, 4) COMPILER_HOT //
+static void
+inst_delimiter(
+    struct context *const restrict graph,
+    const uint64_t idx,
+    uint64_t *const restrict points_to,
+    uint64_t *const restrict goes_from) {
+    assert(graph);
+    XASSERT(idx < INDEX_RANGE);
+    assert(points_to), assert(goes_from);
+
+    const uint64_t putative_symbol = SYMBOL_DELIMITER(idx);
+
+    if (PHASE_REDUCE_WEAKLY == graph->phase) {
+        if (1 == DECODE_OFFSET_METADATA(*points_to)) {
+            const struct node g = {points_to - 1};
+            if (IS_DELIMITER(g.ports[-1]) && putative_symbol == g.ports[-1]) {
+                g.ports[2]++;
+                connect_ports(&g.ports[1], goes_from);
+                return;
+            }
+        }
+    }
+
+    // The fallback scenario.
+    const struct node delim = alloc_node(graph, putative_symbol);
+    delim.ports[2] = 1;
+    connect_ports(&delim.ports[0], points_to);
+    connect_ports(&delim.ports[1], goes_from);
+}
+
 COMPILER_HOT //
 static void
 free_node(const struct node node) {
@@ -2310,11 +2341,8 @@ RULE_DEFINITION(beta, graph, f, g) {
     graph->nbetas++;
 #endif
 
-    const struct node lhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
-    lhs.ports[2] = 1;
-    connect_ports(&lhs.ports[0], DECODE_ADDRESS(f.ports[1]));
-    connect_ports(&lhs.ports[1], DECODE_ADDRESS(g.ports[2]));
-    if (PHASE_REDUCE_WEAKLY == graph->phase) { try_merge_delimiter(lhs); }
+    inst_delimiter(
+        graph, 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
 
     uint64_t *const binder_port = DECODE_ADDRESS(g.ports[1]), //
         *const rand_port = DECODE_ADDRESS(f.ports[2]);
@@ -2322,14 +2350,7 @@ RULE_DEFINITION(beta, graph, f, g) {
     if (SYMBOL_LAMBDA_C == rand.ports[-1]) {
         connect_ports(binder_port, rand_port);
     } else if (!try_unshare(graph, binder_port, rand)) {
-        const struct node rhs =
-            alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
-        rhs.ports[2] = 1;
-        connect_ports(&rhs.ports[0], rand_port);
-        connect_ports(&rhs.ports[1], binder_port);
-        if (PHASE_REDUCE_WEAKLY == graph->phase) { //
-            try_merge_delimiter(rhs);
-        }
+        inst_delimiter(graph, 0, rand_port, binder_port);
     }
 
 #ifndef NDEBUG
@@ -2373,11 +2394,8 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
     graph->nbetas++;
 #endif
 
-    const struct node lhs = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
-    lhs.ports[2] = 1;
-    connect_ports(&lhs.ports[0], DECODE_ADDRESS(f.ports[1]));
-    connect_ports(&lhs.ports[1], DECODE_ADDRESS(g.ports[1]));
-    if (PHASE_REDUCE_WEAKLY == graph->phase) { try_merge_delimiter(lhs); }
+    inst_delimiter(
+        graph, 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
 
     // There is a chance that the argument is fully disconnected from the root;
     // if so, we must garbage-collect it.
