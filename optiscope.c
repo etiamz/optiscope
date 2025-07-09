@@ -3585,7 +3585,9 @@ of_lambda_term(
                 COMMUTE_ITE_DELIM(graph, g, f);                                \
             else if (IS_DELIMITER(gsym)) COMMUTE_DELIM_DELIM(graph, f, g);     \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_DUP_DELIM(graph, g, f);      \
-            else COMMUTE(graph, f, g);                                         \
+            else                                                               \
+                COMMUTE(graph, g, f); /* delimiters must be the second,        \
+                                         unlesse they commute with lambdas */  \
             break;                                                             \
         case SYMBOL_APPLICATOR:                                                \
             if (IS_RELEVANT_LAMBDA(gsym)) BETA(graph, f, g);                   \
