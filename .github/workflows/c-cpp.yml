@@ -28,6 +28,12 @@ jobs:
       - name: Run the tests
         run: ./command/test.sh
 
+      - name: Run the examples
+        run: |
+          ./command/example.sh lamping-example
+          ./command/example.sh optiscope-inside-optiscope
+          # The palindrome example is interactive.
+
   static-analysis:
     runs-on: ubuntu-latest
 
