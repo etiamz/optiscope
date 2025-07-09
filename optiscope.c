@@ -1161,7 +1161,7 @@ struct context {
 
     struct multifocus *mark_focus, *sweep_focus;
 
-    struct multifocus *unsharing_focus;
+    struct multifocus *unshare_focus;
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
     struct node current_pair[2];
@@ -1201,7 +1201,7 @@ static struct context *alloc_context(void) {
     graph->mark_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
     graph->sweep_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
 
-    graph->unsharing_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
+    graph->unshare_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
     CLEAR_MEMORY(graph->current_pair);
@@ -1226,7 +1226,7 @@ free_context(struct context *const restrict graph) {
     CONTEXT_MULTIFOCUSES
     X(mark_focus)
     X(sweep_focus)
-    X(unsharing_focus)
+    X(unshare_focus)
 
 #undef X
 
@@ -1991,16 +1991,16 @@ try_unshare(
     assert(graph);
     assert(port);
     XASSERT(atom.ports);
-    XASSERT(graph->unsharing_focus);
+    XASSERT(graph->unshare_focus);
 
     if (!is_atomic_symbol(atom.ports[-1])) { return false; }
 
 #define FOLLOW(port)                                                           \
-    focus_on(graph->unsharing_focus, FAKE_NODE(DECODE_ADDRESS((port))))
+    focus_on(graph->unshare_focus, FAKE_NODE(DECODE_ADDRESS((port))))
 
-    focus_on(graph->unsharing_focus, FAKE_NODE(port));
+    focus_on(graph->unshare_focus, FAKE_NODE(port));
 
-    CONSUME_MULTIFOCUS (graph->unsharing_focus, node) {
+    CONSUME_MULTIFOCUS (graph->unshare_focus, node) {
         XASSERT(node.ports);
 
         uint64_t *const p = node.ports;
