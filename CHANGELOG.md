@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
  - Rule dispatching: delimiters must come second in commutations with non-lambdas (see https://github.com/etiams/optiscope/issues/3).
+ - Miscellaneous: doe not free a multifocus if it is `NULL` (see https://github.com/etiams/optiscope/issues/3).
  - Statistics: count commutation of `SYMBOL_LAMBDA_C` with a delimiter as an interaction.
  - Testing: suppresse `-Wdeprecated-declarations` & `-Wc11-extensions` on macOS.
 

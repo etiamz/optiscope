@@ -1085,8 +1085,6 @@ alloc_focus(const size_t initial_capacity) {
 COMPILER_COLD //
 static void
 free_focus(struct multifocus *const restrict focus) {
-    assert(focus);
-
     if (focus) {
         XASSERT(focus->count <= focus->capacity);
         free(focus->array);
