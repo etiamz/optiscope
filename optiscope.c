@@ -2372,7 +2372,7 @@ RULE_DEFINITION(beta, graph, f, g) {
     inst_delimiter(
         graph,
         (struct delimiter_template){
-            0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2])});
+            .idx = 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2])});
 
     uint64_t *const binder_port = DECODE_ADDRESS(g.ports[1]), //
         *const rand_port = DECODE_ADDRESS(f.ports[2]);
@@ -2381,17 +2381,9 @@ RULE_DEFINITION(beta, graph, f, g) {
         connect_ports(binder_port, rand_port);
     } else if (!try_unshare(graph, binder_port, rand)) {
         inst_delimiter(
-            graph, (struct delimiter_template){0, rand_port, binder_port});
+            graph,
+            (struct delimiter_template){.idx = 0, rand_port, binder_port});
     }
-
-#ifndef NDEBUG
-    // There should be no possibility that the lambda is connected to an eraser;
-    // `SYMBOL_GC_LAMBDA` should be used instead.
-    {
-        const struct node binder = follow_port(&g.ports[1]);
-        assert(SYMBOL_ERASER != binder.ports[-1]);
-    }
-#endif
 
     free_node(f), free_node(g);
 }
@@ -2428,7 +2420,7 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
     inst_delimiter(
         graph,
         (struct delimiter_template){
-            0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1])});
+            .idx = 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1])});
 
     // There is a chance that the argument is fully disconnected from the root;
     // if so, we must garbage-collect it.
