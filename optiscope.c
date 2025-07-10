@@ -956,33 +956,6 @@ is_active(const struct node node) {
 COMPILER_HOT static void free_node(const struct node node);
 // clang-format on
 
-COMPILER_HOT //
-static void
-try_merge_delimiter(const struct node f) {
-    XASSERT(f.ports);
-    XASSERT(IS_DELIMITER(f.ports[-1]));
-
-    uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
-    XASSERT(points_to);
-
-    if (1 == DECODE_OFFSET_METADATA(*points_to)) {
-        const struct node g = {points_to - 1};
-        if (IS_DELIMITER(g.ports[-1]) && f.ports[-1] == g.ports[-1]) {
-            g.ports[2] += f.ports[2];
-            connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
-            free_node(f);
-        }
-    }
-}
-
-COMPILER_HOT //
-static void
-try_merge_if_delimiter(const struct node f) {
-    XASSERT(f.ports);
-
-    if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(f); }
-}
-
 // Linked lists functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -1138,6 +1111,7 @@ struct context {
 #define X(focus_name) uint64_t n##focus_name;
     CONTEXT_MULTIFOCUSES
 #undef X
+    uint64_t nmergings;
 #endif
 
     struct multifocus *mark_focus, *sweep_focus;
@@ -1189,6 +1163,7 @@ static struct context *alloc_context(void) {
 #define X(focus_name) graph->n##focus_name = 0;
     CONTEXT_MULTIFOCUSES
 #undef X
+    graph->nmergings = 0;
 #endif
 
     graph->mark_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
@@ -1256,6 +1231,8 @@ print_stats(const struct context *const restrict graph) {
         "Total interactions: %" PRIu64 "\n",
         graph->nannihilations + graph->ncommutations + graph->nbetas + //
             ncalls + graph->nif_then_elses);
+
+    printf("Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
 }
 
 #else
@@ -1378,37 +1355,6 @@ alloc_node_from(
 
 #define alloc_node(graph, symbol) alloc_node_from((graph), (symbol), NULL)
 
-COMPILER_NONNULL(1, 3, 4) COMPILER_HOT //
-static void
-inst_delimiter(
-    struct context *const restrict graph,
-    const uint64_t idx,
-    uint64_t *const restrict points_to,
-    uint64_t *const restrict goes_from) {
-    assert(graph);
-    XASSERT(idx < INDEX_RANGE);
-    assert(points_to), assert(goes_from);
-
-    const uint64_t putative_symbol = SYMBOL_DELIMITER(idx);
-
-    if (PHASE_REDUCE_WEAKLY == graph->phase) {
-        if (1 == DECODE_OFFSET_METADATA(*points_to)) {
-            const struct node g = {points_to - 1};
-            if (IS_DELIMITER(g.ports[-1]) && putative_symbol == g.ports[-1]) {
-                g.ports[2]++;
-                connect_ports(&g.ports[1], goes_from);
-                return;
-            }
-        }
-    }
-
-    // The fallback scenario.
-    const struct node delim = alloc_node(graph, putative_symbol);
-    delim.ports[2] = 1;
-    connect_ports(&delim.ports[0], points_to);
-    connect_ports(&delim.ports[1], goes_from);
-}
-
 COMPILER_HOT //
 static void
 free_node(const struct node node) {
@@ -1461,6 +1407,106 @@ free_node(const struct node node) {
         FREE_POOL_OBJECT(delimiter_pool, p);
         break;
     }
+}
+
+// Delimiter merging
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+struct delimiter_template {
+    const uint64_t idx;
+    uint64_t *const restrict points_to, *const restrict goes_from;
+};
+
+#ifndef NDEBUG
+
+static void
+assert_delimiter_template(const struct delimiter_template template) {
+    XASSERT(template.idx < INDEX_RANGE);
+    assert(template.points_to), assert(template.goes_from);
+}
+
+#else
+
+#define assert_delimiter_template(template) ((void)0)
+
+#endif
+
+COMPILER_NONNULL(1) COMPILER_HOT //
+static void
+inst_delimiter_as_is(
+    struct context *const restrict graph,
+    const struct delimiter_template template) {
+    assert(graph);
+    assert_delimiter_template(template);
+
+    const struct node delim = alloc_node(graph, SYMBOL_DELIMITER(template.idx));
+    delim.ports[2] = 1;
+    connect_ports(&delim.ports[0], template.points_to);
+    connect_ports(&delim.ports[1], template.goes_from);
+}
+
+COMPILER_NONNULL(1) COMPILER_HOT //
+static void
+inst_delimiter(
+    struct context *const restrict graph,
+    const struct delimiter_template template) {
+    assert(graph);
+    assert_delimiter_template(template);
+
+    const struct node g = follow_port(&template.points_to[0]);
+    XASSERT(g.ports);
+
+    const bool condition = PHASE_REDUCE_WEAKLY == graph->phase &&
+                           IS_DELIMITER(g.ports[-1]) &&
+                           1 == DECODE_OFFSET_METADATA(*template.points_to) &&
+                           SYMBOL_DELIMITER(template.idx) == g.ports[-1];
+    if (condition) {
+        g.ports[2]++;
+        connect_ports(&g.ports[1], template.goes_from);
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->nmergings++;
+#endif
+    } else {
+        inst_delimiter_as_is(graph, template);
+    }
+}
+
+COMPILER_NONNULL(1) COMPILER_HOT //
+static void
+try_merge_delimiter(struct context *const restrict graph, const struct node f) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(IS_DELIMITER(f.ports[-1]));
+
+    uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
+    XASSERT(points_to);
+
+    const struct node g = node_of_port(points_to);
+    XASSERT(g.ports);
+
+    const bool condition = IS_DELIMITER(g.ports[-1]) &&
+                           1 == DECODE_OFFSET_METADATA(*points_to) &&
+                           f.ports[-1] == g.ports[-1];
+    if (condition) {
+        g.ports[2] += f.ports[2];
+        connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
+        free_node(f);
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->nmergings++;
+#else
+        (void)graph;
+#endif
+    }
+}
+
+COMPILER_NONNULL(1) COMPILER_HOT //
+static void
+try_merge_if_delimiter(
+    struct context *const restrict graph, const struct node f) {
+    assert(graph);
+    XASSERT(f.ports);
+
+    if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(graph, f); }
 }
 
 // Graphviz graph generation
@@ -2324,7 +2370,9 @@ RULE_DEFINITION(beta, graph, f, g) {
 #endif
 
     inst_delimiter(
-        graph, 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
+        graph,
+        (struct delimiter_template){
+            0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2])});
 
     uint64_t *const binder_port = DECODE_ADDRESS(g.ports[1]), //
         *const rand_port = DECODE_ADDRESS(f.ports[2]);
@@ -2332,7 +2380,8 @@ RULE_DEFINITION(beta, graph, f, g) {
     if (SYMBOL_LAMBDA_C == rand.ports[-1]) {
         connect_ports(binder_port, rand_port);
     } else if (!try_unshare(graph, binder_port, rand)) {
-        inst_delimiter(graph, 0, rand_port, binder_port);
+        inst_delimiter(
+            graph, (struct delimiter_template){0, rand_port, binder_port});
     }
 
 #ifndef NDEBUG
@@ -2377,7 +2426,9 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
 #endif
 
     inst_delimiter(
-        graph, 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
+        graph,
+        (struct delimiter_template){
+            0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1])});
 
     // There is a chance that the argument is fully disconnected from the root;
     // if so, we must garbage-collect it.
@@ -2644,8 +2695,8 @@ RULE_DEFINITION(commute_2_2_core, graph, f, g) {
     connect_ports(&f.ports[1], &g.ports[1]);
 
     if (PHASE_REDUCE_WEAKLY == graph->phase) {
-        try_merge_if_delimiter(f);
-        try_merge_if_delimiter(g);
+        try_merge_if_delimiter(graph, f);
+        try_merge_if_delimiter(graph, g);
     }
 }
 
@@ -2669,8 +2720,8 @@ RULE_DEFINITION(commute_3_2_core, graph, f, g) {
     connect_ports(&f.ports[2], &gx.ports[1]);
 
     if (PHASE_REDUCE_WEAKLY == graph->phase && IS_DELIMITER(g.ports[-1])) {
-        try_merge_delimiter(g);
-        try_merge_delimiter(gx);
+        try_merge_delimiter(graph, g);
+        try_merge_delimiter(graph, gx);
     }
 }
 
@@ -2727,9 +2778,9 @@ RULE_DEFINITION(commute_4_2, graph, f, g) {
     connect_ports(&f.ports[3], &gxx.ports[1]);
 
     if (PHASE_REDUCE_WEAKLY == graph->phase && IS_DELIMITER(g.ports[-1])) {
-        try_merge_delimiter(g);
-        try_merge_delimiter(gx);
-        try_merge_delimiter(gxx);
+        try_merge_delimiter(graph, g);
+        try_merge_delimiter(graph, gx);
+        try_merge_delimiter(graph, gxx);
     }
 }
 

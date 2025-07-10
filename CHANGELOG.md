@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
  - Translation: eta-reduce `(λx. (M x))` into `M`, where `x` does not occur free in `M`.
+ - Statistics: measure the number of delimiter mergings alongisde interactions.
 
 ### Changed
 

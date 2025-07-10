@@ -45,11 +45,12 @@ Benchmark 1: ./fibonacci-of-30
 
 ```
 Annihilation interactions: 14098276
-Commutation interactions: 97856050
+Commutation interactions: 97856051
 Beta interactions: 4
 Native function calls: 12948453
 If-then-elses: 4870845
-Total interactions: 129773628
+Total interactions: 129773629
+Delimiter mergings: 1346268
 ```
 
 </details>
@@ -69,11 +70,12 @@ Benchmark 1: ./church-fibonacci-of-20
 
 ```
 Annihilation interactions: 7604496
-Commutation interactions: 39991628
+Commutation interactions: 40075122
 Beta interactions: 515068
 Native function calls: 0
 If-then-elses: 0
-Total interactions: 48111192
+Total interactions: 48194686
+Delimiter mergings: 1844878
 ```
 
 </details>
@@ -93,11 +95,12 @@ Benchmark 1: ./church-list-reverse-and-sum
 
 ```
 Annihilation interactions: 12572493
-Commutation interactions: 100130017
+Commutation interactions: 100150018
 Beta interactions: 45004
 Native function calls: 10000
 If-then-elses: 0
-Total interactions: 112757514
+Total interactions: 112777515
+Delimiter mergings: 35014
 ```
 
 </details>
@@ -117,11 +120,12 @@ Benchmark 1: ./scott-insertion-sort
 
 ```
 Annihilation interactions: 46264000
-Commutation interactions: 230883145
+Commutation interactions: 230929199
 Beta interactions: 182717
 Native function calls: 90300
 If-then-elses: 44850
-Total interactions: 277465012
+Total interactions: 277511066
+Delimiter mergings: 13960660
 ```
 
 </details>
@@ -140,12 +144,13 @@ Benchmark 1: ./scott-quicksort
 <summary>Interactions count</summary>
 
 ```
-Annihilation interactions: 102957105
-Commutation interactions: 787790164
+Annihilation interactions: 103001358
+Commutation interactions: 787926524
 Beta interactions: 543927
 Native function calls: 180000
 If-then-elses: 89700
-Total interactions: 891560896
+Total interactions: 891741509
+Delimiter mergings: 123633916
 ```
 
 </details>
@@ -165,11 +170,12 @@ Benchmark 1: ./scott-tree-map-and-sum
 
 ```
 Annihilation interactions: 11861843
-Commutation interactions: 55033610
+Commutation interactions: 55262990
 Beta interactions: 1048579
 Native function calls: 262142
 If-then-elses: 0
-Total interactions: 68206174
+Total interactions: 68435554
+Delimiter mergings: 2031616
 ```
 
 </details>
