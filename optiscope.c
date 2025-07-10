@@ -140,7 +140,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #else
 
-#define COMPILER_UNREACHABLE() assert(false)
+#define COMPILER_UNREACHABLE() MY_ASSERT(false)
 #define COMPILER_NONNULL(...)  /* checked by `assert` */
 #define COMPILER_CONST         /* may invoke side-effecting `assert` */
 #define COMPILER_PURE          /* may invoke side-effecting `assert` */
@@ -239,10 +239,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // Assertions that are checked at program run-time.
+#ifndef NDEBUG
+#define MY_ASSERT assert
+#else
+#define MY_ASSERT(condition) ((void)(condition))
+#endif
+
+// Used for communicating logic invariants to the compiler.
 #if defined(__GNUC__) && defined(NDEBUG)
 #define XASSERT(condition) (!(condition) ? __builtin_unreachable() : (void)0)
 #else
-#define XASSERT assert
+#define XASSERT MY_ASSERT
 #endif
 
 // Assertions that are checked at compile-time.
@@ -267,8 +274,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern void
 optiscope_redirect_stream(
     FILE *const restrict source, FILE *const restrict destination) {
-    assert(source);
-    assert(destination);
+    MY_ASSERT(source);
+    MY_ASSERT(destination);
 
     int c;
     while (EOF != (c = fgetc(source))) {
@@ -285,7 +292,7 @@ optiscope_redirect_stream(
     COMPILER_NONNULL(1) COMPILER_FORMAT(printf, 1, 2) /* */                    \
     static void                                                                \
     name(const char format[const restrict], ...) {                             \
-        assert(format);                                                        \
+        MY_ASSERT(format);                                                     \
                                                                                \
         va_list args;                                                          \
         va_start(args, format);                                                \
@@ -425,7 +432,7 @@ COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL
 COMPILER_NONNULL(1) COMPILER_HOT //
 inline static uint64_t *
 get_principal_port(uint64_t *const restrict port) {
-    assert(port);
+    MY_ASSERT(port);
 
     return (port - DECODE_OFFSET_METADATA(port[0]));
 }
@@ -434,17 +441,17 @@ COMPILER_NONNULL(1, 2) COMPILER_HOT //
 inline static void
 connect_port_to(
     uint64_t *const restrict port, const uint64_t *const restrict another) {
-    assert(port);
-    assert(another);
+    MY_ASSERT(port);
+    MY_ASSERT(another);
     XASSERT(port != another);
-    assert(DECODE_ADDRESS(*port) != another);
+    MY_ASSERT(DECODE_ADDRESS(*port) != another);
 
     const uint64_t port_metadata = DECODE_ADDRESS_METADATA(*port);
 
     *port = ENCODE_ADDRESS(port_metadata, (uint64_t)another);
 
-    assert(DECODE_ADDRESS(*port) == another);
-    assert(DECODE_ADDRESS_METADATA(*port) == port_metadata);
+    MY_ASSERT(DECODE_ADDRESS(*port) == another);
+    MY_ASSERT(DECODE_ADDRESS_METADATA(*port) == port_metadata);
 }
 
 COMPILER_NONNULL(1, 2) COMPILER_HOT COMPILER_FLATTEN //
@@ -453,7 +460,7 @@ connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
     debug("%p 🔗 %p", (void *)lhs, (void *)rhs);
 
     // Delegate the assertions to `connect_ports_to`.
-    assert(true);
+    MY_ASSERT(true);
 
     connect_port_to(lhs, rhs), connect_port_to(rhs, lhs);
 }
@@ -541,15 +548,15 @@ bump_index(const uint64_t symbol, const uint64_t offset) {
 COMPILER_NONNULL(1) COMPILER_HOT //
 inline static void
 set_phase(uint64_t *const restrict port, const uint64_t phase) {
-    assert(port);
-    assert(IS_PRINCIPAL_PORT(*port));
+    MY_ASSERT(port);
+    MY_ASSERT(IS_PRINCIPAL_PORT(*port));
 
     const uint64_t mask =
         UINT64_C(0xC3FFFFFFFFFFFFFF); /* clear the phase bits (61-58) */
 
     *port = (*port & mask) | (phase << EFFECTIVE_ADDRESS_BITS);
 
-    assert(DECODE_PHASE_METADATA(*port) == phase);
+    MY_ASSERT(DECODE_PHASE_METADATA(*port) == phase);
 }
 
 // Native function pointers
@@ -607,7 +614,7 @@ free_chunk(void *const memory);
 COMPILER_WARN_UNUSED_RESULT COMPILER_MALLOC(free_chunk, 1) COMPILER_COLD
 // clang-format on
 static void *alloc_chunk(const size_t size) {
-    assert(size <= HUGE_PAGE_SIZE_2MB);
+    MY_ASSERT(size <= HUGE_PAGE_SIZE_2MB);
 
     const int prot = PROT_READ | PROT_WRITE,
               flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB;
@@ -624,7 +631,7 @@ static void *alloc_chunk(const size_t size) {
 COMPILER_NONNULL(1) COMPILER_COLD //
 void
 free_chunk(void *const memory) {
-    assert(memory);
+    MY_ASSERT(memory);
 
     if (munmap(memory, HUGE_PAGE_SIZE_2MB) < 0) {
         // `munmap` failed, defaulting to `free`.
@@ -687,7 +694,7 @@ free_chunk(void *const memory) {
     COMPILER_NONNULL(1) COMPILER_COLD /* */                                    \
     static void                                                                \
     prefix##_pool_close(struct prefix##_pool *const restrict self) {           \
-        assert(self);                                                          \
+        MY_ASSERT(self);                                                       \
         XASSERT(self->buckets);                                                \
                                                                                \
         struct prefix##_chunks_bucket *iter = self->buckets;                   \
@@ -705,7 +712,7 @@ free_chunk(void *const memory) {
     COMPILER_NONNULL(1) COMPILER_COLD /* */                                    \
     static void                                                                \
     prefix##_pool_expand(struct prefix##_pool *const restrict self) {          \
-        assert(self);                                                          \
+        MY_ASSERT(self);                                                       \
         XASSERT(self->buckets);                                                \
                                                                                \
         union prefix##_chunk *const extra_chunks =                             \
@@ -733,7 +740,7 @@ free_chunk(void *const memory) {
     COMPILER_HOT /* */                                                         \
     static uint64_t *                                                          \
     prefix##_pool_alloc(struct prefix##_pool *const restrict self) {           \
-        assert(self);                                                          \
+        MY_ASSERT(self);                                                       \
         XASSERT(self->buckets);                                                \
                                                                                \
         if (NULL == self->next_free_chunk) { prefix##_pool_expand(self); }     \
@@ -751,9 +758,9 @@ free_chunk(void *const memory) {
     prefix##_pool_free(                                                        \
         struct prefix##_pool *const restrict self,                             \
         uint64_t *restrict object) {                                           \
-        assert(self);                                                          \
+        MY_ASSERT(self);                                                       \
         XASSERT(self->buckets);                                                \
-        assert(object);                                                        \
+        MY_ASSERT(object);                                                     \
                                                                                \
         object--; /* back to the symbol address */                             \
         union prefix##_chunk *const freed = (union prefix##_chunk *)object;    \
@@ -848,7 +855,7 @@ COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT
 COMPILER_FLATTEN //
 inline static struct node
 node_of_port(uint64_t *const restrict port) {
-    assert(port);
+    MY_ASSERT(port);
 
     const struct node node = {get_principal_port(port)};
     XASSERT(node.ports);
@@ -860,7 +867,7 @@ COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT
 COMPILER_FLATTEN //
 inline static struct node
 follow_port(uint64_t *const restrict port) {
-    assert(port);
+    MY_ASSERT(port);
 
     return node_of_port(DECODE_ADDRESS(*port));
 }
@@ -1051,7 +1058,7 @@ free_focus(struct multifocus *const restrict focus) {
 COMPILER_NONNULL(1) COMPILER_COLD //
 static void
 expand_focus(struct multifocus *const restrict focus) {
-    assert(focus);
+    MY_ASSERT(focus);
     XASSERT(focus->count == focus->capacity);
 
     focus->array =
@@ -1064,7 +1071,7 @@ expand_focus(struct multifocus *const restrict focus) {
 COMPILER_NONNULL(1) COMPILER_HOT //
 inline static void
 focus_on(struct multifocus *const restrict focus, const struct node node) {
-    assert(focus);
+    MY_ASSERT(focus);
     XASSERT(node.ports);
     XASSERT(focus->count <= focus->capacity);
 
@@ -1076,7 +1083,7 @@ focus_on(struct multifocus *const restrict focus, const struct node node) {
 COMPILER_NONNULL(1) COMPILER_HOT //
 inline static struct node
 unfocus(struct multifocus *const restrict focus) {
-    assert(focus);
+    MY_ASSERT(focus);
     XASSERT(focus->count > 0);
     XASSERT(focus->count <= focus->capacity);
 
@@ -1183,7 +1190,7 @@ static void
 free_context(struct context *const restrict graph) {
     debug("%s()", __func__);
 
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(graph->root.ports);
 
     free(DECODE_ADDRESS(graph->root.ports[0]) - 1 /* back to the symbol */);
@@ -1204,7 +1211,7 @@ free_context(struct context *const restrict graph) {
 COMPILER_PURE COMPILER_NONNULL(1) COMPILER_HOT //
 inline static bool
 is_normalized_graph(const struct context *const restrict graph) {
-    assert(graph);
+    MY_ASSERT(graph);
 
 #define X(focus_name) (0 == graph->focus_name->count) &&
     return CONTEXT_MULTIFOCUSES true;
@@ -1216,7 +1223,7 @@ is_normalized_graph(const struct context *const restrict graph) {
 COMPILER_NONNULL(1) //
 static void
 print_stats(const struct context *const restrict graph) {
-    assert(graph);
+    MY_ASSERT(graph);
 
     const uint64_t ncalls =
         graph->nunary_calls + graph->nbinary_calls + graph->nbinary_calls_aux;
@@ -1247,18 +1254,18 @@ alloc_node_from(
     struct context *const restrict graph,
     const uint64_t symbol,
     const struct node *const restrict prototype) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(SYMBOL_ROOT != symbol);
     if (prototype) { XASSERT(prototype->ports); }
 
 #ifndef NDEBUG
     if (prototype) {
         if (IS_DUPLICATOR(symbol)) {
-            assert(IS_DUPLICATOR(prototype->ports[-1]));
+            MY_ASSERT(IS_DUPLICATOR(prototype->ports[-1]));
         } else if (IS_DELIMITER(symbol)) {
-            assert(IS_DELIMITER(prototype->ports[-1]));
+            MY_ASSERT(IS_DELIMITER(prototype->ports[-1]));
         } else {
-            assert(symbol == prototype->ports[-1]);
+            MY_ASSERT(symbol == prototype->ports[-1]);
         }
     }
 #endif
@@ -1422,7 +1429,7 @@ struct delimiter_template {
 static void
 assert_delimiter_template(const struct delimiter_template template) {
     XASSERT(template.idx < INDEX_RANGE);
-    assert(template.points_to), assert(template.goes_from);
+    MY_ASSERT(template.points_to), MY_ASSERT(template.goes_from);
 }
 
 #else
@@ -1436,7 +1443,7 @@ static void
 inst_delimiter_as_is(
     struct context *const restrict graph,
     const struct delimiter_template template) {
-    assert(graph);
+    MY_ASSERT(graph);
     assert_delimiter_template(template);
 
     const struct node delim = alloc_node(graph, SYMBOL_DELIMITER(template.idx));
@@ -1450,7 +1457,7 @@ static void
 inst_delimiter(
     struct context *const restrict graph,
     const struct delimiter_template template) {
-    assert(graph);
+    MY_ASSERT(graph);
     assert_delimiter_template(template);
 
     const struct node g = follow_port(&template.points_to[0]);
@@ -1474,7 +1481,7 @@ inst_delimiter(
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 try_merge_delimiter(struct context *const restrict graph, const struct node f) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports);
     XASSERT(IS_DELIMITER(f.ports[-1]));
 
@@ -1493,8 +1500,6 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
         free_node(f);
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nmergings++;
-#else
-        (void)graph;
 #endif
     }
 }
@@ -1503,7 +1508,7 @@ COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 try_merge_if_delimiter(
     struct context *const restrict graph, const struct node f) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports);
 
     if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(graph, f); }
@@ -1728,7 +1733,7 @@ COMPILER_NONNULL(1) //
 inline static bool
 graphviz_is_current_node(
     struct graphviz_context *const restrict ctx, const struct node node) {
-    assert(ctx);
+    MY_ASSERT(ctx);
     XASSERT(node.ports);
 
     return ctx->graph->current_pair[0].ports == node.ports ||
@@ -1739,7 +1744,7 @@ COMPILER_NONNULL(1) //
 static void
 graphviz_draw_node(
     struct graphviz_context *const restrict ctx, const struct node node) {
-    assert(ctx), XASSERT(ctx->stream);
+    MY_ASSERT(ctx), XASSERT(ctx->stream);
     XASSERT(node.ports);
 
     const uint64_t *const p = node.ports;
@@ -1784,7 +1789,7 @@ graphviz_draw_edge(
     struct graphviz_context *const restrict ctx,
     const struct node source,
     const uint8_t i) {
-    assert(ctx);
+    MY_ASSERT(ctx);
     XASSERT(source.ports);
 
     uint64_t *const target_port = DECODE_ADDRESS(source.ports[i]);
@@ -1817,7 +1822,7 @@ go_graphviz(
     struct graphviz_context *const restrict ctx,
     const struct node source,
     const uint8_t i) {
-    assert(ctx), XASSERT(ctx->stream);
+    MY_ASSERT(ctx), XASSERT(ctx->stream);
     XASSERT(source.ports);
 
     const struct node node = follow_port(&source.ports[i]);
@@ -1838,8 +1843,8 @@ graphviz(
     const char filename[const restrict]) {
     debug("%s(\"%s\")", __func__, filename);
 
-    assert(graph);
-    assert(filename);
+    MY_ASSERT(graph);
+    MY_ASSERT(filename);
 
     FILE *fp = fopen(filename, "w");
     if (NULL == fp) { perror("fopen"), abort(); }
@@ -1877,15 +1882,13 @@ graphviz(
 COMPILER_NONNULL(1) //
 static void
 wait_for_user(struct context *const restrict graph) {
-    assert(graph);
+    MY_ASSERT(graph);
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
     graphviz(graph, "target/state.dot");
     if (system("./command/graphviz-state.sh") != 0) {
         panic("Failed to run `./command/graphviz-state.sh`!");
     }
-#else
-    (void)graph;
 #endif
 
     printf("Press ENTER to proceed...");
@@ -1927,8 +1930,8 @@ collect_garbage(
     struct context *const restrict graph, uint64_t *const restrict port) {
     debug("%s(%p)", __func__, (void *)port);
 
-    assert(graph);
-    assert(port);
+    MY_ASSERT(graph);
+    MY_ASSERT(port);
     XASSERT(graph->mark_focus), XASSERT(graph->sweep_focus);
 
     // This multifocus conteyns the ports _to be followed_, not necessarily
@@ -2027,8 +2030,8 @@ try_unshare(
     const struct node atom) {
     debug("%s(%p, %s)", __func__, (void *)port, print_node(atom));
 
-    assert(graph);
-    assert(port);
+    MY_ASSERT(graph);
+    MY_ASSERT(port);
     XASSERT(atom.ports);
     XASSERT(graph->unshare_focus);
 
@@ -2077,11 +2080,11 @@ is_beta(const struct node f, const struct node g) {
 
 static void
 assert_annihilation(const struct node f, const struct node g) {
-    assert(f.ports), assert(g.ports);
-    assert(is_interaction(f, g));
-    assert(SYMBOL_APPLICATOR != f.ports[-1]);
-    assert(SYMBOL_LAMBDA != f.ports[-1]);
-    assert(f.ports[-1] == g.ports[-1]);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(SYMBOL_APPLICATOR != f.ports[-1]);
+    MY_ASSERT(SYMBOL_LAMBDA != f.ports[-1]);
+    MY_ASSERT(f.ports[-1] == g.ports[-1]);
 }
 
 static void
@@ -2089,11 +2092,11 @@ assert_beta(
     const struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    assert(graph);
-    assert(graph->phase < PHASE_UNWIND);
-    assert(f.ports), assert(g.ports);
-    assert(is_interaction(f, g));
-    assert(is_beta(f, g));
+    MY_ASSERT(graph);
+    MY_ASSERT(graph->phase < PHASE_UNWIND);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(is_beta(f, g));
 }
 
 static void
@@ -2101,11 +2104,11 @@ assert_identity_beta(
     const struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    assert(graph);
-    assert(graph->phase < PHASE_UNWIND);
-    assert(f.ports), assert(g.ports);
-    assert(is_interaction(f, g));
-    assert(
+    MY_ASSERT(graph);
+    MY_ASSERT(graph->phase < PHASE_UNWIND);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(
         SYMBOL_APPLICATOR == f.ports[-1] &&
         SYMBOL_IDENTITY_LAMBDA == g.ports[-1]);
 }
@@ -2115,19 +2118,20 @@ assert_gc_beta(
     const struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    assert(graph);
-    assert(graph->phase < PHASE_UNWIND);
-    assert(f.ports), assert(g.ports);
-    assert(is_interaction(f, g));
-    assert(SYMBOL_APPLICATOR == f.ports[-1] && SYMBOL_GC_LAMBDA == g.ports[-1]);
+    MY_ASSERT(graph);
+    MY_ASSERT(graph->phase < PHASE_UNWIND);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(
+        SYMBOL_APPLICATOR == f.ports[-1] && SYMBOL_GC_LAMBDA == g.ports[-1]);
 }
 
 static void
 assert_commutation(const struct node f, const struct node g) {
-    assert(f.ports), assert(g.ports);
-    assert(is_interaction(f, g));
-    assert(!is_beta(f, g)), assert(!is_beta(g, f));
-    assert(f.ports[-1] != g.ports[-1]);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(!is_beta(f, g)), MY_ASSERT(!is_beta(g, f));
+    MY_ASSERT(f.ports[-1] != g.ports[-1]);
 }
 
 static void
@@ -2135,12 +2139,12 @@ assert_unary_call(
     const struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    assert(graph);
-    assert(graph->phase < PHASE_UNWIND);
-    assert(f.ports), assert(g.ports);
-    assert(is_interaction(f, g));
-    assert(SYMBOL_UNARY_CALL == f.ports[-1]);
-    assert(SYMBOL_CELL == g.ports[-1]);
+    MY_ASSERT(graph);
+    MY_ASSERT(graph->phase < PHASE_UNWIND);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(SYMBOL_UNARY_CALL == f.ports[-1]);
+    MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
 }
 
 static void
@@ -2148,12 +2152,12 @@ assert_binary_call(
     const struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    assert(graph);
-    assert(graph->phase < PHASE_UNWIND);
-    assert(f.ports), assert(g.ports);
-    assert(is_interaction(f, g));
-    assert(SYMBOL_BINARY_CALL == f.ports[-1]);
-    assert(SYMBOL_CELL == g.ports[-1]);
+    MY_ASSERT(graph);
+    MY_ASSERT(graph->phase < PHASE_UNWIND);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(SYMBOL_BINARY_CALL == f.ports[-1]);
+    MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
 }
 
 static void
@@ -2161,12 +2165,12 @@ assert_binary_call_aux(
     const struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    assert(graph);
-    assert(graph->phase < PHASE_UNWIND);
-    assert(f.ports), assert(g.ports);
-    assert(is_interaction(f, g));
-    assert(SYMBOL_BINARY_CALL_AUX == f.ports[-1]);
-    assert(SYMBOL_CELL == g.ports[-1]);
+    MY_ASSERT(graph);
+    MY_ASSERT(graph->phase < PHASE_UNWIND);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(SYMBOL_BINARY_CALL_AUX == f.ports[-1]);
+    MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
 }
 
 static void
@@ -2174,12 +2178,12 @@ assert_if_then_else(
     const struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    assert(graph);
-    assert(graph->phase < PHASE_UNWIND);
-    assert(f.ports), assert(g.ports);
-    assert(is_interaction(f, g));
-    assert(SYMBOL_IF_THEN_ELSE == f.ports[-1]);
-    assert(SYMBOL_CELL == g.ports[-1]);
+    MY_ASSERT(graph);
+    MY_ASSERT(graph->phase < PHASE_UNWIND);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(SYMBOL_IF_THEN_ELSE == f.ports[-1]);
+    MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
 }
 
 static void
@@ -2187,12 +2191,12 @@ assert_perform(
     const struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    assert(graph);
-    assert(graph->phase < PHASE_UNWIND);
-    assert(f.ports), assert(g.ports);
-    assert(is_interaction(f, g));
-    assert(SYMBOL_PERFORM == f.ports[-1]);
-    assert(SYMBOL_CELL == g.ports[-1]);
+    MY_ASSERT(graph);
+    MY_ASSERT(graph->phase < PHASE_UNWIND);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(SYMBOL_PERFORM == f.ports[-1]);
+    MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
 }
 
 #else
@@ -2219,8 +2223,8 @@ debug_interaction(
     struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    assert(caller);
-    assert(graph);
+    MY_ASSERT(caller);
+    MY_ASSERT(graph);
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
     graph->current_pair[0] = f, graph->current_pair[1] = g;
@@ -2241,7 +2245,7 @@ debug_interaction(
 
 #else
 
-#define debug_interaction(caller, graph, f, g) ((void)(graph))
+#define debug_interaction(caller, graph, f, g) ((void)0)
 
 #endif // OPTISCOPE_ENABLE_TRACING
 
@@ -2257,7 +2261,7 @@ typedef void (*Rule)(
     COMPILER_UNUSED static const Rule name##_type_check = name
 
 RULE_DEFINITION(annihilate, graph, f, g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_annihilation(f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2280,7 +2284,7 @@ RULE_DEFINITION(annihilate, graph, f, g) {
 TYPE_CHECK_RULE(annihilate);
 
 RULE_DEFINITION(commute, graph, f, g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_commutation(f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2296,13 +2300,13 @@ RULE_DEFINITION(commute, graph, f, g) {
 
         // Ensure that lambdas & delimiters are alwaies `g`, to give `f` the
         // opportunity to increment its index.
-        assert(
+        MY_ASSERT(
             !((IS_ANY_LAMBDA(f.ports[-1]) || IS_DELIMITER(f.ports[-1])) &&
               !with_lambda_or_delim));
 
         // If `f` is a lambda & `g` is a delimiter, swap them so that the index
         // of `g` could be incremented.
-        assert(!(IS_ANY_LAMBDA(f.ports[-1]) && IS_DELIMITER(g.ports[-1])));
+        MY_ASSERT(!(IS_ANY_LAMBDA(f.ports[-1]) && IS_DELIMITER(g.ports[-1])));
     }
 #endif
 
@@ -2360,7 +2364,7 @@ RULE_DEFINITION(commute, graph, f, g) {
 TYPE_CHECK_RULE(commute);
 
 RULE_DEFINITION(beta, graph, f, g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_beta(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2391,7 +2395,7 @@ RULE_DEFINITION(beta, graph, f, g) {
 TYPE_CHECK_RULE(beta);
 
 RULE_DEFINITION(identity_beta, graph, f, g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_identity_beta(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2408,7 +2412,7 @@ RULE_DEFINITION(identity_beta, graph, f, g) {
 TYPE_CHECK_RULE(identity_beta);
 
 RULE_DEFINITION(gc_beta, graph, f, g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_gc_beta(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2432,7 +2436,7 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
 TYPE_CHECK_RULE(gc_beta);
 
 RULE_DEFINITION(do_unary_call, graph, f, g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_unary_call(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2453,7 +2457,7 @@ RULE_DEFINITION(do_unary_call, graph, f, g) {
 TYPE_CHECK_RULE(do_unary_call);
 
 RULE_DEFINITION(do_binary_call, graph, f, g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_binary_call(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2474,7 +2478,7 @@ RULE_DEFINITION(do_binary_call, graph, f, g) {
 TYPE_CHECK_RULE(do_binary_call);
 
 RULE_DEFINITION(do_binary_call_aux, graph, f, g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_binary_call_aux(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2501,10 +2505,10 @@ connect_branch(
     const struct node f,
     uint64_t *const restrict choice,
     uint64_t *const restrict other) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports);
-    assert(choice);
-    assert(other);
+    MY_ASSERT(choice);
+    MY_ASSERT(other);
 
     const struct node eraser = alloc_node(graph, SYMBOL_ERASER);
 
@@ -2515,7 +2519,7 @@ connect_branch(
 }
 
 RULE_DEFINITION(do_if_then_else, graph, f, g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_if_then_else(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2539,7 +2543,7 @@ RULE_DEFINITION(do_if_then_else, graph, f, g) {
 TYPE_CHECK_RULE(do_if_then_else);
 
 RULE_DEFINITION(do_perform, graph, f, g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_perform(graph, f, g);
     debug_interaction(__func__, graph, f, g);
@@ -2565,8 +2569,8 @@ interact(
     struct context *const restrict graph,
     const Rule rule,
     const struct node f) {
-    assert(graph);
-    assert(rule);
+    MY_ASSERT(graph);
+    MY_ASSERT(rule);
     XASSERT(f.ports);
 
     const struct node g = follow_port(&f.ports[0]);
@@ -2586,7 +2590,7 @@ interact(
 
 #define ANNIHILATION_PROLOGUE(graph, f, g)                                     \
     do {                                                                       \
-        assert(graph);                                                         \
+        MY_ASSERT(graph);                                                      \
         XASSERT(f.ports), XASSERT(g.ports);                                    \
         assert_annihilation(f, g);                                             \
         debug_interaction(__func__, graph, f, g);                              \
@@ -2638,7 +2642,7 @@ TYPE_CHECK_RULE(annihilate_dup_dup);
 
 #define COMMUTATION_PROLOGUE(graph, f, g)                                      \
     do {                                                                       \
-        assert(graph);                                                         \
+        MY_ASSERT(graph);                                                      \
         XASSERT(f.ports), XASSERT(g.ports);                                    \
         assert_commutation(f, g);                                              \
         debug_interaction(__func__, graph, f, g);                              \
@@ -2900,7 +2904,7 @@ static void
 walk_graph(
     struct context *const graph,
     void (*const cb)(struct context *const, const struct node)) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(graph->root.ports);
 
     struct multifocus *focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
@@ -2932,12 +2936,7 @@ walk_graph(
 COMPILER_NONNULL(1) //
 static void
 unwind_cb(struct context *const graph, const struct node node) {
-#ifndef NDEBUG
-    assert(graph);
-#else
-    (void)graph;
-#endif
-
+    MY_ASSERT(graph);
     XASSERT(node.ports);
 
     if (SYMBOL_APPLICATOR != node.ports[-1]) { return; }
@@ -2954,7 +2953,7 @@ unwind_cb(struct context *const graph, const struct node node) {
 COMPILER_NONNULL(1) //
 static void
 scope_remove_cb(struct context *const graph, const struct node node) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(node.ports);
 
     if (!IS_DELIMITER(node.ports[-1])) { return; }
@@ -2974,7 +2973,7 @@ scope_remove_cb(struct context *const graph, const struct node node) {
 COMPILER_NONNULL(1) //
 static void
 loop_cut_cb(struct context *const graph, const struct node node) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(node.ports);
 
     if (!IS_RELEVANT_LAMBDA(node.ports[-1])) { return; }
@@ -2998,7 +2997,7 @@ COMPILER_NONNULL(1) //
 static void
 to_lambda_string(
     FILE *const restrict stream, const uint64_t i, const struct node node) {
-    assert(stream);
+    MY_ASSERT(stream);
     XASSERT(node.ports);
 
     switch (node.ports[-1]) {
@@ -3119,7 +3118,7 @@ struct lambda_term {
 
 extern LambdaTerm
 apply(const restrict LambdaTerm rator, const restrict LambdaTerm rand) {
-    assert(rator), assert(rand);
+    MY_ASSERT(rator), MY_ASSERT(rand);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_APPLY;
@@ -3142,8 +3141,8 @@ prelambda(void) {
 extern LambdaTerm
 link_lambda_body(
     const restrict LambdaTerm binder, const restrict LambdaTerm body) {
-    assert(binder), assert(body);
-    assert(LAMBDA_TERM_LAMBDA == binder->ty);
+    MY_ASSERT(binder), MY_ASSERT(body);
+    MY_ASSERT(LAMBDA_TERM_LAMBDA == binder->ty);
 
     binder->data.lambda->body = body;
 
@@ -3152,8 +3151,8 @@ link_lambda_body(
 
 extern LambdaTerm
 var(const restrict LambdaTerm binder) {
-    assert(binder);
-    assert(LAMBDA_TERM_LAMBDA == binder->ty);
+    MY_ASSERT(binder);
+    MY_ASSERT(LAMBDA_TERM_LAMBDA == binder->ty);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_VAR;
@@ -3177,8 +3176,8 @@ cell(const uint64_t value) {
 extern LambdaTerm
 unary_call(
     uint64_t (*const function)(uint64_t), const restrict LambdaTerm rand) {
-    assert(function);
-    assert(rand);
+    MY_ASSERT(function);
+    MY_ASSERT(rand);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_UNARY_CALL;
@@ -3193,8 +3192,8 @@ binary_call(
     uint64_t (*const function)(uint64_t, uint64_t),
     const restrict LambdaTerm lhs,
     const restrict LambdaTerm rhs) {
-    assert(function);
-    assert(lhs), assert(rhs);
+    MY_ASSERT(function);
+    MY_ASSERT(lhs), MY_ASSERT(rhs);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_BINARY_CALL;
@@ -3210,8 +3209,8 @@ if_then_else(
     const restrict LambdaTerm condition,
     const restrict LambdaTerm if_then,
     const restrict LambdaTerm if_else) {
-    assert(condition);
-    assert(if_then), assert(if_else);
+    MY_ASSERT(condition);
+    MY_ASSERT(if_then), MY_ASSERT(if_else);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_IF_THEN_ELSE;
@@ -3224,7 +3223,7 @@ if_then_else(
 
 extern LambdaTerm
 fix(const restrict LambdaTerm f) {
-    assert(f);
+    MY_ASSERT(f);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_FIX;
@@ -3235,7 +3234,7 @@ fix(const restrict LambdaTerm f) {
 
 extern LambdaTerm
 perform(const restrict LambdaTerm action, const restrict LambdaTerm k) {
-    assert(action), assert(k);
+    MY_ASSERT(action), MY_ASSERT(k);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_PERFORM;
@@ -3255,8 +3254,8 @@ build_delimiter_sequence(
     uint64_t *const restrict binder_port,
     const uint64_t idx,
     const uint64_t n) {
-    assert(graph);
-    assert(binder_port);
+    MY_ASSERT(graph);
+    MY_ASSERT(binder_port);
     XASSERT(n > 0);
 
     struct node current = alloc_node(graph, SYMBOL_DELIMITER(idx));
@@ -3281,8 +3280,8 @@ build_duplicator_tree(
     uint64_t *const restrict binder_port,
     const uint64_t idx,
     const uint64_t n) {
-    assert(graph);
-    assert(binder_port);
+    MY_ASSERT(graph);
+    MY_ASSERT(binder_port);
     XASSERT(n >= 2);
 
     uint64_t **const ports = xmalloc(sizeof ports[0] * n);
@@ -3309,7 +3308,7 @@ build_duplicator_tree(
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) //
 inline static bool
 is_identity_lambda(const struct lambda_data *const restrict lambda) {
-    assert(lambda);
+    MY_ASSERT(lambda);
 
     return LAMBDA_TERM_VAR == lambda->body->ty &&
            lambda == *lambda->body->data.var;
@@ -3320,8 +3319,8 @@ inline static bool
 is_eta_reducible(
     struct lambda_data *const restrict lambda,
     struct lambda_term *const restrict body) {
-    assert(lambda);
-    assert(body);
+    MY_ASSERT(lambda);
+    MY_ASSERT(body);
 
     return LAMBDA_TERM_APPLY == body->ty &&
            LAMBDA_TERM_VAR == body->data.apply.rator->ty &&
@@ -3332,7 +3331,7 @@ is_eta_reducible(
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) //
 static uint64_t
 fv_count(struct lambda_term *const restrict term) {
-    assert(term);
+    MY_ASSERT(term);
 
     switch (term->ty) {
     case LAMBDA_TERM_APPLY:
@@ -3371,9 +3370,9 @@ of_lambda_term(
     struct lambda_term *const restrict term,
     uint64_t *const restrict output_port,
     const uint64_t lvl) {
-    assert(graph);
-    assert(term);
-    assert(output_port);
+    MY_ASSERT(graph);
+    MY_ASSERT(term);
+    MY_ASSERT(output_port);
 
     switch (term->ty) {
     case LAMBDA_TERM_APPLY: {
@@ -3719,9 +3718,12 @@ fire_rule(
     struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
-    assert(is_interaction(f, g));
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+    MY_ASSERT(is_interaction(f, g));
+#pragma GCC diagnostic pop
 
 #define BETA                          beta
 #define IDENTITY_BETA                 identity_beta
@@ -3802,9 +3804,12 @@ register_active_pair(
     struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
-    assert(is_interaction(f, g));
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+    MY_ASSERT(is_interaction(f, g));
+#pragma GCC diagnostic pop
 
 #define BETA(graph, f, g)                   focus_on(graph->betas, f)
 #define IDENTITY_BETA(graph, f, g)          focus_on(graph->identity_betas, f)
@@ -3895,7 +3900,7 @@ static void
 weak_reduction(struct context *const restrict graph) {
     debug("%s()", __func__);
 
-    assert(graph);
+    MY_ASSERT(graph);
 
     struct node apex = graph->root;
     struct multifocus *stack = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
@@ -3936,7 +3941,7 @@ finish:
 COMPILER_NONNULL(1) //
 static void
 normalize_delimiters_cb(struct context *const graph, const struct node node) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(node.ports);
 
     if (!IS_DELIMITER(node.ports[-1])) { return; }
@@ -3955,7 +3960,7 @@ normalize_delimiters_cb(struct context *const graph, const struct node node) {
 COMPILER_NONNULL(1) //
 static void
 multifocus_cb(struct context *const graph, const struct node f) {
-    assert(graph);
+    MY_ASSERT(graph);
     XASSERT(f.ports);
 
     const struct node g = follow_port(&f.ports[0]);
@@ -3978,7 +3983,7 @@ static void
 normalize_x_rules(struct context *const restrict graph) {
     debug("%s()", __func__);
 
-    assert(graph);
+    MY_ASSERT(graph);
 
 repeat:
     // Register all the active pairs in the graph in corresponding
@@ -4004,7 +4009,7 @@ repeat:
     CONSUME_MULTIFOCUS (graph->commutations, f) { interact(graph, commute, f); }
     // clang-format on
 
-    assert(is_normalized_graph(graph));
+    MY_ASSERT(is_normalized_graph(graph));
 
     goto repeat;
 }
@@ -4016,7 +4021,7 @@ optiscope_algorithm(
 ) {
     debug("%s()", __func__);
 
-    assert(term);
+    MY_ASSERT(term);
 
     struct context *const graph = alloc_context();
 
@@ -4071,7 +4076,7 @@ optiscope_algorithm(
         graphviz(graph, "target/5-unloopedx.dot");
     }
 
-    assert(is_normalized_graph(graph));
+    MY_ASSERT(is_normalized_graph(graph));
 
     to_lambda_string(stream, 0, follow_port(&graph->root.ports[1]));
 
