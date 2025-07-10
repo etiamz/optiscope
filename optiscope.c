@@ -883,23 +883,6 @@ compare_node_ptrs(const struct node f, const struct node g) {
         }                                                                      \
     } while (0)
 
-COMPILER_WARN_UNUSED_RESULT COMPILER_COLD //
-static struct node
-xmalloc_node(const uint64_t symbol, const uint64_t phase) {
-    const uint64_t n = ports_count(symbol);
-
-    uint64_t *ports = xmalloc(sizeof *ports * (n + 1));
-    ports++;
-    ports[-1] = symbol;
-
-    for (uint64_t offset = 0; offset < n; offset++) {
-        ports[offset] =
-            ENCODE_ADDRESS(ENCODE_METADATA(offset, phase), UINT64_C(0));
-    }
-
-    return (struct node){ports};
-}
-
 #ifdef OPTISCOPE_ENABLE_TRACING
 
 #define MAX_SNODE_SIZE 256
@@ -1175,12 +1158,24 @@ COMPILER_MALLOC(free_context, 1) COMPILER_RETURNS_NONNULL
 COMPILER_WARN_UNUSED_RESULT COMPILER_COLD
 // clang-format on
 static struct context *alloc_context(void) {
-    const struct node root = xmalloc_node(SYMBOL_ROOT, PHASE_REDUCE_WEAKLY);
-    const struct node eraser = xmalloc_node(SYMBOL_ERASER, PHASE_REDUCE_WEAKLY);
+    const struct node root = {(uint64_t *)xmalloc(sizeof(uint64_t) * 3) + 1};
+    const struct node eraser = {(uint64_t *)xmalloc(sizeof(uint64_t) * 2) + 1};
+
+    root.ports[-1] = SYMBOL_ROOT;
+    eraser.ports[-1] = SYMBOL_ERASER;
 
     // Since the principle root port is connected to the eraser, the root will
     // never interact with "real" nodes.
-    connect_ports(&root.ports[0], &eraser.ports[0]);
+    // clang-format off
+    root.ports[0] =
+        PORT_VALUE(
+            UINT64_C(0), PHASE_REDUCE_WEAKLY, (uint64_t)&eraser.ports[0]);
+    eraser.ports[0] =
+        PORT_VALUE(
+            UINT64_C(0), PHASE_REDUCE_WEAKLY, (uint64_t)&root.ports[0]);
+    // clang-format on
+
+    root.ports[1] = PORT_VALUE(UINT64_C(1), UINT64_C(0), UINT64_C(0));
 
     struct context *const graph = xmalloc(sizeof *graph);
     graph->root = root;
