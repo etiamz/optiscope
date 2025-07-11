@@ -402,7 +402,7 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX, "Every bit of a symbol must be 
 #define FOR_ALL_PORTS(node, i, seed)                                           \
     for (uint8_t i = seed; i < ports_count((node).ports[-1]); i++)
 
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
+COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
 static uint8_t
 ports_count(const uint64_t symbol) {
     switch (symbol) {
@@ -858,7 +858,7 @@ struct node {
 STATIC_ASSERT(sizeof(struct node) == sizeof(uint64_t *), "`struct node` must be as tiny as a pointer!");
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT
-COMPILER_FLATTEN //
+COMPILER_ALWAYS_INLINE //
 inline static struct node
 node_of_port(uint64_t *const restrict port) {
     MY_ASSERT(port);
@@ -870,7 +870,7 @@ node_of_port(uint64_t *const restrict port) {
 }
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT
-COMPILER_FLATTEN //
+COMPILER_ALWAYS_INLINE //
 inline static struct node
 follow_port(uint64_t *const restrict port) {
     MY_ASSERT(port);
@@ -888,7 +888,7 @@ compare_node_ptrs(const struct node f, const struct node g) {
     else return 0;
 }
 
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
 inline static bool
 is_either_root(const struct node f, const struct node g) {
     XASSERT(f.ports), XASSERT(g.ports);
@@ -947,7 +947,7 @@ print_node(const struct node node) {
 
 #endif // OPTISCOPE_ENABLE_TRACING
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
 inline static bool
 is_interaction(const struct node f, const struct node g) {
     XASSERT(f.ports), XASSERT(g.ports);
@@ -956,7 +956,7 @@ is_interaction(const struct node f, const struct node g) {
            DECODE_ADDRESS(g.ports[0]) == &f.ports[0];
 }
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static bool
 is_interacting_with(const struct node f, const struct node g) {
     XASSERT(f.ports), XASSERT(g.ports);
@@ -1075,7 +1075,7 @@ expand_focus(struct multifocus *const restrict focus) {
     }
 }
 
-COMPILER_NONNULL(1) COMPILER_HOT //
+COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
 focus_on(struct multifocus *const restrict focus, const struct node node) {
     MY_ASSERT(focus);
@@ -1087,7 +1087,7 @@ focus_on(struct multifocus *const restrict focus, const struct node node) {
     focus->array[focus->count++] = node;
 }
 
-COMPILER_NONNULL(1) COMPILER_HOT //
+COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static struct node
 unfocus(struct multifocus *const restrict focus) {
     MY_ASSERT(focus);
@@ -1097,7 +1097,7 @@ unfocus(struct multifocus *const restrict focus) {
     return focus->array[--focus->count];
 }
 
-COMPILER_NONNULL(1) COMPILER_HOT //
+COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static struct node
 unfocus_or(
     struct multifocus *const restrict focus, //
@@ -1212,7 +1212,7 @@ free_context(struct context *const restrict graph) {
     free(graph);
 }
 
-COMPILER_PURE COMPILER_NONNULL(1) COMPILER_HOT //
+COMPILER_PURE COMPILER_NONNULL(1) //
 inline static bool
 is_normalized_graph(const struct context *const restrict graph) {
     MY_ASSERT(graph);
@@ -3303,7 +3303,7 @@ build_duplicator_tree(
 
 // This procedure is onely used _after_ weak reduction, in order to transforme
 // nodes & collect active pairs.
-COMPILER_NONNULL(1) COMPILER_HOT //
+COMPILER_NONNULL(1) //
 static void
 walk_graph(
     struct context *const graph,
