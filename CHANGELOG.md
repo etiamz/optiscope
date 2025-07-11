@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
  - Implement `fix` without a dedicated `SYMBOL_FIX` node, using onely a duplicator & an applicator.
+ - Garbage collection: launch onely during the weak reduction phase.
 
 ### Fixed
 

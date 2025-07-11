@@ -1907,13 +1907,10 @@ wait_for_user(struct context *const restrict graph) {
 // Mark & sweep garbage collection
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-#define COLLECT(graph, f)                                                      \
-    do {                                                                       \
-        set_phase(&(f).ports[0], PHASE_GARBAGE);                               \
-        if (PHASE_REDUCE_WEAKLY == (graph)->phase || !is_active((f))) {        \
-            focus_on((graph)->sweep_focus, (f));                               \
-        }                                                                      \
-    } while (false)
+// clang-format off
+#define COLLECT(graph, f) \
+    (set_phase(&(f).ports[0], PHASE_GARBAGE), focus_on((graph)->sweep_focus, (f)))
+// clang-format on
 
 #define FOLLOW(graph, port)                                                    \
     focus_on((graph)->mark_focus, FAKE_NODE(DECODE_ADDRESS((port))))
@@ -1935,6 +1932,15 @@ collect_garbage(
     MY_ASSERT(graph);
     MY_ASSERT(port);
     XASSERT(graph->mark_focus), XASSERT(graph->sweep_focus);
+
+    // On later algorithmic phases, we just connect the erasable port with a new
+    // eraser, for garbage collection does not provide considerable benefit
+    // after the weak reduction phase.
+    if (PHASE_REDUCE_WEAKLY != graph->phase) {
+        const struct node eraser = alloc_node(graph, SYMBOL_ERASER);
+        connect_ports(&eraser.ports[0], port);
+        return;
+    }
 
     // This multifocus conteyns the ports _to be followed_, not necessarily
     // nodes' _principal_ ports!
@@ -2574,16 +2580,11 @@ interact(
     MY_ASSERT(graph);
     MY_ASSERT(rule);
     XASSERT(f.ports);
+    MY_ASSERT(graph->phase > PHASE_REDUCE_WEAKLY);
+    MY_ASSERT(PHASE_GARBAGE != DECODE_PHASE_METADATA(f.ports[0]));
 
     const struct node g = follow_port(&f.ports[0]);
     XASSERT(g.ports);
-
-    if (PHASE_GARBAGE == DECODE_PHASE_METADATA(f.ports[0])) {
-        // This active node was previously marked as garbage.
-        free_node(f), free_node(g);
-        return;
-    }
-
     rule(graph, f, g);
 }
 
@@ -3988,14 +3989,8 @@ normalize_x_rules(struct context *const restrict graph) {
     MY_ASSERT(graph);
 
 repeat:
-    // Register all the active pairs in the graph in corresponding
-    // multifocuses.
-    graph->phase = PHASE_DISCOVER;
-    walk_graph(graph, multifocus_cb);
-
-    // Reset the nodes' phase metadata we have just touched.
-    graph->phase = PHASE_REDUCE_FULLY;
-    walk_graph(graph, NULL);
+    graph->phase = PHASE_DISCOVER, walk_graph(graph, multifocus_cb);
+    graph->phase = PHASE_REDUCE_FULLY, walk_graph(graph, NULL);
 
     if (is_normalized_graph(graph)) { return; }
 
