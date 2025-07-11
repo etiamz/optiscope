@@ -41,7 +41,7 @@ Benchmark 1: ./fibonacci-of-30
 ```
 
 <details>
-<summary>Interactions count</summary>
+<summary>Statistics profile</summary>
 
 ```
 Annihilation interactions: 14098276
@@ -66,7 +66,7 @@ Benchmark 1: ./church-fibonacci-of-20
 ```
 
 <details>
-<summary>Interactions count</summary>
+<summary>Statistics profile</summary>
 
 ```
 Annihilation interactions: 7604496
@@ -91,7 +91,7 @@ Benchmark 1: ./church-list-reverse-and-sum
 ```
 
 <details>
-<summary>Interactions count</summary>
+<summary>Statistics profile</summary>
 
 ```
 Annihilation interactions: 12572493
@@ -116,7 +116,7 @@ Benchmark 1: ./scott-insertion-sort
 ```
 
 <details>
-<summary>Interactions count</summary>
+<summary>Statistics profile</summary>
 
 ```
 Annihilation interactions: 46264000
@@ -141,7 +141,7 @@ Benchmark 1: ./scott-quicksort
 ```
 
 <details>
-<summary>Interactions count</summary>
+<summary>Statistics profile</summary>
 
 ```
 Annihilation interactions: 103001358
@@ -166,7 +166,7 @@ Benchmark 1: ./scott-tree-map-and-sum
 ```
 
 <details>
-<summary>Interactions count</summary>
+<summary>Statistics profile</summary>
 
 ```
 Annihilation interactions: 11861843
