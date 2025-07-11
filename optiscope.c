@@ -1428,7 +1428,7 @@ struct delimiter_template {
 
 static void
 assert_delimiter_template(const struct delimiter_template template) {
-    XASSERT(template.idx < INDEX_RANGE);
+    MY_ASSERT(template.idx < INDEX_RANGE);
     MY_ASSERT(template.points_to), MY_ASSERT(template.goes_from);
 }
 
@@ -1436,7 +1436,7 @@ assert_delimiter_template(const struct delimiter_template template) {
 
 #define assert_delimiter_template(template) ((void)0)
 
-#endif
+#endif // NDEBUG
 
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
@@ -1484,6 +1484,7 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
     MY_ASSERT(graph);
     XASSERT(f.ports);
     XASSERT(IS_DELIMITER(f.ports[-1]));
+    MY_ASSERT(PHASE_REDUCE_WEAKLY == graph->phase);
 
     uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
     XASSERT(points_to);
@@ -1510,6 +1511,7 @@ try_merge_if_delimiter(
     struct context *const restrict graph, const struct node f) {
     MY_ASSERT(graph);
     XASSERT(f.ports);
+    MY_ASSERT(PHASE_REDUCE_WEAKLY == graph->phase);
 
     if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(graph, f); }
 }
@@ -2592,6 +2594,7 @@ interact(
     do {                                                                       \
         MY_ASSERT(graph);                                                      \
         XASSERT(f.ports), XASSERT(g.ports);                                    \
+        MY_ASSERT(PHASE_REDUCE_WEAKLY == graph->phase);                        \
         assert_annihilation(f, g);                                             \
         debug_interaction(__func__, graph, f, g);                              \
         NANNIHILATIONS_PLUS_PLUS(graph);                                       \
@@ -2644,6 +2647,7 @@ TYPE_CHECK_RULE(annihilate_dup_dup);
     do {                                                                       \
         MY_ASSERT(graph);                                                      \
         XASSERT(f.ports), XASSERT(g.ports);                                    \
+        MY_ASSERT(PHASE_REDUCE_WEAKLY == graph->phase);                        \
         assert_commutation(f, g);                                              \
         debug_interaction(__func__, graph, f, g);                              \
         NCOMMUTATIONS_PLUS_PLUS(graph);                                        \
@@ -2690,10 +2694,8 @@ RULE_DEFINITION(commute_2_2_core, graph, f, g) {
 
     connect_ports(&f.ports[1], &g.ports[1]);
 
-    if (PHASE_REDUCE_WEAKLY == graph->phase) {
-        try_merge_if_delimiter(graph, f);
-        try_merge_if_delimiter(graph, g);
-    }
+    try_merge_if_delimiter(graph, f);
+    try_merge_if_delimiter(graph, g);
 }
 
 TYPE_CHECK_RULE(commute_2_2_core);
@@ -2715,7 +2717,7 @@ RULE_DEFINITION(commute_3_2_core, graph, f, g) {
     connect_ports(&f.ports[1], &g.ports[1]);
     connect_ports(&f.ports[2], &gx.ports[1]);
 
-    if (PHASE_REDUCE_WEAKLY == graph->phase && IS_DELIMITER(g.ports[-1])) {
+    if (IS_DELIMITER(g.ports[-1])) {
         try_merge_delimiter(graph, g);
         try_merge_delimiter(graph, gx);
     }
@@ -2773,7 +2775,7 @@ RULE_DEFINITION(commute_4_2, graph, f, g) {
     connect_ports(&f.ports[2], &gx.ports[1]);
     connect_ports(&f.ports[3], &gxx.ports[1]);
 
-    if (PHASE_REDUCE_WEAKLY == graph->phase && IS_DELIMITER(g.ports[-1])) {
+    if (IS_DELIMITER(g.ports[-1])) {
         try_merge_delimiter(graph, g);
         try_merge_delimiter(graph, gx);
         try_merge_delimiter(graph, gxx);
