@@ -117,6 +117,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define COMPILER_COLD               __attribute__((cold))
 #define COMPILER_HOT                __attribute__((hot))
 #define COMPILER_FLATTEN            __attribute__((flatten))
+#define COMPILER_ALWAYS_INLINE      __attribute__((always_inline))
 #define COMPILER_RETURNS_NONNULL    __attribute__((returns_nonnull))
 #define COMPILER_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 #define COMPILER_FALLTHROUGH        __attribute__((fallthrough))
@@ -181,6 +182,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef COMPILER_FLATTEN
 #define COMPILER_FLATTEN COMPILER_IGNORE
+#endif
+
+#ifndef COMPILER_ALWAYS_INLINE
+#define COMPILER_ALWAYS_INLINE COMPILER_IGNORE
 #endif
 
 #ifndef COMPILER_RETURNS_NONNULL
@@ -429,7 +434,7 @@ ports_count(const uint64_t symbol) {
 }
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL
-COMPILER_NONNULL(1) COMPILER_HOT //
+COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static uint64_t *
 get_principal_port(uint64_t *const restrict port) {
     MY_ASSERT(port);
@@ -437,7 +442,7 @@ get_principal_port(uint64_t *const restrict port) {
     return (port - DECODE_OFFSET_METADATA(port[0]));
 }
 
-COMPILER_NONNULL(1, 2) COMPILER_HOT //
+COMPILER_NONNULL(1, 2) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
 connect_port_to(
     uint64_t *const restrict port, const uint64_t *const restrict another) {
@@ -454,7 +459,7 @@ connect_port_to(
     MY_ASSERT(DECODE_ADDRESS_METADATA(*port) == port_metadata);
 }
 
-COMPILER_NONNULL(1, 2) COMPILER_HOT COMPILER_FLATTEN //
+COMPILER_NONNULL(1, 2) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
 connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
     debug("%p 🔗 %p", (void *)lhs, (void *)rhs);
@@ -465,8 +470,9 @@ connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
     connect_port_to(lhs, rhs), connect_port_to(rhs, lhs);
 }
 
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
-static int64_t
+COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT
+COMPILER_ALWAYS_INLINE //
+inline static int64_t
 symbol_index(const uint64_t symbol) {
     STATIC_ASSERT(INDEX_RANGE <= (uint64_t)INT64_MAX, "Indices must fit in `int64_t`!");
 
@@ -524,7 +530,7 @@ print_symbol(const uint64_t symbol) {
     return buffer;
 }
 
-COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
+COMPILER_WARN_UNUSED_RESULT COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static uint64_t
 bump_index(const uint64_t symbol, const uint64_t offset) {
     XASSERT(symbol > MAX_REGULAR_SYMBOL);
@@ -545,7 +551,7 @@ bump_index(const uint64_t symbol, const uint64_t offset) {
 #define PHASE_LOOP_CUT      UINT64_C(5)
 #define PHASE_GARBAGE       UINT64_C(6)
 
-COMPILER_NONNULL(1) COMPILER_HOT //
+COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
 set_phase(uint64_t *const restrict port, const uint64_t phase) {
     MY_ASSERT(port);
