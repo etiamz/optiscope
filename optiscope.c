@@ -1709,13 +1709,37 @@ graphviz_edge_tailport(
     }
 }
 
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL //
+static const char *
+graphviz_print_symbol(const struct node node) {
+    XASSERT(node.ports);
+
+    static char buffer[MAX_SSYMBOL_SIZE + 64] = {0};
+
+    sprintf(buffer, "%s", print_symbol(node.ports[-1]));
+
+#define SPRINTF(fmt, ...) sprintf(buffer + strlen(buffer), fmt, __VA_ARGS__)
+
+    if (SYMBOL_CELL == node.ports[-1]) {
+        SPRINTF(" %" PRIu64, node.ports[1]);
+    } else if (SYMBOL_BINARY_CALL_AUX == node.ports[-1]) {
+        SPRINTF(" %" PRIu64, node.ports[3]);
+    } else if (IS_DELIMITER(node.ports[-1])) {
+        SPRINTF(" %" PRIu64, node.ports[2]);
+    }
+
+#undef SPRINTF
+
+    return buffer;
+}
+
 struct graphviz_context {
     struct context *graph;
     struct node_list *history;
     FILE *stream;
 };
 
-COMPILER_NONNULL(1) //
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) //
 inline static bool
 graphviz_is_current_node(
     struct graphviz_context *const restrict ctx, const struct node node) {
@@ -1726,6 +1750,7 @@ graphviz_is_current_node(
            ctx->graph->current_pair[1].ports == node.ports;
 }
 
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
 inline static bool
 graphviz_is_active_node(const struct node node) {
     XASSERT(node.ports);
@@ -1735,6 +1760,7 @@ graphviz_is_active_node(const struct node node) {
     return is_interacting_with(f, g) && SYMBOL_ROOT != node.ports[-1];
 }
 
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
 inline static bool
 graphviz_is_active_edge(const struct node node, const uint8_t i) {
     XASSERT(node.ports);
@@ -1757,19 +1783,6 @@ graphviz_draw_node(
                is_current = graphviz_is_current_node(ctx, node),
                is_root = SYMBOL_ROOT == p[-1];
 
-    char extended_ssymbol[MAX_SSYMBOL_SIZE + 64] = {0};
-    sprintf(extended_ssymbol, "%s", print_symbol(p[-1]));
-#define SPRINTF(fmt, ...)                                                      \
-    sprintf(extended_ssymbol + strlen(extended_ssymbol), fmt, __VA_ARGS__)
-    if (SYMBOL_CELL == p[-1]) {
-        SPRINTF(" %" PRIu64, p[1]);
-    } else if (SYMBOL_BINARY_CALL_AUX == p[-1]) {
-        SPRINTF(" %" PRIu64, p[3]);
-    } else if (IS_DELIMITER(p[-1])) {
-        SPRINTF(" %" PRIu64, p[2]);
-    }
-#undef SPRINTF
-
     fprintf(
         ctx->stream,
         // clang-format off
@@ -1779,7 +1792,7 @@ graphviz_draw_node(
         "%s%s%s];\n",
         // clang-format on
         (void *)p,
-        extended_ssymbol,
+        graphviz_print_symbol(node),
         graphviz_node_xlabel(node),
         (is_current && !is_root
              ? ", color=darkred"
