@@ -36,8 +36,8 @@ Description: Recursively computes the 30th Fibonacci number using native cells &
 
 ```
 Benchmark 1: ./fibonacci-of-30
-  Time (mean ± σ):      5.615 s ±  0.021 s    [User: 5.434 s, System: 0.179 s]
-  Range (min … max):    5.591 s …  5.646 s    5 runs
+  Time (mean ± σ):      5.577 s ±  0.021 s    [User: 5.414 s, System: 0.163 s]
+  Range (min … max):    5.559 s …  5.602 s    5 runs
 ```
 
 <details>
@@ -45,12 +45,12 @@ Benchmark 1: ./fibonacci-of-30
 
 ```
 Annihilation interactions: 14098276
-Commutation interactions: 97856051
+Commutation interactions: 97856082
 Beta interactions: 4
 Native function calls: 12948453
 If-then-elses: 4870845
-Total interactions: 129773629
-Delimiter mergings: 1346268
+Total interactions: 129773660
+Delimiter mergings: 1346239
 ```
 
 </details>
@@ -61,8 +61,8 @@ Description: Recursively computes the 20th Fibonacci number using Church numeral
 
 ```
 Benchmark 1: ./church-fibonacci-of-20
-  Time (mean ± σ):     821.8 ms ±   2.7 ms    [User: 798.0 ms, System: 23.5 ms]
-  Range (min … max):   819.0 ms … 825.4 ms    5 runs
+  Time (mean ± σ):     821.5 ms ±   5.0 ms    [User: 796.4 ms, System: 25.0 ms]
+  Range (min … max):   817.6 ms … 830.1 ms    5 runs
 ```
 
 <details>
@@ -70,12 +70,12 @@ Benchmark 1: ./church-fibonacci-of-20
 
 ```
 Annihilation interactions: 7604496
-Commutation interactions: 40075122
+Commutation interactions: 40075640
 Beta interactions: 515068
 Native function calls: 0
 If-then-elses: 0
-Total interactions: 48194686
-Delimiter mergings: 1844878
+Total interactions: 48195204
+Delimiter mergings: 1844362
 ```
 
 </details>
@@ -86,8 +86,8 @@ Description: Reverses the Church-encoded list of 5000 cells & then sums all the 
 
 ```
 Benchmark 1: ./church-list-reverse-and-sum
-  Time (mean ± σ):      1.490 s ±  0.009 s    [User: 1.440 s, System: 0.050 s]
-  Range (min … max):    1.479 s …  1.502 s    5 runs
+  Time (mean ± σ):      1.527 s ±  0.024 s    [User: 1.484 s, System: 0.043 s]
+  Range (min … max):    1.510 s …  1.566 s    5 runs
 ```
 
 <details>
@@ -95,12 +95,12 @@ Benchmark 1: ./church-list-reverse-and-sum
 
 ```
 Annihilation interactions: 12572493
-Commutation interactions: 100150018
+Commutation interactions: 100160025
 Beta interactions: 45004
 Native function calls: 10000
 If-then-elses: 0
-Total interactions: 112777515
-Delimiter mergings: 35014
+Total interactions: 112787522
+Delimiter mergings: 30009
 ```
 
 </details>
@@ -111,8 +111,8 @@ Description: Performes an insertion sort on a Scott-encoded list of 300 cells, t
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):      4.960 s ±  0.011 s    [User: 4.782 s, System: 0.178 s]
-  Range (min … max):    4.944 s …  4.975 s    5 runs
+  Time (mean ± σ):      4.946 s ±  0.025 s    [User: 4.775 s, System: 0.171 s]
+  Range (min … max):    4.922 s …  4.984 s    5 runs
 ```
 
 <details>
@@ -120,12 +120,12 @@ Benchmark 1: ./scott-insertion-sort
 
 ```
 Annihilation interactions: 46264000
-Commutation interactions: 230929199
+Commutation interactions: 230933402
 Beta interactions: 182717
 Native function calls: 90300
 If-then-elses: 44850
-Total interactions: 277511066
-Delimiter mergings: 13960660
+Total interactions: 277515269
+Delimiter mergings: 13956461
 ```
 
 </details>
@@ -136,8 +136,8 @@ Description: Performes an (inefficient) quicksort on a Scott-encoded list of 300
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):     13.601 s ±  0.045 s    [User: 13.265 s, System: 0.334 s]
-  Range (min … max):   13.552 s … 13.651 s    5 runs
+  Time (mean ± σ):     14.124 s ±  0.203 s    [User: 13.479 s, System: 0.643 s]
+  Range (min … max):   13.929 s … 14.460 s    5 runs
 ```
 
 <details>
@@ -145,12 +145,12 @@ Benchmark 1: ./scott-quicksort
 
 ```
 Annihilation interactions: 103001358
-Commutation interactions: 787926524
+Commutation interactions: 788201032
 Beta interactions: 543927
 Native function calls: 180000
 If-then-elses: 89700
-Total interactions: 891741509
-Delimiter mergings: 123633916
+Total interactions: 892016017
+Delimiter mergings: 123359412
 ```
 
 </details>
@@ -161,8 +161,8 @@ Description: Multiplies by 2 all the cells in a Scott-encoded binary tree of siz
 
 ```
 Benchmark 1: ./scott-tree-map-and-sum
-  Time (mean ± σ):      1.394 s ±  0.009 s    [User: 1.344 s, System: 0.050 s]
-  Range (min … max):    1.387 s …  1.409 s    5 runs
+  Time (mean ± σ):      1.405 s ±  0.001 s    [User: 1.352 s, System: 0.053 s]
+  Range (min … max):    1.403 s …  1.406 s    5 runs
 ```
 
 <details>
@@ -170,12 +170,12 @@ Benchmark 1: ./scott-tree-map-and-sum
 
 ```
 Annihilation interactions: 11861843
-Commutation interactions: 55262990
+Commutation interactions: 55263143
 Beta interactions: 1048579
 Native function calls: 262142
 If-then-elses: 0
-Total interactions: 68435554
-Delimiter mergings: 2031616
+Total interactions: 68435707
+Delimiter mergings: 2031467
 ```
 
 </details>
