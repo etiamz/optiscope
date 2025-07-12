@@ -10,13 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
  - Translation: eta-reduce `(λx. (M x))` into `M`, where `x` does not occur free in `M`.
- - Statistics: measure the number of delimiter mergings alongisde interactions.
 
 ### Changed
 
  - Implement `fix` without a dedicated `SYMBOL_FIX` node, using onely a duplicator & an applicator.
  - Garbage collection: launch onely during the weak reduction phase.
  - Reduction semantics: make the root node absorb uselesse delimiters through interaction.
+ - Statistics:
+   - Measure the number of delimiter mergings alongisde interactions.
+   - Measure the number of commutations during unsharing as interactions.
 
 ### Fixed
 

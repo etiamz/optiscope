@@ -2061,28 +2061,42 @@ try_unshare(
 
     if (!is_atomic_symbol(atom.ports[-1])) { return false; }
 
-#define FOLLOW(port)                                                           \
-    focus_on(graph->unshare_focus, FAKE_NODE(DECODE_ADDRESS((port))))
+    connect_ports(&atom.ports[0], port);
 
-    focus_on(graph->unshare_focus, FAKE_NODE(port));
+    focus_on(graph->unshare_focus, atom);
 
-    CONSUME_MULTIFOCUS (graph->unshare_focus, node) {
-        XASSERT(node.ports);
+    CONSUME_MULTIFOCUS (graph->unshare_focus, f) {
+        XASSERT(f.ports);
 
-        uint64_t *const p = node.ports;
-        const struct node f = node_of_port(p);
+        const struct node g = follow_port(&f.ports[0]);
+        XASSERT(g.ports);
 
-        if (IS_DUPLICATOR(f.ports[-1]) && IS_PRINCIPAL_PORT(*p)) {
-            FOLLOW(p[1]), FOLLOW(p[2]);
-            free_node(f);
-        } else {
-            const struct node atomx =
-                alloc_node_from(graph, atom.ports[-1], &atom);
-            connect_ports(&atomx.ports[0], p);
+        if (!is_interacting_with(f, g)) { continue; }
+
+        if (IS_DUPLICATOR(g.ports[-1])) {
+            const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
+
+            connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+            connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
+
+            focus_on(graph->unshare_focus, f),
+                focus_on(graph->unshare_focus, fx);
+
+#ifdef OPTISCOPE_ENABLE_STATS
+            graph->ncommutations++;
+#endif
+            free_node(g);
+        } else if (IS_DELIMITER(g.ports[-1])) {
+            connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+
+            focus_on(graph->unshare_focus, f);
+
+#ifdef OPTISCOPE_ENABLE_STATS
+            graph->ncommutations++;
+#endif
+            free_node(g);
         }
     }
-
-#undef FOLLOW
 
     return true;
 }
