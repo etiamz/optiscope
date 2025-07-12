@@ -36,8 +36,8 @@ Description: Recursively computes the 30th Fibonacci number using native cells &
 
 ```
 Benchmark 1: ./fibonacci-of-30
-  Time (mean ± σ):      5.663 s ±  0.012 s    [User: 5.484 s, System: 0.177 s]
-  Range (min … max):    5.649 s …  5.681 s    5 runs
+  Time (mean ± σ):      5.602 s ±  0.028 s    [User: 5.439 s, System: 0.163 s]
+  Range (min … max):    5.568 s …  5.631 s    5 runs
 ```
 
 <details>
@@ -51,6 +51,7 @@ Native function calls: 12948453
 If-then-elses: 4870845
 Total interactions: 129773660
 Delimiter mergings: 1346239
+Garbage collections: 2178278
 ```
 
 </details>
@@ -61,8 +62,8 @@ Description: Recursively computes the 20th Fibonacci number using Church numeral
 
 ```
 Benchmark 1: ./church-fibonacci-of-20
-  Time (mean ± σ):     823.3 ms ±   2.9 ms    [User: 800.2 ms, System: 22.7 ms]
-  Range (min … max):   820.8 ms … 827.9 ms    5 runs
+  Time (mean ± σ):     825.1 ms ±   2.0 ms    [User: 801.8 ms, System: 23.1 ms]
+  Range (min … max):   822.7 ms … 827.9 ms    5 runs
 ```
 
 <details>
@@ -76,6 +77,7 @@ Native function calls: 0
 If-then-elses: 0
 Total interactions: 48195204
 Delimiter mergings: 1844362
+Garbage collections: 2761986
 ```
 
 </details>
@@ -86,8 +88,8 @@ Description: Reverses the Church-encoded list of 5000 cells & then sums all the 
 
 ```
 Benchmark 1: ./church-list-reverse-and-sum
-  Time (mean ± σ):      1.535 s ±  0.006 s    [User: 1.486 s, System: 0.048 s]
-  Range (min … max):    1.526 s …  1.541 s    5 runs
+  Time (mean ± σ):      1.519 s ±  0.007 s    [User: 1.470 s, System: 0.048 s]
+  Range (min … max):    1.511 s …  1.531 s    5 runs
 ```
 
 <details>
@@ -101,6 +103,7 @@ Native function calls: 10000
 If-then-elses: 0
 Total interactions: 112787522
 Delimiter mergings: 30009
+Garbage collections: 5008
 ```
 
 </details>
@@ -111,8 +114,8 @@ Description: Performes an insertion sort on a Scott-encoded list of 300 cells, t
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):      4.975 s ±  0.030 s    [User: 4.796 s, System: 0.178 s]
-  Range (min … max):    4.930 s …  4.999 s    5 runs
+  Time (mean ± σ):      4.821 s ±  0.017 s    [User: 4.672 s, System: 0.149 s]
+  Range (min … max):    4.792 s …  4.838 s    5 runs
 ```
 
 <details>
@@ -120,12 +123,13 @@ Benchmark 1: ./scott-insertion-sort
 
 ```
 Annihilation interactions: 46264000
-Commutation interactions: 230933402
+Commutation interactions: 226433751
 Beta interactions: 182717
 Native function calls: 90300
 If-then-elses: 44850
-Total interactions: 277515269
+Total interactions: 273015618
 Delimiter mergings: 13956461
+Garbage collections: 18448605
 ```
 
 </details>
@@ -136,8 +140,8 @@ Description: Performes an (inefficient) quicksort on a Scott-encoded list of 300
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):     13.697 s ±  0.017 s    [User: 13.374 s, System: 0.322 s]
-  Range (min … max):   13.680 s … 13.715 s    5 runs
+  Time (mean ± σ):     14.093 s ±  0.172 s    [User: 13.423 s, System: 0.667 s]
+  Range (min … max):   13.938 s … 14.383 s    5 runs
 ```
 
 <details>
@@ -151,6 +155,7 @@ Native function calls: 180000
 If-then-elses: 89700
 Total interactions: 892016017
 Delimiter mergings: 123359412
+Garbage collections: 45629806
 ```
 
 </details>
@@ -161,21 +166,22 @@ Description: Multiplies by 2 all the cells in a Scott-encoded binary tree of siz
 
 ```
 Benchmark 1: ./scott-tree-map-and-sum
-  Time (mean ± σ):      1.409 s ±  0.008 s    [User: 1.360 s, System: 0.050 s]
-  Range (min … max):    1.401 s …  1.416 s    5 runs
+  Time (mean ± σ):      1.408 s ±  0.002 s    [User: 1.354 s, System: 0.054 s]
+  Range (min … max):    1.406 s …  1.411 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-Annihilation interactions: 11861843
-Commutation interactions: 55263143
+Annihilation interactions: 11796324
+Commutation interactions: 55066586
 Beta interactions: 1048579
 Native function calls: 262142
 If-then-elses: 0
-Total interactions: 68435707
+Total interactions: 68173631
 Delimiter mergings: 2031467
+Garbage collections: 4783961
 ```
 
 </details>

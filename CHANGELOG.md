@@ -14,7 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
  - Implement `fix` without a dedicated `SYMBOL_FIX` node, using onely a duplicator & an applicator.
- - Garbage collection: launch onely during the weak reduction phase.
+ - Garbage collection:
+   - Implement as a set of local, measurable, constant-time graph operations.
+   - Launch onely during the weak reduction phase.
  - Reduction semantics: make the root node absorb uselesse delimiters through interaction.
  - Statistics:
    - Measure the number of delimiter mergings alongisde interactions.

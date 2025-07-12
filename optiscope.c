@@ -549,7 +549,8 @@ bump_index(const uint64_t symbol, const uint64_t offset) {
 #define PHASE_UNWIND        UINT64_C(3)
 #define PHASE_SCOPE_REMOVE  UINT64_C(4)
 #define PHASE_LOOP_CUT      UINT64_C(5)
-#define PHASE_GARBAGE       UINT64_C(6)
+#define PHASE_GC            UINT64_C(6)
+#define PHASE_GC_AUX        UINT64_C(7)
 
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
@@ -1139,12 +1140,10 @@ struct context {
 #define X(focus_name) uint64_t n##focus_name;
     CONTEXT_MULTIFOCUSES
 #undef X
-    uint64_t nmergings;
+    uint64_t nmergings, ngc;
 #endif
 
-    struct multifocus *mark_focus, *sweep_focus;
-
-    struct multifocus *unshare_focus;
+    struct multifocus *gc_focus, *unshare_focus;
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
     struct node current_pair[2];
@@ -1177,12 +1176,10 @@ static struct context *alloc_context(void) {
 #define X(focus_name) graph->n##focus_name = 0;
     CONTEXT_MULTIFOCUSES
 #undef X
-    graph->nmergings = 0;
+    graph->nmergings = graph->ngc = 0;
 #endif
 
-    graph->mark_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
-    graph->sweep_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
-
+    graph->gc_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
     graph->unshare_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
@@ -1204,8 +1201,7 @@ free_context(struct context *const restrict graph) {
 
 #define X(focus_name) free_focus(graph->focus_name);
     CONTEXT_MULTIFOCUSES
-    X(mark_focus)
-    X(sweep_focus)
+    X(gc_focus)
     X(unshare_focus)
 #undef X
 
@@ -1244,6 +1240,8 @@ print_stats(const struct context *const restrict graph) {
             ncalls + graph->nif_then_elses);
 
     printf("Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
+
+    printf("Garbage collections: %" PRIu64 "\n", graph->ngc);
 }
 
 #else
@@ -1365,6 +1363,22 @@ alloc_node_from(
 }
 
 #define alloc_node(graph, symbol) alloc_node_from((graph), (symbol), NULL)
+
+COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) COMPILER_HOT //
+static struct node
+alloc_gc_node(
+    struct context *const restrict graph, uint64_t *const restrict points_to) {
+    MY_ASSERT(graph);
+    MY_ASSERT(points_to);
+
+    const struct node eraser = alloc_node(graph, SYMBOL_ERASER);
+    // Mark this eraser as garbage-collecting, which is necessary for
+    // successfull operation of the garbage collector.
+    set_phase(&eraser.ports[0], PHASE_GC);
+    connect_ports(&eraser.ports[0], points_to);
+
+    return eraser;
+}
 
 COMPILER_HOT //
 static void
@@ -1919,131 +1933,185 @@ wait_for_user(struct context *const restrict graph) {
 
 #endif // !defined(NDEBUG) && defined(OPTISCOPE_ENABLE_STEP_BY_STEP)
 
-// Mark & sweep garbage collection
+// Eraser-passing garbage collection
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-// clang-format off
-#define COLLECT(graph, f) \
-    (set_phase(&(f).ports[0], PHASE_GARBAGE), focus_on((graph)->sweep_focus, (f)))
-// clang-format on
+COMPILER_NONNULL(1) COMPILER_HOT //
+static void
+gc_step(
+    struct context *const restrict graph,
+    const struct node f,
+    const struct node g,
+    const ptrdiff_t i) {
+    MY_ASSERT(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(i >= 0 && (uint64_t)i < MAX_PORTS);
+    XASSERT(graph->gc_focus);
+    XASSERT(SYMBOL_ERASER == f.ports[-1]);
 
-#define FOLLOW(graph, port)                                                    \
-    focus_on((graph)->mark_focus, FAKE_NODE(DECODE_ADDRESS((port))))
+    switch (g.ports[-1]) {
+    commute_1_2: {
+        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0 == i ? 1 : 0]));
 
-#define ERASE(graph, port)                                                     \
-    do {                                                                       \
-        const struct node eraser = alloc_node((graph), SYMBOL_ERASER);         \
-        connect_ports((port), &eraser.ports[0]);                               \
-    } while (false)
+        focus_on(graph->gc_focus, f);
 
-#define FAKE_NODE(port) ((struct node){(port)})
+        free_node(g);
 
-COMPILER_NONNULL(1, 2) //
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->ngc++;
+#endif
+        break;
+    }
+    commute_1_3: {
+        uint8_t j, k;
+        (0 == i ? (j = 1, k = 2)
+                : (1 == i ? (j = 0, k = 2)
+                          : (2 == i ? (j = 0, k = 1)
+                                    : (COMPILER_UNREACHABLE(), 0))));
+
+        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[j]));
+        const struct node fx = alloc_gc_node(graph, DECODE_ADDRESS(g.ports[k]));
+
+        focus_on(graph->gc_focus, f);
+        focus_on(graph->gc_focus, fx);
+
+        free_node(g);
+
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->ngc++;
+#endif
+        break;
+    }
+    commute_1_4: {
+        uint8_t j, k, l;
+        (0 == i ? (j = 1, k = 2, l = 3)
+                : (1 == i ? (j = 0, k = 2, l = 3)
+                          : (2 == i ? (j = 0, k = 1, l = 3)
+                                    : (3 == i ? (j = 0, k = 1, l = 2)
+                                              : (COMPILER_UNREACHABLE(), 0)))));
+
+        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[j]));
+        const struct node fx = alloc_gc_node(graph, DECODE_ADDRESS(g.ports[k]));
+        const struct node fxx =
+            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[l]));
+
+        focus_on(graph->gc_focus, f);
+        focus_on(graph->gc_focus, fx);
+        focus_on(graph->gc_focus, fxx);
+
+        free_node(g);
+
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->ngc++;
+#endif
+        break;
+    }
+    annihilate:
+        if (PHASE_GC != DECODE_PHASE_METADATA(g.ports[0])) {
+            free_node(f), free_node(g);
+        }
+
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->ngc++;
+#endif
+        break;
+    duplicator:
+        switch (i) {
+        case 1:
+        case 2: {
+            uint64_t *const points_to = DECODE_ADDRESS(g.ports[0]), //
+                *const shares_with = DECODE_ADDRESS(g.ports[1 == i ? 2 : 1]);
+
+            const struct node h = node_of_port(shares_with);
+
+            if (SYMBOL_ERASER == h.ports[-1]) {
+                connect_ports(&f.ports[0], points_to);
+                focus_on(graph->gc_focus, f);
+                free_node(g), free_node(h);
+#ifdef OPTISCOPE_ENABLE_STATS
+                graph->ngc++;
+#endif
+            } else if (0 == symbol_index(g.ports[-1])) {
+                connect_ports(points_to, shares_with);
+                free_node(g);
+#ifdef OPTISCOPE_ENABLE_STATS
+                graph->ngc++;
+#endif
+            } else {
+                set_phase(&f.ports[0], PHASE_REDUCE_WEAKLY);
+            }
+
+            break;
+        }
+        case 0: goto commute_1_3;
+        default: COMPILER_UNREACHABLE();
+        }
+        break;
+    case SYMBOL_UNARY_CALL:
+    case SYMBOL_BINARY_CALL_AUX:
+    case SYMBOL_GC_LAMBDA:
+    delimiter:
+        goto commute_1_2;
+    case SYMBOL_APPLICATOR:
+    case SYMBOL_LAMBDA:
+    case SYMBOL_BINARY_CALL:
+    case SYMBOL_PERFORM:
+    case SYMBOL_LAMBDA_C: goto commute_1_3;
+    case SYMBOL_IF_THEN_ELSE: goto commute_1_4;
+    case SYMBOL_ERASER:
+    case SYMBOL_CELL:
+    case SYMBOL_IDENTITY_LAMBDA: goto annihilate;
+    default:
+        if (IS_DUPLICATOR(g.ports[-1])) goto duplicator;
+        else if (IS_DELIMITER(g.ports[-1])) goto delimiter;
+        else COMPILER_UNREACHABLE();
+    }
+}
+
+COMPILER_NONNULL(1, 2) COMPILER_HOT //
 static void
 gc(struct context *const restrict graph, uint64_t *const restrict port) {
     debug("%s(%p)", __func__, (void *)port);
 
     MY_ASSERT(graph);
     MY_ASSERT(port);
-    XASSERT(graph->mark_focus), XASSERT(graph->sweep_focus);
+    XASSERT(graph->gc_focus);
+
+    const struct node top_eraser = alloc_gc_node(graph, port);
 
     // On later algorithmic phases, we just connect the erasable port with a new
     // eraser, for garbage collection does not provide considerable benefit
     // after the weak reduction phase.
     if (PHASE_REDUCE_WEAKLY != graph->phase) {
-        ERASE(graph, port);
+        set_phase(&top_eraser.ports[0], graph->phase);
         return;
     }
 
-    // This multifocus conteyns the ports _to be followed_, not necessarily
-    // nodes' _principal_ ports!
-    focus_on(graph->mark_focus, FAKE_NODE(port));
+    focus_on(graph->gc_focus, top_eraser);
 
-    CONSUME_MULTIFOCUS (graph->mark_focus, node) {
-        XASSERT(node.ports);
+    CONSUME_MULTIFOCUS (graph->gc_focus, f) {
+        XASSERT(f.ports);
 
-        const struct node f = node_of_port(&node.ports[0]);
-        const ptrdiff_t i = node.ports - f.ports;
+        if (PHASE_GC_AUX == DECODE_PHASE_METADATA(f.ports[0])) {
+            free_node(f);
+        } else {
+            uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
 
-        if (PHASE_GARBAGE == DECODE_PHASE_METADATA(f.ports[0])) {
-            continue; // we have already passed this node
-        }
+            const struct node g = node_of_port(points_to);
+            XASSERT(g.ports);
 
-        switch (f.ports[-1]) {
-        case SYMBOL_LAMBDA:
-        case SYMBOL_LAMBDA_C:
-            switch (i) {
-            case 0:
-            case 2: goto propagate;
-            case 1: {
-                const struct node gc_lambda =
-                    alloc_node(graph, SYMBOL_GC_LAMBDA);
-                // clang-format off
-                CONNECT_NODE(gc_lambda,
-                    DECODE_ADDRESS(f.ports[0]), DECODE_ADDRESS(f.ports[2]));
-                // clang-format on
-                break;
+            if (PHASE_GC == DECODE_PHASE_METADATA(g.ports[0])) {
+                free_node(f);
+                set_phase(&g.ports[0], PHASE_GC_AUX);
+            } else {
+                gc_step(graph, f, g, points_to - g.ports);
             }
-            default: COMPILER_UNREACHABLE();
-            }
-            COLLECT(graph, f);
-            break;
-        duplicator:
-            switch (i) {
-            case 0: goto propagate;
-            case 1:
-            case 2: {
-                const uint8_t other_idx = 1 == i ? 2 : 1;
-                const struct node other = follow_port(&f.ports[other_idx]);
-                if (SYMBOL_ERASER == other.ports[-1]) {
-                    FOLLOW(graph, f.ports[0]);
-                    COLLECT(graph, other);
-                    COLLECT(graph, f);
-                } else {
-                    ERASE(graph, &f.ports[i]);
-                }
-                break;
-            }
-            default: COMPILER_UNREACHABLE();
-            }
-            break;
-        case SYMBOL_APPLICATOR:
-        case SYMBOL_UNARY_CALL:
-        case SYMBOL_BINARY_CALL:
-        case SYMBOL_BINARY_CALL_AUX:
-        case SYMBOL_IF_THEN_ELSE:
-        case SYMBOL_PERFORM:
-        case SYMBOL_GC_LAMBDA:
-        delimiter:
-            goto propagate;
-        case SYMBOL_ERASER:
-        case SYMBOL_CELL:
-        case SYMBOL_IDENTITY_LAMBDA: goto collect;
-        default:
-            if (f.ports[-1] <= MAX_DUPLICATOR_INDEX) goto duplicator;
-            else if (f.ports[-1] <= MAX_DELIMITER_INDEX) goto delimiter;
-            else COMPILER_UNREACHABLE();
-        propagate:
-            FOR_ALL_PORTS (f, j, 0) {
-                if (j != i) { FOLLOW(graph, f.ports[j]); }
-            }
-            COLLECT(graph, f);
-            break;
-        collect:
-            COLLECT(graph, f);
-            break;
         }
     }
-
-    for (size_t i = 0; i < graph->sweep_focus->count; i++) {
-        free_node(graph->sweep_focus->array[i]);
-    }
-    graph->sweep_focus->count = 0;
 }
 
-#undef ERASE
-#undef FOLLOW
-#undef COLLECT
+// Eager atomic unsharing
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // Eliminates a (higher-order) sharing structure, thus reducing the graph size.
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
@@ -2100,8 +2168,6 @@ try_unshare(
 
     return true;
 }
-
-#undef FAKE_NODE
 
 // The core interaction rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -2611,10 +2677,10 @@ interact(
     MY_ASSERT(rule);
     XASSERT(f.ports);
     MY_ASSERT(graph->phase > PHASE_REDUCE_WEAKLY);
-    MY_ASSERT(PHASE_GARBAGE != DECODE_PHASE_METADATA(f.ports[0]));
 
     const struct node g = follow_port(&f.ports[0]);
     XASSERT(g.ports);
+
     rule(graph, f, g);
 }
 
