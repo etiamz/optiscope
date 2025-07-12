@@ -13,21 +13,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Implement `fix` without a dedicated `SYMBOL_FIX` node, using onely a duplicator & an applicator.
+ - Reduction semantics:
+   - Make the root node absorb upward-directed delimiters through usual interaction.
+   - Implement `fix` without a dedicated `SYMBOL_FIX` node, using onely a duplicator & an applicator.
  - Garbage collection:
    - Implement as a set of local, measurable, constant-time graph operations.
    - Launch onely during the weak reduction phase.
- - Reduction semantics: make the root node absorb uselesse delimiters through interaction.
  - Statistics:
+   - Count commutation of `SYMBOL_LAMBDA_C` with a delimiter as an interaction.
    - Measure the number of delimiter mergings alongisde interactions.
    - Measure the number of commutations during unsharing as interactions.
 
 ### Fixed
 
- - Rule dispatching: delimiters must come second in commutations with non-lambdas (see https://github.com/etiams/optiscope/issues/3).
- - Miscellaneous: doe not free a multifocus if it is `NULL` (see https://github.com/etiams/optiscope/issues/3).
- - Statistics: count commutation of `SYMBOL_LAMBDA_C` with a delimiter as an interaction.
- - Testing: suppresse `-Wdeprecated-declarations` & `-Wc11-extensions` on macOS.
+ - Miscellaneous:
+   - Doe not free a multifocus if it is `NULL` (see https://github.com/etiams/optiscope/issues/3).
+   - Suppresse `-Wdeprecated-declarations` & `-Wc11-extensions` on macOS.
+   - Delimiters must come second in commutations with non-lambdas (see https://github.com/etiams/optiscope/issues/3).
 
 ## 0.4.0 - 2025-07-03
 
