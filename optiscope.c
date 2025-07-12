@@ -1940,8 +1940,7 @@ wait_for_user(struct context *const restrict graph) {
 
 COMPILER_NONNULL(1, 2) //
 static void
-collect_garbage(
-    struct context *const restrict graph, uint64_t *const restrict port) {
+gc(struct context *const restrict graph, uint64_t *const restrict port) {
     debug("%s(%p)", __func__, (void *)port);
 
     MY_ASSERT(graph);
@@ -1952,8 +1951,7 @@ collect_garbage(
     // eraser, for garbage collection does not provide considerable benefit
     // after the weak reduction phase.
     if (PHASE_REDUCE_WEAKLY != graph->phase) {
-        const struct node eraser = alloc_node(graph, SYMBOL_ERASER);
-        connect_ports(&eraser.ports[0], port);
+        ERASE(graph, port);
         return;
     }
 
@@ -2017,19 +2015,23 @@ collect_garbage(
         case SYMBOL_PERFORM:
         case SYMBOL_GC_LAMBDA:
         delimiter:
+            goto propagate;
+        case SYMBOL_ERASER:
+        case SYMBOL_CELL:
+        case SYMBOL_IDENTITY_LAMBDA: goto collect;
+        default:
+            if (f.ports[-1] <= MAX_DUPLICATOR_INDEX) goto duplicator;
+            else if (f.ports[-1] <= MAX_DELIMITER_INDEX) goto delimiter;
+            else COMPILER_UNREACHABLE();
         propagate:
             FOR_ALL_PORTS (f, j, 0) {
                 if (j != i) { FOLLOW(graph, f.ports[j]); }
             }
             COLLECT(graph, f);
             break;
-        case SYMBOL_ERASER:
-        case SYMBOL_CELL:
-        case SYMBOL_IDENTITY_LAMBDA: COLLECT(graph, f); break;
-        default:
-            if (f.ports[-1] <= MAX_DUPLICATOR_INDEX) goto duplicator;
-            else if (f.ports[-1] <= MAX_DELIMITER_INDEX) goto delimiter;
-            else COMPILER_UNREACHABLE();
+        collect:
+            COLLECT(graph, f);
+            break;
         }
     }
 
@@ -2450,7 +2452,7 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
 
     // There is a chance that the argument is fully disconnected from the root;
     // if so, we must garbage-collect it.
-    collect_garbage(graph, DECODE_ADDRESS(f.ports[2]));
+    gc(graph, DECODE_ADDRESS(f.ports[2]));
 
     free_node(f), free_node(g);
 }
@@ -2537,7 +2539,7 @@ connect_branch(
     connect_ports(DECODE_ADDRESS(f.ports[1]), choice);
     connect_ports(&eraser.ports[0], other);
 
-    collect_garbage(graph, DECODE_ADDRESS(eraser.ports[0]));
+    gc(graph, DECODE_ADDRESS(eraser.ports[0]));
 }
 
 RULE_DEFINITION(do_if_then_else, graph, f, g) {
