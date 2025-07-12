@@ -2010,7 +2010,6 @@ collect_garbage(
             }
             break;
         case SYMBOL_APPLICATOR:
-        case SYMBOL_S:
         case SYMBOL_UNARY_CALL:
         case SYMBOL_BINARY_CALL:
         case SYMBOL_BINARY_CALL_AUX:
