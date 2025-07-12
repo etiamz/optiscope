@@ -427,8 +427,8 @@ ports_count(const uint64_t symbol) {
     case SYMBOL_IF_THEN_ELSE: //
         return 4;
     default:
-        if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
-        else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
+        if (IS_DUPLICATOR(symbol)) goto duplicator;
+        else if (IS_DELIMITER(symbol)) goto delimiter;
         else COMPILER_UNREACHABLE();
     }
 }
@@ -480,11 +480,11 @@ symbol_index(const uint64_t symbol) {
 
     if (symbol <= MAX_DUPLICATOR_INDEX) {
         return (int64_t)(symbol - MAX_REGULAR_SYMBOL - 1);
+    } else if (symbol <= MAX_DELIMITER_INDEX) {
+        return (int64_t)(symbol - MAX_DUPLICATOR_INDEX - 1);
+    } else {
+        COMPILER_UNREACHABLE();
     }
-
-    XASSERT(IS_DELIMITER(symbol));
-
-    return (int64_t)(symbol - MAX_DUPLICATOR_INDEX - 1);
 }
 
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
@@ -516,8 +516,8 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_GC_LAMBDA: sprintf(buffer, "λ◉"); break;
     case SYMBOL_LAMBDA_C: sprintf(buffer, "λc"); break;
     default:
-        if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
-        else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
+        if (IS_DUPLICATOR(symbol)) goto duplicator;
+        else if (IS_DELIMITER(symbol)) goto delimiter;
         else COMPILER_UNREACHABLE();
     duplicator:
         sprintf(buffer, "▽/%" PRIi64, symbol_index(symbol));
