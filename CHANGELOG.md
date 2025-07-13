@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 0.5.0 - 2025-07-13
+
 ### Added
 
  - Translation: eta-reduce `(λx. (M x))` into `M`, where `x` does not occur free in `M`.
