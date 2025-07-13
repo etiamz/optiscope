@@ -22,7 +22,8 @@ BinPackParameters: OnePerLine
 BreakAfterReturnType: All
 BreakStringLiterals: false
 
-AttributeMacros: [
+AttributeMacros:
+  [
     COMPILER_UNUSED,
     COMPILER_NORETURN,
     COMPILER_COLD,
@@ -31,7 +32,6 @@ AttributeMacros: [
     COMPILER_ALWAYS_INLINE,
     COMPILER_RETURNS_NONNULL,
     COMPILER_WARN_UNUSED_RESULT,
-    COMPILER_FALLTHROUGH
     COMPILER_MALLOC,
     COMPILER_FORMAT,
     COMPILER_NONNULL,

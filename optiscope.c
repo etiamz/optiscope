@@ -120,7 +120,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define COMPILER_ALWAYS_INLINE      __attribute__((always_inline))
 #define COMPILER_RETURNS_NONNULL    __attribute__((returns_nonnull))
 #define COMPILER_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
-#define COMPILER_FALLTHROUGH        __attribute__((fallthrough))
 
 #ifndef __clang__
 
@@ -194,10 +193,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef COMPILER_WARN_UNUSED_RESULT
 #define COMPILER_WARN_UNUSED_RESULT COMPILER_IGNORE
-#endif
-
-#ifndef COMPILER_FALLTHROUGH
-#define COMPILER_FALLTHROUGH COMPILER_IGNORE
 #endif
 
 #ifndef COMPILER_MALLOC
