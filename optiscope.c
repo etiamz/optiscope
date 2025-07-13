@@ -897,6 +897,23 @@ is_either_root(const struct node f, const struct node g) {
     return SYMBOL_ROOT == f.ports[-1] || SYMBOL_ROOT == g.ports[-1];
 }
 
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_HOT COMPILER_ALWAYS_INLINE //
+inline static bool
+is_interacting_with(const struct node f, const struct node g) {
+    XASSERT(f.ports), XASSERT(g.ports);
+
+    // Supposing that `g` is derived from `f` by `follow_port(&f.ports[0])`.
+    return DECODE_ADDRESS(g.ports[0]) == &f.ports[0];
+}
+
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
+inline static bool
+is_interaction(const struct node f, const struct node g) {
+    XASSERT(f.ports), XASSERT(g.ports);
+
+    return is_interacting_with(f, g) && is_interacting_with(g, f);
+}
+
 #define CONNECT_NODE(node, ...)                                                \
     do {                                                                       \
         uint64_t *const ports[] = {__VA_ARGS__};                               \
@@ -904,6 +921,10 @@ is_either_root(const struct node f, const struct node g) {
             connect_ports(&(node).ports[i], ports[i]);                         \
         }                                                                      \
     } while (0)
+
+// clang-format off
+COMPILER_HOT static void free_node(const struct node node);
+// clang-format on
 
 #ifdef OPTISCOPE_ENABLE_TRACING
 
@@ -948,23 +969,7 @@ print_node(const struct node node) {
 
 #endif // OPTISCOPE_ENABLE_TRACING
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
-inline static bool
-is_interaction(const struct node f, const struct node g) {
-    XASSERT(f.ports), XASSERT(g.ports);
-
-    return DECODE_ADDRESS(f.ports[0]) == &g.ports[0] &&
-           DECODE_ADDRESS(g.ports[0]) == &f.ports[0];
-}
-
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static bool
-is_interacting_with(const struct node f, const struct node g) {
-    XASSERT(f.ports), XASSERT(g.ports);
-
-    // Supposing that `g` is derived from `f` by `follow_port(&f.ports[0])`.
-    return DECODE_ADDRESS(g.ports[0]) == &f.ports[0];
-}
+#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
 inline static bool
@@ -974,9 +979,7 @@ is_active(const struct node node) {
     return is_interacting_with(node, follow_port(&node.ports[0]));
 }
 
-// clang-format off
-COMPILER_HOT static void free_node(const struct node node);
-// clang-format on
+#endif // OPTISCOPE_ENABLE_GRAPHVIZ
 
 // Linked lists functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
