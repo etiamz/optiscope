@@ -50,9 +50,9 @@ Beta interactions: 4
 Native function calls: 12948453
 If-then-elses: 4870845
 Total interactions: 129773660
-Delimiter mergings: 1346239
 Garbage collections: 2178278
-Total rewritings: 133298177
+Delimiter mergings: 1346239
+Total graph rewrites: 133298177
 ```
 
 </details>
@@ -77,9 +77,9 @@ Beta interactions: 515068
 Native function calls: 0
 If-then-elses: 0
 Total interactions: 48195204
-Delimiter mergings: 1844362
 Garbage collections: 2761986
-Total rewritings: 52801552
+Delimiter mergings: 1844362
+Total graph rewrites: 52801552
 ```
 
 </details>
@@ -104,9 +104,9 @@ Beta interactions: 45004
 Native function calls: 10000
 If-then-elses: 0
 Total interactions: 112787522
-Delimiter mergings: 30009
 Garbage collections: 5008
-Total rewritings: 112822539
+Delimiter mergings: 30009
+Total graph rewrites: 112822539
 ```
 
 </details>
@@ -131,9 +131,9 @@ Beta interactions: 182717
 Native function calls: 90300
 If-then-elses: 44850
 Total interactions: 273015618
-Delimiter mergings: 13956461
 Garbage collections: 18448605
-Total rewritings: 305420684
+Delimiter mergings: 13956461
+Total graph rewrites: 305420684
 ```
 
 </details>
@@ -158,9 +158,9 @@ Beta interactions: 543927
 Native function calls: 180000
 If-then-elses: 89700
 Total interactions: 892016017
-Delimiter mergings: 123359412
 Garbage collections: 45629806
-Total rewritings: 1061005235
+Delimiter mergings: 123359412
+Total graph rewrites: 1061005235
 ```
 
 </details>
@@ -185,9 +185,9 @@ Beta interactions: 1048579
 Native function calls: 262142
 If-then-elses: 0
 Total interactions: 68173631
-Delimiter mergings: 2031467
 Garbage collections: 4783961
-Total rewritings: 74989059
+Delimiter mergings: 2031467
+Total graph rewrites: 74989059
 ```
 
 </details>

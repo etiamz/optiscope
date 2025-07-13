@@ -1236,13 +1236,13 @@ print_stats(const struct context *const restrict graph) {
         graph->nif_then_elses;
 
     printf("Total interactions: %" PRIu64 "\n", ninteractions);
-    printf("Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
     printf("Garbage collections: %" PRIu64 "\n", graph->ngc);
+    printf("Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
 
-    const uint64_t nrewritings = //
+    const uint64_t nrewrites = //
         ninteractions + graph->nmergings + graph->ngc;
 
-    printf("Total rewritings: %" PRIu64 "\n", nrewritings);
+    printf("Total graph rewrites: %" PRIu64 "\n", nrewrites);
 }
 
 #else
