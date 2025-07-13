@@ -578,8 +578,7 @@ set_phase(uint64_t *const restrict port, const uint64_t phase) {
 // O(1) pool allocation & deallocation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-COMPILER_MALLOC(free, 1)
-COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
 static void *
 xmalloc(const size_t size) {
     XASSERT(size > 0);
@@ -590,8 +589,7 @@ xmalloc(const size_t size) {
     return object;
 }
 
-COMPILER_MALLOC(free, 1)
-COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
 static void *
 xcalloc(const size_t n, const size_t size) {
     XASSERT(size > 0);
@@ -615,7 +613,8 @@ free_chunk(void *const memory);
 // clang-format off
 COMPILER_WARN_UNUSED_RESULT COMPILER_MALLOC(free_chunk, 1) COMPILER_COLD
 // clang-format on
-static void *alloc_chunk(const size_t size) {
+static void *
+alloc_chunk(const size_t size) {
     MY_ASSERT(size <= HUGE_PAGE_SIZE_2MB);
 
     const int prot = PROT_READ | PROT_WRITE,
@@ -671,8 +670,8 @@ free_chunk(void *const memory) {
     static void                                                                \
     prefix##_pool_close(struct prefix##_pool *const restrict self);            \
                                                                                \
-    COMPILER_MALLOC(prefix##_pool_close, 1)                                    \
-    COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_COLD /* */   \
+    COMPILER_MALLOC(prefix##_pool_close, 1) COMPILER_RETURNS_NONNULL           \
+    COMPILER_WARN_UNUSED_RESULT COMPILER_COLD /* */                            \
     static struct prefix##_pool *                                              \
     prefix##_pool_create(void) {                                               \
         struct prefix##_pool *const self = xmalloc(sizeof *self);              \
@@ -737,9 +736,8 @@ free_chunk(void *const memory) {
     prefix##_pool_free(                                                        \
         struct prefix##_pool *const restrict self, uint64_t *restrict object); \
                                                                                \
-    COMPILER_MALLOC(prefix##_pool_free, 1)                                     \
-    COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1)   \
-    COMPILER_HOT /* */                                                         \
+    COMPILER_MALLOC(prefix##_pool_free, 1) COMPILER_RETURNS_NONNULL            \
+    COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT /* */         \
     static uint64_t *                                                          \
     prefix##_pool_alloc(struct prefix##_pool *const restrict self) {           \
         MY_ASSERT(self);                                                       \
@@ -1156,7 +1154,8 @@ free_context(struct context *const restrict graph);
 COMPILER_MALLOC(free_context, 1) COMPILER_RETURNS_NONNULL
 COMPILER_WARN_UNUSED_RESULT COMPILER_COLD
 // clang-format on
-static struct context *alloc_context(void) {
+static struct context *
+alloc_context(void) {
     const struct node root = {(uint64_t *)xcalloc(2, sizeof(uint64_t)) + 1};
     root.ports[-1] = SYMBOL_ROOT;
     root.ports[0] = PORT_VALUE(UINT64_C(0), PHASE_REDUCE_WEAKLY, UINT64_C(0));
@@ -1232,14 +1231,18 @@ print_stats(const struct context *const restrict graph) {
     printf("Native function calls: %" PRIu64 "\n", ncalls);
     printf("If-then-elses: %" PRIu64 "\n", graph->nif_then_elses);
 
-    printf(
-        "Total interactions: %" PRIu64 "\n",
-        graph->nannihilations + graph->ncommutations + graph->nbetas + //
-            ncalls + graph->nif_then_elses);
+    const uint64_t ninteractions = //
+        graph->nannihilations + graph->ncommutations + graph->nbetas + ncalls +
+        graph->nif_then_elses;
 
+    printf("Total interactions: %" PRIu64 "\n", ninteractions);
     printf("Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
-
     printf("Garbage collections: %" PRIu64 "\n", graph->ngc);
+
+    const uint64_t nrewritings = //
+        ninteractions + graph->nmergings + graph->ngc;
+
+    printf("Total rewritings: %" PRIu64 "\n", nrewritings);
 }
 
 #else

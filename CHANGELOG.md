@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - Count commutation of `SYMBOL_LAMBDA_C` with a delimiter as an interaction.
    - Measure the number of delimiter mergings alongisde interactions.
    - Measure the number of commutations during unsharing as interactions.
+   - Measure the total number of graph rewritings, including non-interactions.
 
 ### Fixed
 
