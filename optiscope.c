@@ -2171,22 +2171,12 @@ try_unshare(
 // The core interaction rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
-inline static bool
-is_beta(const struct node f, const struct node g) {
-    XASSERT(f.ports), XASSERT(g.ports);
-
-    return SYMBOL_APPLICATOR == f.ports[-1] && IS_RELEVANT_LAMBDA(g.ports[-1]);
-}
-
 #ifndef NDEBUG
 
 static void
 assert_annihilation(const struct node f, const struct node g) {
     MY_ASSERT(f.ports), MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_APPLICATOR != f.ports[-1]);
-    MY_ASSERT(SYMBOL_LAMBDA != f.ports[-1]);
     MY_ASSERT(f.ports[-1] == g.ports[-1]);
 }
 
@@ -2199,7 +2189,21 @@ assert_beta(
     MY_ASSERT(graph->phase < PHASE_UNWIND);
     MY_ASSERT(f.ports), MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(is_beta(f, g));
+    MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+    MY_ASSERT(IS_RELEVANT_LAMBDA(g.ports[-1]));
+}
+
+static void
+assert_beta_c(
+    const struct context *const restrict graph,
+    const struct node f,
+    const struct node g) {
+    MY_ASSERT(graph);
+    MY_ASSERT(graph->phase < PHASE_UNWIND);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+    MY_ASSERT(SYMBOL_LAMBDA_C == g.ports[-1]);
 }
 
 static void
@@ -2211,9 +2215,8 @@ assert_identity_beta(
     MY_ASSERT(graph->phase < PHASE_UNWIND);
     MY_ASSERT(f.ports), MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(
-        SYMBOL_APPLICATOR == f.ports[-1] &&
-        SYMBOL_IDENTITY_LAMBDA == g.ports[-1]);
+    MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+    MY_ASSERT(SYMBOL_IDENTITY_LAMBDA == g.ports[-1]);
 }
 
 static void
@@ -2225,15 +2228,14 @@ assert_gc_beta(
     MY_ASSERT(graph->phase < PHASE_UNWIND);
     MY_ASSERT(f.ports), MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(
-        SYMBOL_APPLICATOR == f.ports[-1] && SYMBOL_GC_LAMBDA == g.ports[-1]);
+    MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+    MY_ASSERT(SYMBOL_GC_LAMBDA == g.ports[-1]);
 }
 
 static void
 assert_commutation(const struct node f, const struct node g) {
     MY_ASSERT(f.ports), MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(!is_beta(f, g)), MY_ASSERT(!is_beta(g, f));
     MY_ASSERT(f.ports[-1] != g.ports[-1]);
 }
 
@@ -2306,6 +2308,7 @@ assert_perform(
 
 #define assert_annihilation(f, g)           ((void)0)
 #define assert_beta(graph, f, g)            ((void)0)
+#define assert_beta_c(graph, f, g)          ((void)0)
 #define assert_identity_beta(graph, f, g)   ((void)0)
 #define assert_gc_beta(graph, f, g)         ((void)0)
 #define assert_commutation(f, g)            ((void)0)
@@ -2495,6 +2498,24 @@ RULE_DEFINITION(beta, graph, f, g) {
 }
 
 TYPE_CHECK_RULE(beta);
+
+RULE_DEFINITION(beta_c, graph, f, g) {
+    MY_ASSERT(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
+    assert_beta_c(graph, f, g);
+    debug_interaction(__func__, graph, f, g);
+
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->nbetas++;
+#endif
+
+    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
+    connect_ports(DECODE_ADDRESS(g.ports[1]), DECODE_ADDRESS(f.ports[2]));
+
+    free_node(f), free_node(g);
+}
+
+TYPE_CHECK_RULE(beta_c);
 
 RULE_DEFINITION(identity_beta, graph, f, g) {
     MY_ASSERT(graph);
@@ -3056,7 +3077,8 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
             else COMPILER_UNREACHABLE();                                       \
             break;                                                             \
         case SYMBOL_APPLICATOR:                                                \
-            if (IS_RELEVANT_LAMBDA(gsym)) BETA(graph, f, g);                   \
+            if (SYMBOL_LAMBDA == gsym) BETA(graph, f, g);                      \
+            else if (SYMBOL_LAMBDA_C == gsym) BETA_C(graph, f, g);             \
             else if (SYMBOL_IDENTITY_LAMBDA == gsym)                           \
                 IDENTITY_BETA(graph, f, g);                                    \
             else if (SYMBOL_GC_LAMBDA == gsym) GC_BETA(graph, f, g);           \
@@ -3089,7 +3111,7 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
             else COMMUTE(graph, g, f); /* same as for `SYMBOL_LAMBDA` */       \
             break;                                                             \
         case SYMBOL_LAMBDA_C:                                                  \
-            if (SYMBOL_APPLICATOR == gsym) BETA(graph, g, f);                  \
+            if (SYMBOL_APPLICATOR == gsym) BETA_C(graph, g, f);                \
             else if (IS_DELIMITER(gsym)) COMMUTE_LAMBDA_C_DELIM(graph, f, g);  \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_LAMBDA_C_DUP(graph, f, g);   \
             else if (SYMBOL_ROOT == gsym) graph->time_to_stop = true;          \
@@ -3162,6 +3184,7 @@ fire_rule(
 #pragma GCC diagnostic pop
 
 #define BETA                          beta
+#define BETA_C                        beta_c
 #define IDENTITY_BETA                 identity_beta
 #define GC_BETA                       gc_beta
 #define DO_UNARY_CALL                 do_unary_call
@@ -3233,6 +3256,7 @@ fire_rule(
 #undef DO_UNARY_CALL
 #undef GC_BETA
 #undef IDENTITY_BETA
+#undef BETA_C
 #undef BETA
 }
 
@@ -3250,6 +3274,7 @@ register_active_pair(
 #pragma GCC diagnostic pop
 
 #define BETA(graph, f, g)                   focus_on(graph->betas, f)
+#define BETA_C                              BETA
 #define IDENTITY_BETA(graph, f, g)          focus_on(graph->identity_betas, f)
 #define GC_BETA(graph, f, g)                focus_on(graph->gc_betas, f)
 #define DO_UNARY_CALL(graph, f, g)          focus_on(graph->unary_calls, f)
@@ -3327,6 +3352,7 @@ register_active_pair(
 #undef DO_UNARY_CALL
 #undef GC_BETA
 #undef IDENTITY_BETA
+#undef BETA_C
 #undef BETA
 }
 

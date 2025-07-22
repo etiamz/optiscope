@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Avoid spawning two new delimiters when instantiating a closed lambda function.
+
 ## 0.5.0 - 2025-07-13
 
 ### Added
