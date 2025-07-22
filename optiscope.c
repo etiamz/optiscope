@@ -1438,7 +1438,7 @@ free_node(const struct node node) {
 // Delimiter merging
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-struct delimiter_template {
+struct delimiter {
     const uint64_t idx;
     uint64_t *const restrict points_to, *const restrict goes_from;
 };
@@ -1446,7 +1446,7 @@ struct delimiter_template {
 #ifndef NDEBUG
 
 static void
-assert_delimiter_template(const struct delimiter_template template) {
+assert_delimiter_template(const struct delimiter template) {
     MY_ASSERT(template.idx < INDEX_RANGE);
     MY_ASSERT(template.points_to), MY_ASSERT(template.goes_from);
 }
@@ -1460,8 +1460,7 @@ assert_delimiter_template(const struct delimiter_template template) {
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 inst_delimiter_as_is(
-    struct context *const restrict graph,
-    const struct delimiter_template template) {
+    struct context *const restrict graph, const struct delimiter template) {
     MY_ASSERT(graph);
     assert_delimiter_template(template);
 
@@ -1474,8 +1473,7 @@ inst_delimiter_as_is(
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 inst_delimiter(
-    struct context *const restrict graph,
-    const struct delimiter_template template) {
+    struct context *const restrict graph, const struct delimiter template) {
     MY_ASSERT(graph);
     assert_delimiter_template(template);
 
@@ -2480,7 +2478,7 @@ RULE_DEFINITION(beta, graph, f, g) {
 
     inst_delimiter(
         graph,
-        (struct delimiter_template){
+        (struct delimiter){
             .idx = 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2])});
 
     uint64_t *const binder_port = DECODE_ADDRESS(g.ports[1]), //
@@ -2490,8 +2488,7 @@ RULE_DEFINITION(beta, graph, f, g) {
         connect_ports(binder_port, rand_port);
     } else if (!try_unshare(graph, binder_port, rand)) {
         inst_delimiter(
-            graph,
-            (struct delimiter_template){.idx = 0, rand_port, binder_port});
+            graph, (struct delimiter){.idx = 0, rand_port, binder_port});
     }
 
     free_node(f), free_node(g);
@@ -2528,7 +2525,7 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
 
     inst_delimiter(
         graph,
-        (struct delimiter_template){
+        (struct delimiter){
             .idx = 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1])});
 
     // There is a chance that the argument is fully disconnected from the root;
