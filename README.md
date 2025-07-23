@@ -177,7 +177,7 @@ In practice, this is how the complete reduction of Church numeral 2^2 looks like
 
 <div align="center">
   <a href="https://raw.githubusercontent.com/etiams/optiscope-media/refs/heads/master/2-power-2-animation.gif">
-    <img src="https://raw.githubusercontent.com/etiams/optiscope-media/refs/heads/master/2-power-2-preview.png" width="400px" alt="Church 2^2 reduction" />
+    <img src="https://raw.githubusercontent.com/etiams/optiscope-media/refs/heads/master/2-power-2-preview.png" width="480px" alt="Church 2^2 reduction" />
   </a>
 </div>
 
