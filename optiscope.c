@@ -1115,10 +1115,10 @@ unfocus_or(
 
 // clang-format off
 #define CONTEXT_MULTIFOCUSES \
-    X(betas) X(annihilations) X(commutations) \
-    X(unary_calls) X(binary_calls) X(binary_calls_aux) \
-    X(if_then_elses) X(performs) \
-    X(identity_betas) X(gc_betas)
+    X(betas) X(closed_betas) X(identity_betas) X(gc_betas) \
+    X(unary_calls) X(binary_calls) X(binary_calls_aux) X(if_then_elses) \
+        X(performs) \
+    X(annihilations) X(commutations)
 // clang-format on
 
 struct context {
@@ -2190,7 +2190,7 @@ assert_beta(
     MY_ASSERT(f.ports), MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
-    MY_ASSERT(IS_RELEVANT_LAMBDA(g.ports[-1]));
+    MY_ASSERT(SYMBOL_LAMBDA == g.ports[-1]);
 }
 
 static void
@@ -3274,7 +3274,7 @@ register_active_pair(
 #pragma GCC diagnostic pop
 
 #define BETA(graph, f, g)                   focus_on(graph->betas, f)
-#define BETA_C                              BETA
+#define BETA_C(graph, f, g)                 focus_on(graph->closed_betas, f)
 #define IDENTITY_BETA(graph, f, g)          focus_on(graph->identity_betas, f)
 #define GC_BETA(graph, f, g)                focus_on(graph->gc_betas, f)
 #define DO_UNARY_CALL(graph, f, g)          focus_on(graph->unary_calls, f)
@@ -4114,6 +4114,7 @@ repeat:
 
     // clang-format off
     CONSUME_MULTIFOCUS (graph->betas, f) { interact(graph, beta, f); }
+    CONSUME_MULTIFOCUS (graph->closed_betas, f) { interact(graph, beta_c, f); }
     CONSUME_MULTIFOCUS (graph->identity_betas, f) { interact(graph, identity_beta, f); }
     CONSUME_MULTIFOCUS (graph->gc_betas, f) { interact(graph, gc_beta, f); }
     CONSUME_MULTIFOCUS (graph->unary_calls, f) { interact(graph, do_unary_call, f); }
