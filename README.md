@@ -255,7 +255,7 @@ The visualization will then be as follows:
 
 <div align="center">
   <a href="https://raw.githubusercontent.com/etiams/optiscope-media/refs/heads/master/lamping-example-animation.gif">
-    <img src="https://raw.githubusercontent.com/etiams/optiscope-media/refs/heads/master/lamping-example-preview.png" width="680px" alt="Lamping example" />
+    <img src="https://raw.githubusercontent.com/etiams/optiscope-media/refs/heads/master/lamping-example-preview.png" width="700px" alt="Lamping example" />
   </a>
 </div>
 
