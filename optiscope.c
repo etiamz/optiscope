@@ -485,7 +485,8 @@ symbol_index(const uint64_t symbol) {
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
 inline static bool
 is_atomic_symbol(const uint64_t symbol) {
-    return SYMBOL_CELL == symbol || SYMBOL_IDENTITY_LAMBDA == symbol;
+    return SYMBOL_ERASER == symbol || SYMBOL_CELL == symbol ||
+           SYMBOL_IDENTITY_LAMBDA == symbol;
 }
 
 #define MAX_SSYMBOL_SIZE 64
@@ -1515,11 +1516,16 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
     if (condition) {
         g.ports[2] += f.ports[2];
         connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
-        free_node(f);
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->nmergings++;
-#endif
+    } else if (is_atomic_symbol(g.ports[-1])) {
+        connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
+    } else {
+        return;
     }
+
+    free_node(f);
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->nmergings++;
+#endif
 }
 
 COMPILER_NONNULL(1) COMPILER_HOT //
@@ -2021,12 +2027,19 @@ gc_step(
             uint64_t *const points_to = DECODE_ADDRESS(g.ports[0]), //
                 *const shares_with = DECODE_ADDRESS(g.ports[1 == i ? 2 : 1]);
 
-            const struct node h = node_of_port(shares_with);
+            const struct node h = node_of_port(shares_with),
+                              sharable = node_of_port(points_to);
 
             if (SYMBOL_ERASER == h.ports[-1]) {
                 connect_ports(&f.ports[0], points_to);
                 focus_on(graph->gc_focus, f);
                 free_node(g), free_node(h);
+#ifdef OPTISCOPE_ENABLE_STATS
+                graph->ngc++;
+#endif
+            } else if (is_atomic_symbol(sharable.ports[-1])) {
+                connect_ports(&sharable.ports[0], shares_with);
+                free_node(g), free_node(f);
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
