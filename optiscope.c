@@ -1539,6 +1539,31 @@ try_merge_if_delimiter(
     if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(graph, f); }
 }
 
+// Immediate duplication
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+COMPILER_NONNULL(1) COMPILER_HOT //
+static void
+try_duplicate(struct context *const restrict graph, const struct node f) {
+    MY_ASSERT(graph);
+    XASSERT(f.ports);
+    XASSERT(IS_DUPLICATOR(f.ports[-1]));
+    MY_ASSERT(PHASE_REDUCE_WEAKLY == graph->phase);
+
+    const struct node g = follow_port(&f.ports[0]);
+    XASSERT(g.ports);
+
+    if (is_atomic_symbol(g.ports[-1])) {
+        const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
+        connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
+        connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
+        free_node(f);
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->ncommutations++;
+#endif
+    }
+}
+
 // Graphviz graph generation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -2846,6 +2871,8 @@ RULE_DEFINITION(commute_3_2_core, graph, f, g) {
     connect_ports(&f.ports[1], &g.ports[1]);
     connect_ports(&f.ports[2], &gx.ports[1]);
 
+    if (IS_DUPLICATOR(f.ports[-1])) { try_duplicate(graph, f); }
+
     if (IS_DELIMITER(g.ports[-1])) {
         try_merge_delimiter(graph, g);
         try_merge_delimiter(graph, gx);
@@ -2878,6 +2905,16 @@ RULE_DEFINITION(commute_3_3_core, graph, f, g) {
     connect_ports(&g.ports[2], &fx.ports[1]);
     connect_ports(&gx.ports[1], &f.ports[2]);
     connect_ports(&gx.ports[2], &fx.ports[2]);
+
+    if (IS_DUPLICATOR(f.ports[-1])) {
+        try_duplicate(graph, f);
+        try_duplicate(graph, fx);
+    }
+
+    if (IS_DUPLICATOR(g.ports[-1])) {
+        try_duplicate(graph, g);
+        try_duplicate(graph, gx);
+    }
 }
 
 TYPE_CHECK_RULE(commute_3_3_core);
@@ -2934,6 +2971,12 @@ RULE_DEFINITION(commute_4_3, graph, f, g) {
     connect_ports(&gx.ports[2], &fx.ports[2]);
     connect_ports(&gxx.ports[1], &f.ports[3]);
     connect_ports(&gxx.ports[2], &fx.ports[3]);
+
+    if (IS_DUPLICATOR(g.ports[-1])) {
+        try_duplicate(graph, g);
+        try_duplicate(graph, gx);
+        try_duplicate(graph, gxx);
+    }
 }
 
 TYPE_CHECK_RULE(commute_4_3);
