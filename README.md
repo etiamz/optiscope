@@ -2,7 +2,7 @@
 
 _Optiscope_ is an experimental Lévy-optimal implementation of the pure lambda calculus enriched with native function calls, if-then-else expressions, & a fixed-point operator.
 
-Being the first public implementation of [Lambdascope] [^lambdascope] written in portable C99, it is also the first interaction net reducer capable of calling user-provided functions at native speed. This combination allows one to (1) embed all primitive types & operations through C FFI, (2) interleave lazy evaluation with direct side effects, and (3) let optimal reduction share calls to pure C functions just like ordinary β-reductions. As such, Optiscope can be understood as an optimal evaluator capable of sharing arbitrary foreign function calls.
+Being the first public implementation of [Lambdascope] [^lambdascope] written in portable C99, it is also the first interaction net reducer capable of calling user-provided functions at native speed. This combination allows one to (1) embed all primitive types & operations through C FFI, (2) interleave lazy evaluation with direct side effects, and (3) let optimal reduction share calls to pure C functions just like ordinary β-reductions. As such, Optiscope can be understood as an optimal λ-calculus reducer extended to sharing foreign computation.
 
 [Lambdascope]: https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=61042374787bf6514706b49a5a4f0b74996979a0
 
