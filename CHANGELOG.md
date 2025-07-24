@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Avoid spawning two scope opening nodes when instantiating a closed lambda function.
- - Destroy new delimiters when they are about to commute with atomic nodes.
- - Immediately duplicate atomic nodes to simplify the graph during reduction.
+ - Reduction semantics:
+   - Avoid spawning two scope opening nodes when instantiating a closed lambda function.
+   - Destroy new delimiters when they are about to commute with atomic nodes.
+   - Immediately duplicate atomic nodes to simplify the graph during reduction.
 
 ## 0.5.0 - 2025-07-13
 
