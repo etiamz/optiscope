@@ -2659,26 +2659,6 @@ RULE_DEFINITION(do_binary_call_aux, graph, f, g) {
 
 TYPE_CHECK_RULE(do_binary_call_aux);
 
-COMPILER_NONNULL(1, 3, 4) COMPILER_HOT //
-static void
-connect_branch(
-    struct context *const restrict graph,
-    const struct node f,
-    uint64_t *const restrict choice,
-    uint64_t *const restrict other) {
-    MY_ASSERT(graph);
-    XASSERT(f.ports);
-    MY_ASSERT(choice);
-    MY_ASSERT(other);
-
-    const struct node eraser = alloc_node(graph, SYMBOL_ERASER);
-
-    connect_ports(DECODE_ADDRESS(f.ports[1]), choice);
-    connect_ports(&eraser.ports[0], other);
-
-    gc(graph, DECODE_ADDRESS(eraser.ports[0]));
-}
-
 RULE_DEFINITION(do_if_then_else, graph, f, g) {
     MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
@@ -2692,11 +2672,12 @@ RULE_DEFINITION(do_if_then_else, graph, f, g) {
     uint64_t *const if_then = DECODE_ADDRESS(f.ports[3]), //
         *const if_else = DECODE_ADDRESS(f.ports[2]);
 
-    if (g.ports[1]) {
-        connect_branch(graph, f, if_then, if_else);
-    } else {
-        connect_branch(graph, f, if_else, if_then);
-    }
+    uint64_t *choose, *discard;
+    if (g.ports[1]) choose = if_then, discard = if_else;
+    else choose = if_else, discard = if_then;
+
+    connect_ports(DECODE_ADDRESS(f.ports[1]), choose);
+    gc(graph, discard);
 
     free_node(f), free_node(g);
 }
