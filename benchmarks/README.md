@@ -45,14 +45,16 @@ Benchmark 1: ./fibonacci-of-30
 
 ```
 Annihilation interactions: 14098275
-Commutation interactions: 93817275
-Beta interactions: 4
-Native function calls: 12948453
-If-then-elses: 4870845
-Total interactions: 125734852
-Garbage collections: 3524576
-Delimiter mergings: 8909616
-Total graph rewrites: 138169044
+ Commutation interactions: 93817275
+        Beta interactions: 4
+    Native function calls: 12948453
+            If-then-elses: 4870845
+       Total interactions: 125734852
+      Garbage collections: 3524576
+       Delimiter mergings: 8909616
+     Total graph rewrites: 138169044
+    Total nodes allocated: 130530703
+        Total nodes freed: 93378056
 ```
 
 </details>
@@ -72,14 +74,16 @@ Benchmark 1: ./church-fibonacci-of-20
 
 ```
 Annihilation interactions: 7586392
-Commutation interactions: 38908601
-Beta interactions: 515068
-Native function calls: 0
-If-then-elses: 0
-Total interactions: 47010061
-Garbage collections: 2761986
-Delimiter mergings: 2856911
-Total graph rewrites: 52628958
+ Commutation interactions: 38908601
+        Beta interactions: 515068
+    Native function calls: 0
+            If-then-elses: 0
+       Total interactions: 47010061
+      Garbage collections: 2761986
+       Delimiter mergings: 2856911
+     Total graph rewrites: 52628958
+    Total nodes allocated: 27977990
+        Total nodes freed: 22667630
 ```
 
 </details>
@@ -99,14 +103,16 @@ Benchmark 1: ./church-list-reverse-and-sum
 
 ```
 Annihilation interactions: 12557496
-Commutation interactions: 87642510
-Beta interactions: 45004
-Native function calls: 10000
-If-then-elses: 0
-Total interactions: 100255010
-Garbage collections: 5008
-Delimiter mergings: 12522509
-Total graph rewrites: 112782527
+ Commutation interactions: 87642510
+        Beta interactions: 45004
+    Native function calls: 10000
+            If-then-elses: 0
+       Total interactions: 100255010
+      Garbage collections: 5008
+       Delimiter mergings: 12522509
+     Total graph rewrites: 112782527
+    Total nodes allocated: 37787539
+        Total nodes freed: 37787524
 ```
 
 </details>
@@ -126,14 +132,16 @@ Benchmark 1: ./scott-insertion-sort
 
 ```
 Annihilation interactions: 46262799
-Commutation interactions: 226251634
-Beta interactions: 182717
-Native function calls: 90300
-If-then-elses: 44850
-Total interactions: 272832300
-Garbage collections: 18403454
-Delimiter mergings: 14316748
-Total graph rewrites: 305552502
+ Commutation interactions: 226251634
+        Beta interactions: 182717
+    Native function calls: 90300
+            If-then-elses: 44850
+       Total interactions: 272832300
+      Garbage collections: 18403454
+       Delimiter mergings: 14316748
+     Total graph rewrites: 305552502
+    Total nodes allocated: 181030126
+        Total nodes freed: 130795028
 ```
 
 </details>
@@ -153,14 +161,16 @@ Benchmark 1: ./scott-quicksort
 
 ```
 Annihilation interactions: 102911646
-Commutation interactions: 785956671
-Beta interactions: 543927
-Native function calls: 180000
-If-then-elses: 89700
-Total interactions: 889681944
-Garbage collections: 45584058
-Delimiter mergings: 132402038
-Total graph rewrites: 1067668040
+ Commutation interactions: 785956671
+        Beta interactions: 543927
+    Native function calls: 180000
+            If-then-elses: 89700
+       Total interactions: 889681944
+      Garbage collections: 45584058
+       Delimiter mergings: 132402038
+     Total graph rewrites: 1067668040
+    Total nodes allocated: 499234732
+        Total nodes freed: 404527539
 ```
 
 </details>
@@ -180,14 +190,16 @@ Benchmark 1: ./scott-tree-map-and-sum
 
 ```
 Annihilation interactions: 11599716
-Commutation interactions: 50397138
-Beta interactions: 1048579
-Native function calls: 262142
-If-then-elses: 0
-Total interactions: 63307575
-Garbage collections: 3735400
-Delimiter mergings: 5013355
-Total graph rewrites: 72056330
+ Commutation interactions: 50397138
+        Beta interactions: 1048579
+    Native function calls: 262142
+            If-then-elses: 0
+       Total interactions: 63307575
+      Garbage collections: 3735400
+       Delimiter mergings: 5013355
+     Total graph rewrites: 72056330
+    Total nodes allocated: 39223106
+        Total nodes freed: 36372114
 ```
 
 </details>

@@ -916,10 +916,6 @@ is_interaction(const struct node f, const struct node g) {
         }                                                                      \
     } while (0)
 
-// clang-format off
-COMPILER_HOT static void free_node(const struct node node);
-// clang-format on
-
 #ifdef OPTISCOPE_ENABLE_TRACING
 
 #define MAX_SNODE_SIZE 256
@@ -1123,26 +1119,34 @@ unfocus_or(
 // clang-format on
 
 struct context {
+    // The root node of the graph (alwaies `SYMBOL_ROOT`).
     struct node root;
+
+    // The current global phase of the reduction.
     uint64_t phase;
 
     // Indicates whether the interface normal form has been reached.
     bool time_to_stop;
 
+    // The multifocuses for the respective procedures.
+    struct multifocus *gc_focus, *unshare_focus;
+
 #define X(focus_name) struct multifocus *focus_name;
+    // The multifocuses for full reduction.
     CONTEXT_MULTIFOCUSES
 #undef X
 
+    // The overall statistics of the reduction.
 #ifdef OPTISCOPE_ENABLE_STATS
 #define X(focus_name) uint64_t n##focus_name;
     CONTEXT_MULTIFOCUSES
 #undef X
     uint64_t nmergings, ngc;
+    uint64_t nalloc, nfree;
 #endif
 
-    struct multifocus *gc_focus, *unshare_focus;
-
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
+    // The active pair to be reduced next (Graphviz onely).
     struct node current_pair[2];
 #endif
 };
@@ -1227,23 +1231,26 @@ print_stats(const struct context *const restrict graph) {
         graph->nunary_calls + graph->nbinary_calls + graph->nbinary_calls_aux;
 
     printf("Annihilation interactions: %" PRIu64 "\n", graph->nannihilations);
-    printf("Commutation interactions: %" PRIu64 "\n", graph->ncommutations);
-    printf("Beta interactions: %" PRIu64 "\n", graph->nbetas);
-    printf("Native function calls: %" PRIu64 "\n", ncalls);
-    printf("If-then-elses: %" PRIu64 "\n", graph->nif_then_elses);
+    printf(" Commutation interactions: %" PRIu64 "\n", graph->ncommutations);
+    printf("        Beta interactions: %" PRIu64 "\n", graph->nbetas);
+    printf("    Native function calls: %" PRIu64 "\n", ncalls);
+    printf("            If-then-elses: %" PRIu64 "\n", graph->nif_then_elses);
 
     const uint64_t ninteractions = //
         graph->nannihilations + graph->ncommutations + graph->nbetas + ncalls +
         graph->nif_then_elses;
 
-    printf("Total interactions: %" PRIu64 "\n", ninteractions);
-    printf("Garbage collections: %" PRIu64 "\n", graph->ngc);
-    printf("Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
+    printf("       Total interactions: %" PRIu64 "\n", ninteractions);
+    printf("      Garbage collections: %" PRIu64 "\n", graph->ngc);
+    printf("       Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
 
     const uint64_t nrewrites = //
         ninteractions + graph->nmergings + graph->ngc;
 
-    printf("Total graph rewrites: %" PRIu64 "\n", nrewrites);
+    printf("     Total graph rewrites: %" PRIu64 "\n", nrewrites);
+
+    printf("    Total nodes allocated: %" PRIu64 "\n", graph->nalloc);
+    printf("        Total nodes freed: %" PRIu64 "\n", graph->nfree);
 }
 
 #else
@@ -1361,6 +1368,10 @@ alloc_node_from(
 
     debug("🔨 %s", print_node((struct node){ports}));
 
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->nalloc++;
+#endif
+
     return (struct node){ports};
 }
 
@@ -1382,11 +1393,12 @@ alloc_gc_node(
     return eraser;
 }
 
-COMPILER_HOT //
+COMPILER_NONNULL(1) COMPILER_HOT //
 static void
-free_node(const struct node node) {
+free_node(struct context *const restrict graph, const struct node node) {
     debug("🧹 %p", (void *)node.ports);
 
+    MY_ASSERT(graph);
     XASSERT(node.ports);
 
     const uint64_t symbol = node.ports[-1];
@@ -1434,6 +1446,10 @@ free_node(const struct node node) {
         FREE_POOL_OBJECT(delimiter_pool, p);
         break;
     }
+
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->nfree++;
+#endif
 }
 
 // Delimiter merging
@@ -1522,7 +1538,7 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
         return;
     }
 
-    free_node(f);
+    free_node(graph, f);
 #ifdef OPTISCOPE_ENABLE_STATS
     graph->nmergings++;
 #endif
@@ -1557,7 +1573,7 @@ try_duplicate(struct context *const restrict graph, const struct node f) {
         const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
         connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
         connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
-        free_node(f);
+        free_node(graph, f);
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ncommutations++;
 #endif
@@ -1985,7 +2001,7 @@ gc_step(
 
         focus_on(graph->gc_focus, f);
 
-        free_node(g);
+        free_node(graph, g);
 
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ngc++;
@@ -2005,7 +2021,7 @@ gc_step(
         focus_on(graph->gc_focus, f);
         focus_on(graph->gc_focus, fx);
 
-        free_node(g);
+        free_node(graph, g);
 
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ngc++;
@@ -2029,7 +2045,7 @@ gc_step(
         focus_on(graph->gc_focus, fx);
         focus_on(graph->gc_focus, fxx);
 
-        free_node(g);
+        free_node(graph, g);
 
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ngc++;
@@ -2038,7 +2054,7 @@ gc_step(
     }
     annihilate:
         if (PHASE_GC != DECODE_PHASE_METADATA(g.ports[0])) {
-            free_node(f), free_node(g);
+            free_node(graph, f), free_node(graph, g);
         }
 
 #ifdef OPTISCOPE_ENABLE_STATS
@@ -2058,19 +2074,19 @@ gc_step(
             if (SYMBOL_ERASER == h.ports[-1]) {
                 connect_ports(&f.ports[0], points_to);
                 focus_on(graph->gc_focus, f);
-                free_node(g), free_node(h);
+                free_node(graph, g), free_node(graph, h);
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
             } else if (is_atomic_symbol(sharable.ports[-1])) {
                 connect_ports(&sharable.ports[0], shares_with);
-                free_node(g), free_node(f);
+                free_node(graph, g), free_node(graph, f);
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
             } else if (0 == symbol_index(g.ports[-1])) {
                 connect_ports(points_to, shares_with);
-                free_node(g);
+                free_node(graph, g);
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
@@ -2130,7 +2146,7 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
         XASSERT(f.ports);
 
         if (PHASE_GC_AUX == DECODE_PHASE_METADATA(f.ports[0])) {
-            free_node(f);
+            free_node(graph, f);
         } else {
             uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
 
@@ -2138,7 +2154,7 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
             XASSERT(g.ports);
 
             if (PHASE_GC == DECODE_PHASE_METADATA(g.ports[0])) {
-                free_node(f);
+                free_node(graph, f);
                 set_phase(&g.ports[0], PHASE_GC_AUX);
             } else {
                 gc_step(graph, f, g, points_to - g.ports);
@@ -2190,7 +2206,7 @@ try_unshare(
 #ifdef OPTISCOPE_ENABLE_STATS
             graph->ncommutations++;
 #endif
-            free_node(g);
+            free_node(graph, g);
         } else if (IS_DELIMITER(g.ports[-1])) {
             connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
 
@@ -2199,7 +2215,7 @@ try_unshare(
 #ifdef OPTISCOPE_ENABLE_STATS
             graph->ncommutations++;
 #endif
-            free_node(g);
+            free_node(graph, g);
         }
     }
 
@@ -2422,7 +2438,7 @@ RULE_DEFINITION(annihilate, graph, f, g) {
         connect_ports(DECODE_ADDRESS(f.ports[i]), DECODE_ADDRESS(g.ports[i]));
     }
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(annihilate);
@@ -2502,7 +2518,7 @@ RULE_DEFINITION(commute, graph, f, g) {
         }
     }
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(commute);
@@ -2532,7 +2548,7 @@ RULE_DEFINITION(beta, graph, f, g) {
             graph, (struct delimiter){.idx = 0, rand_port, binder_port});
     }
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(beta);
@@ -2550,7 +2566,7 @@ RULE_DEFINITION(beta_c, graph, f, g) {
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
     connect_ports(DECODE_ADDRESS(g.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(beta_c);
@@ -2567,7 +2583,7 @@ RULE_DEFINITION(identity_beta, graph, f, g) {
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(identity_beta);
@@ -2591,7 +2607,7 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
     // if so, we must garbage-collect it.
     gc(graph, DECODE_ADDRESS(f.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(gc_beta);
@@ -2612,7 +2628,7 @@ RULE_DEFINITION(do_unary_call, graph, f, g) {
 #pragma GCC diagnostic pop
     connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 
-    free_node(f);
+    free_node(graph, f);
 }
 
 TYPE_CHECK_RULE(do_unary_call);
@@ -2633,7 +2649,7 @@ RULE_DEFINITION(do_binary_call, graph, f, g) {
     aux.ports[3] = g.ports[1];
     connect_ports(&aux.ports[0], DECODE_ADDRESS(f.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(do_binary_call);
@@ -2654,7 +2670,7 @@ RULE_DEFINITION(do_binary_call_aux, graph, f, g) {
 #pragma GCC diagnostic pop
     connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 
-    free_node(f);
+    free_node(graph, f);
 }
 
 TYPE_CHECK_RULE(do_binary_call_aux);
@@ -2679,7 +2695,7 @@ RULE_DEFINITION(do_if_then_else, graph, f, g) {
     connect_ports(DECODE_ADDRESS(f.ports[1]), choose);
     gc(graph, discard);
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(do_if_then_else);
@@ -2700,7 +2716,7 @@ RULE_DEFINITION(do_perform, graph, f, g) {
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(do_perform);
@@ -2748,14 +2764,14 @@ RULE_DEFINITION(annihilate_delim_delim, graph, f, g) {
     if (f.ports[2] > g.ports[2]) {
         f.ports[2] -= g.ports[2];
         connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-        free_node(g);
+        free_node(graph, g);
     } else if (g.ports[2] > f.ports[2]) {
         g.ports[2] -= f.ports[2];
         connect_ports(DECODE_ADDRESS(f.ports[1]), &g.ports[0]);
-        free_node(f);
+        free_node(graph, f);
     } else {
         connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
-        free_node(f), free_node(g);
+        free_node(graph, f), free_node(graph, g);
     }
 }
 
@@ -2767,7 +2783,7 @@ RULE_DEFINITION(annihilate_dup_dup, graph, f, g) {
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
     connect_ports(DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(annihilate_dup_dup);
@@ -2799,7 +2815,7 @@ RULE_DEFINITION(commute_1_2, graph, f, g) {
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
 
-    free_node(g);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(commute_1_2);
@@ -2814,7 +2830,7 @@ RULE_DEFINITION(commute_1_3, graph, f, g) {
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
     connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
 
-    free_node(g);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(commute_1_3);
@@ -3031,7 +3047,7 @@ RULE_DEFINITION(commute_lambda_c_delim, graph, f, g) {
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
 
-    free_node(g);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(commute_lambda_c_delim);
@@ -3526,7 +3542,7 @@ scope_remove_cb(struct context *const graph, const struct node node) {
         DECODE_ADDRESS(node.ports[1]), DECODE_ADDRESS(node.ports[0]));
     // clang-format on
 
-    free_node(node);
+    free_node(graph, node);
 }
 
 COMPILER_NONNULL(1) //
@@ -3565,7 +3581,7 @@ normalize_delimiters_cb(struct context *const graph, const struct node node) {
 
     connect_ports(output_port, DECODE_ADDRESS(node.ports[1]));
 
-    free_node(node);
+    free_node(graph, node);
 }
 
 COMPILER_NONNULL(1) //
