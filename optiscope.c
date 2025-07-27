@@ -1179,6 +1179,7 @@ alloc_context(void) {
     CONTEXT_MULTIFOCUSES
 #undef X
     graph->nmergings = graph->ngc = 0;
+    graph->nalloc = graph->nfree = 0;
 #endif
 
     graph->gc_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
