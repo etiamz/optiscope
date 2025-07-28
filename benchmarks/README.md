@@ -4,7 +4,7 @@
 <summary>System information</summary>
 
 ```
-                          ./+o+-       etiams@etiams
+                          ./+o+-       etiamz@etiamz
                   yyyyy- -yyyyyy+      OS: Ubuntu 24.04 noble
                ://+//////-yyyyyyo      Kernel: x86_64 Linux 6.8.0-60-generic
            .++ .:/++++++/-.+sss/`      Uptime: 16m

@@ -43,9 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
  - Miscellaneous:
-   - Doe not free a multifocus if it is `NULL` (see https://github.com/etiams/optiscope/issues/3).
+   - Doe not free a multifocus if it is `NULL` (see https://github.com/etiamz/optiscope/issues/3).
    - Suppresse `-Wdeprecated-declarations` & `-Wc11-extensions` on macOS.
-   - Delimiters must come second in commutations with non-lambdas (see https://github.com/etiams/optiscope/issues/3).
+   - Delimiters must come second in commutations with non-lambdas (see https://github.com/etiamz/optiscope/issues/3).
 
 ## 0.4.0 - 2025-07-03
 
@@ -68,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Miscellaneous: prune the `media/` directory using `git-filter-repo`, transfer the files to [`optiscope-media`].
 
-[`optiscope-media`]: https://github.com/etiams/optiscope-media
+[`optiscope-media`]: https://github.com/etiamz/optiscope-media
 
 ## 0.3.0 - 2025-06-25
 

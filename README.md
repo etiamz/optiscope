@@ -13,7 +13,7 @@ _To every person to informe me of a semantic bug, I will pay $1000 in Bitcoin. M
 ## Installation
 
 ```
-$ git clone https://github.com/etiams/optiscope.git
+$ git clone https://github.com/etiamz/optiscope.git
 $ cd optiscope
 $ ./command/test.sh
 ```
@@ -176,8 +176,8 @@ _Optimal evaluation_ (in Lévy's sense [^levy-thesis] [^levy-optimal-reductions]
 In practice, this is how the complete reduction of Church numeral 2^2 looks like:
 
 <div align="center">
-  <a href="https://raw.githubusercontent.com/etiams/optiscope-media/refs/heads/master/2-power-2-animation.gif">
-    <img src="https://raw.githubusercontent.com/etiams/optiscope-media/refs/heads/master/2-power-2-preview.png" width="480px" alt="Church 2^2 reduction" />
+  <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/2-power-2-animation.gif">
+    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/2-power-2-preview.png" width="480px" alt="Church 2^2 reduction" />
   </a>
 </div>
 
@@ -254,8 +254,8 @@ In Optiscope, it is possible to observe _all the interaction steps_ involved in 
 The visualization will then be as follows:
 
 <div align="center">
-  <a href="https://raw.githubusercontent.com/etiams/optiscope-media/refs/heads/master/lamping-example-animation.gif">
-    <img src="https://raw.githubusercontent.com/etiams/optiscope-media/refs/heads/master/lamping-example-preview.png" width="700px" alt="Lamping example" />
+  <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-animation.gif">
+    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-preview.png" width="700px" alt="Lamping example" />
   </a>
 </div>
 
