@@ -118,10 +118,11 @@ scottSumList =
     )
 
 generateList :: Int -> Term
-generateList n = go n scottNil
+generateList n = go 0 scottNil
   where
-    go 0 acc = acc
-    go i acc = go (i - 1) (Apply (Apply scottCons (Const (i - 1))) acc)
+    go i acc
+      | i < n = go (i + 1) (Apply (Apply scottCons (Const i)) acc)
+      | otherwise = acc
 
 benchmarkTerm :: Term
 benchmarkTerm =

@@ -87,10 +87,9 @@ let scott_sum_list =
 
 let rec generate_list n =
   let rec go i acc =
-    if i = 0 then acc
-    else go (i - 1) (Apply (Apply (scott_cons, Const (i - 1)), acc))
+    if i < n then go (i + 1) (Apply (Apply (scott_cons, Const i), acc)) else acc
   in
-  go n scott_nil
+  go 0 scott_nil
 
 let benchmark_term =
   Apply (scott_sum_list, Apply (scott_quicksort, generate_list 3000))
