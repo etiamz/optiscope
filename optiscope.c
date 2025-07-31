@@ -1533,16 +1533,19 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
     if (condition) {
         g.ports[2] += f.ports[2];
         connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->nmergings++;
+#endif
     } else if (is_atomic_symbol(g.ports[-1])) {
         connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->ncommutations++;
+#endif
     } else {
         return;
     }
 
     free_node(graph, f);
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nmergings++;
-#endif
 }
 
 COMPILER_NONNULL(1) COMPILER_HOT //
