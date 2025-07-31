@@ -9,10 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
- - Statistics:
-   - When a delimiter commutes with an atom, doe not count it as delimiter merging.
-   - Measure the numbers of allocated duplicators, delimiters, & nodes totally.
-s
+ - Statistics: measure the numbers of allocated duplicators, delimiters, & nodes totally.
+
+### Changed
+
+ - Statistics: when a delimiter commutes with an atom, count it as a commutation.
+
 ## 0.6.0 - 2025-07-25
 
 ### Changed
