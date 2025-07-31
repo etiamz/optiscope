@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 0.7.0 - 2025-07-31
+
 ### Added
 
  - Statistics: measure the numbers of allocated duplicators, delimiters, & nodes totally.
