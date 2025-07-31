@@ -53,8 +53,9 @@ Annihilation interactions: 14098275
       Garbage collections: 3524576
        Delimiter mergings: 1346239
      Total graph rewrites: 138169044
+    Duplicators allocated: 48437008
+     Delimiters allocated: 30571304
     Total nodes allocated: 130530703
-        Total nodes freed: 93378056
 ```
 
 </details>
@@ -82,8 +83,9 @@ Annihilation interactions: 7586392
       Garbage collections: 2761986
        Delimiter mergings: 1710148
      Total graph rewrites: 52628958
+    Duplicators allocated: 3395304
+     Delimiters allocated: 20924443
     Total nodes allocated: 27977990
-        Total nodes freed: 22667630
 ```
 
 </details>
@@ -111,8 +113,9 @@ Annihilation interactions: 12557496
       Garbage collections: 5008
        Delimiter mergings: 19998
      Total graph rewrites: 112782527
+    Duplicators allocated: 70001
+     Delimiters allocated: 37612509
     Total nodes allocated: 37787539
-        Total nodes freed: 37787524
 ```
 
 </details>
@@ -140,8 +143,9 @@ Annihilation interactions: 46262799
       Garbage collections: 18403454
        Delimiter mergings: 14043151
      Total graph rewrites: 305552502
+    Duplicators allocated: 14590654
+     Delimiters allocated: 142893701
     Total nodes allocated: 181030126
-        Total nodes freed: 130795028
 ```
 
 </details>
@@ -169,8 +173,9 @@ Annihilation interactions: 102911646
       Garbage collections: 45584058
        Delimiter mergings: 69130028
      Total graph rewrites: 1067668040
+    Duplicators allocated: 31426755
+     Delimiters allocated: 419055847
     Total nodes allocated: 499234732
-        Total nodes freed: 404527539
 ```
 
 </details>
@@ -198,8 +203,9 @@ Annihilation interactions: 11599716
       Garbage collections: 3735400
        Delimiter mergings: 1474410
      Total graph rewrites: 72056330
+    Duplicators allocated: 3538946
+     Delimiters allocated: 30932824
     Total nodes allocated: 39223106
-        Total nodes freed: 36372114
 ```
 
 </details>

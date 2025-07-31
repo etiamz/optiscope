@@ -1136,13 +1136,15 @@ struct context {
     CONTEXT_MULTIFOCUSES
 #undef X
 
-    // The overall statistics of the reduction.
 #ifdef OPTISCOPE_ENABLE_STATS
 #define X(focus_name) uint64_t n##focus_name;
+    // The numbers of proper interactions.
     CONTEXT_MULTIFOCUSES
 #undef X
+    // The numbers of non-interaction graph rewrites.
     uint64_t nmergings, ngc;
-    uint64_t nalloc, nfree;
+    // The memory usage statistics.
+    uint64_t nduplicators, ndelimiters, ntotal;
 #endif
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
@@ -1179,7 +1181,7 @@ alloc_context(void) {
     CONTEXT_MULTIFOCUSES
 #undef X
     graph->nmergings = graph->ngc = 0;
-    graph->nalloc = graph->nfree = 0;
+    graph->nduplicators = graph->ndelimiters = graph->ntotal = 0;
 #endif
 
     graph->gc_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
@@ -1250,8 +1252,9 @@ print_stats(const struct context *const restrict graph) {
 
     printf("     Total graph rewrites: %" PRIu64 "\n", nrewrites);
 
-    printf("    Total nodes allocated: %" PRIu64 "\n", graph->nalloc);
-    printf("        Total nodes freed: %" PRIu64 "\n", graph->nfree);
+    printf("    Duplicators allocated: %" PRIu64 "\n", graph->nduplicators);
+    printf("     Delimiters allocated: %" PRIu64 "\n", graph->ndelimiters);
+    printf("    Total nodes allocated: %" PRIu64 "\n", graph->ntotal);
 }
 
 #else
@@ -1353,11 +1356,17 @@ alloc_node_from(
         break;
     duplicator:
         ports = ALLOC_POOL_OBJECT(duplicator_pool), SET_PORTS_2();
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->nduplicators++;
+#endif
         break;
     delimiter:
         ports = ALLOC_POOL_OBJECT(delimiter_pool);
         if (prototype) { ports[2] = prototype->ports[2]; }
         SET_PORTS_1();
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->ndelimiters++;
+#endif
         break;
     default:
         if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
@@ -1365,13 +1374,13 @@ alloc_node_from(
         else COMPILER_UNREACHABLE();
     }
 
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->ntotal++;
+#endif
+
     ports[-1] = symbol;
 
     debug("🔨 %s", print_node((struct node){ports}));
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nalloc++;
-#endif
 
     return (struct node){ports};
 }
@@ -1447,10 +1456,6 @@ free_node(struct context *const restrict graph, const struct node node) {
         FREE_POOL_OBJECT(delimiter_pool, p);
         break;
     }
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nfree++;
-#endif
 }
 
 // Delimiter merging

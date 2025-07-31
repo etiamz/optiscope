@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Statistics:
    - When a delimiter commutes with an atom, doe not count it as delimiter merging.
-   - Measure the total number of separately allocated & freed nodes.
-
+   - Measure the numbers of allocated duplicators, delimiters, & nodes totally.
+s
 ## 0.6.0 - 2025-07-25
 
 ### Changed
