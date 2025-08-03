@@ -539,14 +539,14 @@ bump_index(const uint64_t symbol, const uint64_t offset) {
     return symbol + offset;
 }
 
-#define PHASE_REDUCE_WEAKLY UINT64_C(0)
-#define PHASE_DISCOVER      UINT64_C(1)
-#define PHASE_REDUCE_FULLY  UINT64_C(2)
-#define PHASE_UNWIND        UINT64_C(3)
-#define PHASE_SCOPE_REMOVE  UINT64_C(4)
-#define PHASE_LOOP_CUT      UINT64_C(5)
-#define PHASE_GC            UINT64_C(6)
-#define PHASE_GC_AUX        UINT64_C(7)
+#define PHASE_REDUCE_WEAKLY    UINT64_C(0)
+#define PHASE_REDUCE_FULLY     UINT64_C(1)
+#define PHASE_REDUCE_FULLY_AUX UINT64_C(2)
+#define PHASE_UNWIND           UINT64_C(3)
+#define PHASE_SCOPE_REMOVE     UINT64_C(4)
+#define PHASE_LOOP_CUT         UINT64_C(5)
+#define PHASE_GC               UINT64_C(6)
+#define PHASE_GC_AUX           UINT64_C(7)
 
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
@@ -4169,8 +4169,9 @@ normalize_x_rules(struct context *const restrict graph) {
     MY_ASSERT(graph);
 
 repeat:
-    graph->phase = PHASE_DISCOVER, walk_graph(graph, multifocus_cb);
-    graph->phase = PHASE_REDUCE_FULLY, walk_graph(graph, NULL);
+    graph->phase = PHASE_REDUCE_FULLY != graph->phase ? PHASE_REDUCE_FULLY
+                                                      : PHASE_REDUCE_FULLY_AUX;
+    walk_graph(graph, multifocus_cb);
 
     if (is_normalized_graph(graph)) { return; }
 

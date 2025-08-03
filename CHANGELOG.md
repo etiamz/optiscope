@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Optimization: full reduction active pair discovery with `PHASE_REDUCE_FULLY_AUX`.
+
 ## 0.7.0 - 2025-07-31
 
 ### Added
