@@ -252,7 +252,8 @@ static uint64_t is_one(const uint64_t x) { return 1 == x; }
 
 static struct lambda_term *
 fibonacci_function(
-    struct lambda_term *const rec, struct lambda_term *const rec_aux) {
+    struct lambda_term *const restrict rec,
+    struct lambda_term *const restrict rec_aux) {
     struct lambda_term *n;
 
     return lambda(

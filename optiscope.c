@@ -3566,7 +3566,7 @@ walk_graph(
     MY_ASSERT(graph);
     XASSERT(graph->root.ports);
 
-    struct multifocus *focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
+    struct multifocus *const focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
 
     focus_on(focus, graph->root);
     set_phase(&graph->root.ports[0], graph->phase);
@@ -4229,7 +4229,7 @@ weak_reduction(struct context *const restrict graph) {
 
     MY_ASSERT(graph);
 
-    struct multifocus *stack = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
+    struct multifocus *const stack = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
 
     struct node f = graph->root;
 
