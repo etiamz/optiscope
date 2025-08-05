@@ -2241,6 +2241,14 @@ try_unshare(
 // The core interaction rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+COMPILER_NONNULL(1, 2, 3) // forward declaration for expanding references
+static void
+of_lambda_term(
+    struct context *const restrict graph,
+    struct lambda_term *const restrict term,
+    uint64_t *const restrict output_port,
+    const uint64_t lvl);
+
 #ifndef NDEBUG
 
 static void
@@ -2641,14 +2649,6 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
 }
 
 TYPE_CHECK_RULE(gc_beta);
-
-COMPILER_NONNULL(1, 2, 3) //
-static void
-of_lambda_term(
-    struct context *const restrict graph,
-    struct lambda_term *const restrict term,
-    uint64_t *const restrict output_port,
-    const uint64_t lvl);
 
 RULE_DEFINITION(expand, graph, f, g) {
     MY_ASSERT(graph);
