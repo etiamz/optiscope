@@ -1031,6 +1031,8 @@ focus_on(struct multifocus *const restrict focus, const struct node node) {
     focus->array[focus->count++] = node;
 }
 
+#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
+
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
 static bool
 is_focused_on(struct multifocus *const restrict focus, const struct node node) {
@@ -1043,6 +1045,8 @@ is_focused_on(struct multifocus *const restrict focus, const struct node node) {
 
     return false;
 }
+
+#endif // OPTISCOPE_ENABLE_GRAPHVIZ
 
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static struct node
