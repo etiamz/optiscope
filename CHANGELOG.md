@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 0.8.0 - 2025-08-05
+
 ### Added
 
  - Reduction semantics: HVM-like references for time- & memory-efficient recursion.
