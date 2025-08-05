@@ -61,12 +61,12 @@ Annihilation interactions: 0
 
 </details>
 
-### [Fibonacci (Church numerals)](benchmarks/church-fibonacci-of-20.c)
+### [Fibonacci (Church numerals)](benchmarks/church-y-fibonacci-of-20.c)
 
 Description: Recursively computes the 20th Fibonacci number using Church numerals & the standard Y combinator.
 
 ```
-Benchmark 1: ./church-fibonacci-of-20
+Benchmark 1: ./church-y-fibonacci-of-20
   Time (mean ± σ):     883.0 ms ±   3.5 ms    [User: 860.9 ms, System: 21.5 ms]
   Range (min … max):   879.1 ms … 887.8 ms    5 runs
 ```
