@@ -30,7 +30,7 @@ To observe the performance characteristics of optimal reduction à la Lambdascop
 
 On GNU/Linux, you need to reserve huge pages as follows: `sudo sysctl vm.nr_hugepages=6000`.
 
-### [Fibonacci (native cells)](benchmarks/fibonacci-of-30.c)
+### [Fibonacci (native cells)](fibonacci-of-30.c)
 
 Description: Recursively computes the 30th Fibonacci number using native cells & the built-in fixpoint operator.
 
@@ -61,7 +61,7 @@ Annihilation interactions: 0
 
 </details>
 
-### [Fibonacci (Church numerals)](benchmarks/church-y-fibonacci-of-20.c)
+### [Fibonacci (Church numerals)](church-y-fibonacci-of-20.c)
 
 Description: Recursively computes the 20th Fibonacci number using Church numerals & the standard Y combinator.
 
@@ -92,7 +92,7 @@ Annihilation interactions: 7586395
 
 </details>
 
-### [Church lists](benchmarks/church-list-reverse-and-sum.c)
+### [Church lists](church-list-reverse-and-sum.c)
 
 Description: Reverses the Church-encoded list of 5000 cells & then sums all the cells up.
 
@@ -123,7 +123,7 @@ Annihilation interactions: 12562495
 
 </details>
 
-### [Scott list insertion sort](benchmarks/scott-insertion-sort.c)
+### [Scott list insertion sort](scott-insertion-sort.c)
 
 Description: Performes an insertion sort on a Scott-encoded list of 500 cells, then sums all the cells up.
 
@@ -154,7 +154,7 @@ Annihilation interactions: 84454257
 
 </details>
 
-### [Scott list quicksort](benchmarks/scott-quicksort.c)
+### [Scott list quicksort](scott-quicksort.c)
 
 Description: Performes an (inefficient) quicksort on a Scott-encoded list of 300 cells, then sums all the cells up.
 
@@ -185,7 +185,7 @@ Annihilation interactions: 41800200
 
 </details>
 
-### [Scott trees](benchmarks/scott-tree-map-and-sum.c)
+### [Scott trees](scott-tree-map-and-sum.c)
 
 Description: Multiplies by 2 all the cells in a Scott-encoded binary tree of size 2^16, then sums all the cells up.
 
