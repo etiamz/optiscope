@@ -971,56 +971,6 @@ is_active(const struct node node) {
 
 #endif // OPTISCOPE_ENABLE_GRAPHVIZ
 
-// Linked lists functionality
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
-
-struct node_list {
-    struct node node;
-    struct node_list *cons;
-};
-
-#define ITERATE_LIST(iter, seed)                                               \
-    for (struct node_list *iter = (seed); iter; iter = iter->cons)
-
-#define CONSUME_LIST(iter, seed)                                               \
-    for (struct node_list *iter = (seed), *cons = NULL; iter;                  \
-         cons = iter->cons, (free(iter), iter = cons))
-
-COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL //
-static struct node_list *
-visit(struct node_list *const restrict self, const struct node node) {
-    XASSERT(node.ports);
-
-    struct node_list *const cons = xmalloc(sizeof *cons);
-    cons->node = node;
-    cons->cons = self;
-
-    return cons;
-}
-
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
-static bool
-is_visited(
-    const struct node_list *const restrict self, const struct node node) {
-    XASSERT(node.ports);
-
-    ITERATE_LIST (iter, (struct node_list *)self) {
-        if (iter->node.ports == node.ports) { return true; }
-    }
-
-    return false;
-}
-
-#define GUARD_NODE(history, node /* parameter */)                              \
-    do {                                                                       \
-        if (is_visited((history), (node))) { return; }                         \
-        (history) = visit((history), (node));                                  \
-    } while (false)
-
-#endif // OPTISCOPE_ENABLE_GRAPHVIZ
-
 // Multifocuses functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -1079,6 +1029,19 @@ focus_on(struct multifocus *const restrict focus, const struct node node) {
     if (focus->count == focus->capacity) { expand_focus(focus); }
 
     focus->array[focus->count++] = node;
+}
+
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
+static bool
+is_focused_on(struct multifocus *const restrict focus, const struct node node) {
+    MY_ASSERT(focus);
+    XASSERT(node.ports);
+
+    for (size_t i = 0; i < focus->count; i++) {
+        if (focus->array[i].ports == node.ports) { return true; }
+    }
+
+    return false;
 }
 
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
@@ -1804,7 +1767,7 @@ graphviz_print_symbol(const struct node node) {
 
 struct graphviz_context {
     struct context *graph;
-    struct node_list *history;
+    struct multifocus *history;
     FILE *stream;
 };
 
@@ -1914,7 +1877,9 @@ go_graphviz(
 
     const struct node node = follow_port(&source.ports[i]);
 
-    GUARD_NODE(ctx->history, node);
+    if (is_focused_on(ctx->history, node)) { return; }
+
+    focus_on(ctx->history, node);
 
     graphviz_draw_node(ctx, node);
 
@@ -1946,10 +1911,13 @@ graphviz(
     fprintf(
         fp, GRAPHVIZ_INDENT "{ rank=min; n%p }\n", (void *)graph->root.ports);
     struct graphviz_context ctx = {
-        .graph = graph, .history = NULL, .stream = fp};
+        .graph = graph,
+        .history = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT),
+        .stream = fp,
+    };
     go_graphviz(&ctx, graph->root, 0);
     CLEAR_MEMORY(ctx.graph->current_pair);
-    CONSUME_LIST (iter, ctx.history) {}
+    free_focus(ctx.history);
     fprintf(fp, "}\n");
 
     IO_CALL(fclose, fp);

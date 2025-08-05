@@ -42,8 +42,6 @@ AttributeMacros:
 ForEachMacros: [
     ITERATE_ONCE, #
     FOR_ALL_PORTS,
-    ITERATE_LIST,
-    CONSUME_LIST,
     CONSUME_MULTIFOCUS,
   ]
 StatementMacros: [PRINTER]
