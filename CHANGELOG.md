@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Added
+
+ - Reduction semantics: HVM-like references for time- & memory-efficient recursion.
+
 ### Changed
 
  - Optimization: full reduction active pair discovery with `PHASE_REDUCE_FULLY_AUX`.

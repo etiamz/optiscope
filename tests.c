@@ -251,35 +251,44 @@ static uint64_t is_one(const uint64_t x) { return 1 == x; }
 // clang-format on
 
 static struct lambda_term *
-fix_fibonacci_function(void) {
-    struct lambda_term *rec, *n;
+fibonacci_function(
+    struct lambda_term *const rec, struct lambda_term *const rec_aux) {
+    struct lambda_term *n;
 
     return lambda(
-        rec,
-        lambda(
-            n,
+        n,
+        if_then_else(
+            unary_call(is_zero, var(n)),
+            cell(0),
             if_then_else(
-                unary_call(is_zero, var(n)),
-                cell(0),
-                if_then_else(
-                    unary_call(is_one, var(n)),
-                    cell(1),
-                    binary_call(
-                        add,
-                        apply(var(rec), binary_call(subtract, var(n), cell(1))),
-                        apply(
-                            var(rec),
-                            binary_call(subtract, var(n), cell(2))))))));
+                unary_call(is_one, var(n)),
+                cell(1),
+                binary_call(
+                    add,
+                    apply(rec, binary_call(subtract, var(n), cell(1))),
+                    apply(rec_aux, binary_call(subtract, var(n), cell(2)))))));
 }
 
 static struct lambda_term *
 fix_fibonacci_term(void) {
-    return fix(fix_fibonacci_function());
+    struct lambda_term *rec;
+
+    return fix(lambda(rec, fibonacci_function(var(rec), var(rec))));
+}
+
+static struct lambda_term *
+fibonacci_term(void) {
+    return fibonacci_function(ref(fibonacci_term), ref(fibonacci_term));
 }
 
 static struct lambda_term *
 fix_fibonacci_test(void) {
     return apply(fix_fibonacci_term(), cell(10));
+}
+
+static struct lambda_term *
+fibonacci_test(void) {
+    return apply(fibonacci_term(), cell(10));
 }
 
 // Church booleans
@@ -898,20 +907,18 @@ scott_singleton(void) {
 
 static struct lambda_term *
 scott_sum_list(void) {
-    struct lambda_term *rec, *list, *x, *xs;
+    struct lambda_term *list, *x, *xs;
 
-    return fix(lambda(
-        rec,
-        lambda(
-            list,
-            apply(
-                apply(var(list), cell(0)),
+    return lambda(
+        list,
+        apply(
+            apply(var(list), cell(0)),
+            lambda(
+                x,
                 lambda(
-                    x,
-                    lambda(
-                        xs,
-                        binary_call(
-                            add, var(x), apply(var(rec), var(xs)))))))));
+                    xs,
+                    binary_call(
+                        add, var(x), apply(ref(scott_sum_list), var(xs)))))));
 }
 
 static struct lambda_term *
@@ -939,40 +946,45 @@ static uint64_t less_than_or_equal(const uint64_t x, const uint64_t y)
 
 static struct lambda_term *
 scott_insert(void) {
-    struct lambda_term *rec, *y, *list, *z, *zs;
+    struct lambda_term *y, *list, *z, *zs;
 
-    // clang-format off
-    return fix(lambda(rec, lambda(y, lambda(list,
-        apply(apply(var(list),
-            apply(scott_singleton(), var(y))),
-            lambda(z, lambda(zs,
-                if_then_else(
-                    binary_call(less_than_or_equal, var(y), var(z)),
-                    apply(apply(scott_cons(), var(y)),
-                        apply(apply(scott_cons(), var(z)), var(zs))),
-                    apply(apply(scott_cons(), var(z)),
-                        apply(apply(
-                            var(rec), var(y)), var(zs)))))))))));
-    // clang-format on
+    return lambda(
+        y,
+        lambda(
+            list,
+            apply(
+                apply(var(list), apply(scott_singleton(), var(y))),
+                lambda(
+                    z,
+                    lambda(
+                        zs,
+                        if_then_else(
+                            binary_call(less_than_or_equal, var(y), var(z)),
+                            apply(
+                                apply(scott_cons(), var(y)),
+                                apply(apply(scott_cons(), var(z)), var(zs))),
+                            apply(
+                                apply(scott_cons(), var(z)),
+                                apply(
+                                    apply(ref(scott_insert), var(y)),
+                                    var(zs)))))))));
 }
 
 static struct lambda_term *
 scott_insertion_sort(void) {
-    struct lambda_term *rec, *list, *x, *xs;
+    struct lambda_term *list, *x, *xs;
 
-    return fix(lambda(
-        rec,
-        lambda(
-            list,
-            apply(
-                apply(var(list), scott_nil()),
+    return lambda(
+        list,
+        apply(
+            apply(var(list), scott_nil()),
+            lambda(
+                x,
                 lambda(
-                    x,
-                    lambda(
-                        xs,
-                        apply(
-                            apply(scott_insert(), var(x)),
-                            apply(var(rec), var(xs)))))))));
+                    xs,
+                    apply(
+                        apply(scott_insert(), var(x)),
+                        apply(ref(scott_insertion_sort), var(xs)))))));
 }
 
 static struct lambda_term *
@@ -998,16 +1010,20 @@ static uint64_t concatenate_ints(uint64_t x, const uint64_t y) {
 
 static struct lambda_term *
 scott_concatenate_list(void) {
-    struct lambda_term *rec, *list, *x, *xs;
+    struct lambda_term *list, *x, *xs;
 
-    // clang-format off
-    return fix(lambda(rec, lambda(list,
+    return lambda(
+        list,
         apply(
             apply(var(list), cell(0)),
-            lambda(x, lambda(xs,
-                binary_call(concatenate_ints,
-                    var(x), apply(var(rec), var(xs)))))))));
-    // clang-format on
+            lambda(
+                x,
+                lambda(
+                    xs,
+                    binary_call(
+                        concatenate_ints,
+                        var(x),
+                        apply(ref(scott_concatenate_list), var(xs)))))));
 }
 
 static struct lambda_term *
@@ -1030,56 +1046,70 @@ static uint64_t greater_than_or_equal(const uint64_t x, const uint64_t y)
 
 static struct lambda_term *
 scott_filter(void) {
-    struct lambda_term *rec, *f, *list, *x, *xs;
+    struct lambda_term *f, *list, *x, *xs;
 
-    // clang-format off
-    return fix(lambda(rec, lambda(f, lambda(list,
-        apply(
-            apply(var(list), scott_nil()),
-            lambda(x, lambda(xs,
-                if_then_else(
-                    apply(var(f), var(x)),
-                    apply(
-                        apply(scott_cons(), var(x)),
-                        apply(apply(var(rec), var(f)), var(xs))),
-                    apply(apply(var(rec), var(f)), var(xs))))))))));
-    // clang-format on
+    return lambda(
+        f,
+        lambda(
+            list,
+            apply(
+                apply(var(list), scott_nil()),
+                lambda(
+                    x,
+                    lambda(
+                        xs,
+                        if_then_else(
+                            apply(var(f), var(x)),
+                            apply(
+                                apply(scott_cons(), var(x)),
+                                apply(
+                                    apply(ref(scott_filter), var(f)), var(xs))),
+                            apply(
+                                apply(ref(scott_filter), var(f)),
+                                var(xs))))))));
 }
 
 static struct lambda_term *
 scott_append(void) {
-    struct lambda_term *rec, *xs, *ys, *x, *xss;
+    struct lambda_term *xs, *ys, *x, *xss;
 
-    // clang-format off
-    return fix(lambda(rec, lambda(xs, lambda(ys,
-        apply(
-            apply(var(xs), var(ys)),
-            lambda(x, lambda(xss,
-                apply(apply(scott_cons(), var(x)),
-                    apply(apply(var(rec), var(xss)), var(ys))))))))));
-    // clang-format on
+    return lambda(
+        xs,
+        lambda(
+            ys,
+            apply(
+                apply(var(xs), var(ys)),
+                lambda(
+                    x,
+                    lambda(
+                        xss,
+                        apply(
+                            apply(scott_cons(), var(x)),
+                            apply(
+                                apply(ref(scott_append), var(xss)),
+                                var(ys))))))));
 }
 
 static struct lambda_term *
 scott_quicksort(void) {
-    struct lambda_term *rec, *list, *x, *xs, *y, *z;
+    struct lambda_term *list, *x, *xs, *y, *z;
 
     // clang-format off
-    return fix(lambda(rec, lambda(list,
+    return lambda(list,
         apply(apply(var(list), scott_nil()),
             lambda(x, lambda(xs, apply(apply(scott_append(),
-                apply(var(rec),
+                apply(ref(scott_quicksort),
                     apply(
                         apply(scott_filter(),
                             lambda(y, binary_call(less_than, var(y), var(x)))),
                         var(xs)))),
                 apply(apply(scott_cons(), var(x)),
-                    apply(var(rec),
+                    apply(ref(scott_quicksort),
                         apply(
                             apply(scott_filter(),
                                 lambda(z, binary_call(greater_than_or_equal,
                                     var(z), var(x)))),
-                            var(xs)))))))))));
+                            var(xs)))))))));
     // clang-format on
 }
 
@@ -1134,30 +1164,28 @@ scott_node(void) {
 
 static struct lambda_term *
 scott_tree_sum(void) {
-    struct lambda_term *rec, *tree, *v, *lhs, *rhs;
+    struct lambda_term *tree, *v, *lhs, *rhs;
 
-    return fix(lambda(
-        rec,
-        lambda(
-            tree,
-            apply(
-                apply(var(tree), lambda(v, var(v))),
+    return lambda(
+        tree,
+        apply(
+            apply(var(tree), lambda(v, var(v))),
+            lambda(
+                lhs,
                 lambda(
-                    lhs,
-                    lambda(
-                        rhs,
-                        binary_call(
-                            add,
-                            apply(var(rec), var(lhs)),
-                            apply(var(rec), var(rhs)))))))));
+                    rhs,
+                    binary_call(
+                        add,
+                        apply(ref(scott_tree_sum), var(lhs)),
+                        apply(ref(scott_tree_sum), var(rhs)))))));
 }
 
 static struct lambda_term *
 scott_tree_map(void) {
-    struct lambda_term *rec, *f, *tree, *v, *lhs, *rhs;
+    struct lambda_term *f, *tree, *v, *lhs, *rhs;
 
     // clang-format off
-    return fix(lambda(rec, lambda(f, lambda(tree,
+    return lambda(f, lambda(tree,
         apply(
             apply(
                 var(tree),
@@ -1166,9 +1194,9 @@ scott_tree_map(void) {
                 apply(
                     apply(
                         scott_node(),
-                        apply(apply(var(rec), var(f)), var(lhs))),
+                        apply(apply(ref(scott_tree_map), var(f)), var(lhs))),
                     apply(
-                        apply(var(rec), var(f)), var(rhs))))))))));
+                        apply(ref(scott_tree_map), var(f)), var(rhs))))))));
     // clang-format on
 }
 
@@ -1333,6 +1361,7 @@ main(void) {
     TEST_CASE(binary_arithmetic, "cell[11]");
     TEST_CASE(conditionals, "cell[10]");
     TEST_CASE(fix_fibonacci_test, "cell[55]");
+    TEST_CASE(fibonacci_test, "cell[55]");
     TEST_CASE(boolean_test, "(λ (λ 1))");
     TEST_CASE(church_two_two_test, "(λ (λ (1 (1 (1 (1 0))))))");
     TEST_CASE(

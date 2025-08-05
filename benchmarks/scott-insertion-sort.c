@@ -12,7 +12,7 @@ generate_list(const uint64_t n) {
 }
 
 #define BENCHMARK_TERM                                                         \
-    apply(scott_sum_list(), apply(scott_insertion_sort(), generate_list(300)))
+    apply(scott_sum_list(), apply(scott_insertion_sort(), generate_list(500)))
 
 int
 main(void) {

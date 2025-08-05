@@ -130,6 +130,11 @@ perform(restrict LambdaTerm action, restrict LambdaTerm k);
 /// `k`.
 #define bind(x, action, k) apply(lambda((x), perform(var((x)), (k))), (action))
 
+/// Construct a "reference" that can be expanded to a lambda term by calling
+/// `function`.
+extern LambdaTerm
+ref(struct lambda_term *(*const function)(void));
+
 /// Run the optimal reduction algorithm on the given `term`. The `term` object
 /// will be deallocated automatically.
 extern void
