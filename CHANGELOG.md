@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - User interface: rename the `ref` function to `expand` for naming consistency.
+
 ## 0.8.0 - 2025-08-05
 
 ### Added

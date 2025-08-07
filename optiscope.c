@@ -2650,7 +2650,7 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
 
 TYPE_CHECK_RULE(gc_beta);
 
-RULE_DEFINITION(expand, graph, f, g) {
+RULE_DEFINITION(do_expand, graph, f, g) {
     MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     assert_expand(graph, f, g);
@@ -2668,7 +2668,7 @@ RULE_DEFINITION(expand, graph, f, g) {
     free_node(graph, f);
 }
 
-TYPE_CHECK_RULE(expand);
+TYPE_CHECK_RULE(do_expand);
 
 RULE_DEFINITION(do_unary_call, graph, f, g) {
     MY_ASSERT(graph);
@@ -3312,7 +3312,7 @@ fire_rule(
 #define BETA_C                        beta_c
 #define IDENTITY_BETA                 identity_beta
 #define GC_BETA                       gc_beta
-#define EXPAND                        expand
+#define EXPAND                        do_expand
 #define DO_UNARY_CALL                 do_unary_call
 #define DO_BINARY_CALL                do_binary_call
 #define DO_BINARY_CALL_AUX            do_binary_call_aux
@@ -3959,7 +3959,7 @@ perform(const restrict LambdaTerm action, const restrict LambdaTerm k) {
 }
 
 extern LambdaTerm
-ref(struct lambda_term *(*const function)(void)) {
+expand(struct lambda_term *(*const function)(void)) {
     MY_ASSERT(function);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
@@ -4268,7 +4268,7 @@ repeat:
     CONSUME_MULTIFOCUS (graph->closed_betas, f) { interact(graph, beta_c, f); }
     CONSUME_MULTIFOCUS (graph->identity_betas, f) { interact(graph, identity_beta, f); }
     CONSUME_MULTIFOCUS (graph->gc_betas, f) { interact(graph, gc_beta, f); }
-    CONSUME_MULTIFOCUS (graph->expansions, f) { interact(graph, expand, f); }
+    CONSUME_MULTIFOCUS (graph->expansions, f) { interact(graph, do_expand, f); }
     CONSUME_MULTIFOCUS (graph->unary_calls, f) { interact(graph, do_unary_call, f); }
     CONSUME_MULTIFOCUS (graph->binary_calls, f) { interact(graph, do_binary_call, f); }
     CONSUME_MULTIFOCUS (graph->binary_calls_aux, f) { interact(graph, do_binary_call_aux, f); }

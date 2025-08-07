@@ -279,7 +279,7 @@ fix_fibonacci_term(void) {
 
 static struct lambda_term *
 fibonacci_term(void) {
-    return fibonacci_function(ref(fibonacci_term), ref(fibonacci_term));
+    return fibonacci_function(expand(fibonacci_term), expand(fibonacci_term));
 }
 
 static struct lambda_term *
@@ -919,7 +919,9 @@ scott_sum_list(void) {
                 lambda(
                     xs,
                     binary_call(
-                        add, var(x), apply(ref(scott_sum_list), var(xs)))))));
+                        add,
+                        var(x),
+                        apply(expand(scott_sum_list), var(xs)))))));
 }
 
 static struct lambda_term *
@@ -967,7 +969,7 @@ scott_insert(void) {
                             apply(
                                 apply(scott_cons(), var(z)),
                                 apply(
-                                    apply(ref(scott_insert), var(y)),
+                                    apply(expand(scott_insert), var(y)),
                                     var(zs)))))))));
 }
 
@@ -985,7 +987,7 @@ scott_insertion_sort(void) {
                     xs,
                     apply(
                         apply(scott_insert(), var(x)),
-                        apply(ref(scott_insertion_sort), var(xs)))))));
+                        apply(expand(scott_insertion_sort), var(xs)))))));
 }
 
 static struct lambda_term *
@@ -1024,7 +1026,7 @@ scott_concatenate_list(void) {
                     binary_call(
                         concatenate_ints,
                         var(x),
-                        apply(ref(scott_concatenate_list), var(xs)))))));
+                        apply(expand(scott_concatenate_list), var(xs)))))));
 }
 
 static struct lambda_term *
@@ -1064,9 +1066,10 @@ scott_filter(void) {
                             apply(
                                 apply(scott_cons(), var(x)),
                                 apply(
-                                    apply(ref(scott_filter), var(f)), var(xs))),
+                                    apply(expand(scott_filter), var(f)),
+                                    var(xs))),
                             apply(
-                                apply(ref(scott_filter), var(f)),
+                                apply(expand(scott_filter), var(f)),
                                 var(xs))))))));
 }
 
@@ -1087,7 +1090,7 @@ scott_append(void) {
                         apply(
                             apply(scott_cons(), var(x)),
                             apply(
-                                apply(ref(scott_append), var(xss)),
+                                apply(expand(scott_append), var(xss)),
                                 var(ys))))))));
 }
 
@@ -1099,13 +1102,13 @@ scott_quicksort(void) {
     return lambda(list,
         apply(apply(var(list), scott_nil()),
             lambda(x, lambda(xs, apply(apply(scott_append(),
-                apply(ref(scott_quicksort),
+                apply(expand(scott_quicksort),
                     apply(
                         apply(scott_filter(),
                             lambda(y, binary_call(less_than, var(y), var(x)))),
                         var(xs)))),
                 apply(apply(scott_cons(), var(x)),
-                    apply(ref(scott_quicksort),
+                    apply(expand(scott_quicksort),
                         apply(
                             apply(scott_filter(),
                                 lambda(z, binary_call(greater_than_or_equal,
@@ -1177,8 +1180,8 @@ scott_tree_sum(void) {
                     rhs,
                     binary_call(
                         add,
-                        apply(ref(scott_tree_sum), var(lhs)),
-                        apply(ref(scott_tree_sum), var(rhs)))))));
+                        apply(expand(scott_tree_sum), var(lhs)),
+                        apply(expand(scott_tree_sum), var(rhs)))))));
 }
 
 static struct lambda_term *
@@ -1195,9 +1198,9 @@ scott_tree_map(void) {
                 apply(
                     apply(
                         scott_node(),
-                        apply(apply(ref(scott_tree_map), var(f)), var(lhs))),
+                        apply(apply(expand(scott_tree_map), var(f)), var(lhs))),
                     apply(
-                        apply(ref(scott_tree_map), var(f)), var(rhs))))))));
+                        apply(expand(scott_tree_map), var(f)), var(rhs))))))));
     // clang-format on
 }
 
