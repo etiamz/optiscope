@@ -29,7 +29,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// Header inclusions
+// Header Inclusions
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #include "optiscope.h"
@@ -45,7 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <string.h>
 
-// Miscellaneous macros
+// Miscellaneous Macros
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define ARRAY_LENGTH(array) (sizeof((array)) / sizeof((array)[0]))
@@ -65,7 +65,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define STRINGIFY_PRIMITIVE(...) #__VA_ARGS__
 #define STRINGIFY(...)           STRINGIFY_PRIMITIVE(__VA_ARGS__)
 
-// Compiler functionality detection
+// Compiler Functionality Detection
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define STANDARD_C99_OR_HIGHER (__STDC_VERSION__ >= 199901L)
@@ -100,7 +100,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MY_OPENMP(...) /* empty */
 #endif
 
-// Compiler-specific builtins
+// Compiler-Specific Builtins
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #ifdef __GNUC__
@@ -235,7 +235,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define COMPILER_IS_POISONED_MEMORY COMPILER_IGNORE_WITH_ARGS
 #endif
 
-// Debug assertions
+// Debugging Assertions
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // Assertions that are checked at program run-time.
@@ -264,7 +264,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // clang-format on
 #endif
 
-// File-related I/O
+// File-Related I/O
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define IO_CALL(f, ...) (f(__VA_ARGS__) < 0 ? (perror(#f), abort()) : (void)0)
@@ -285,7 +285,7 @@ optiscope_redirect_stream(
     if (ferror(source) != 0) { perror("fgetc"), abort(); }
 }
 
-// Logging & panicking
+// Logging & Panicking
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define PRINTER(name, stream, culmination)                                     \
@@ -314,7 +314,7 @@ PRINTER(panic, stderr, abort())
 
 #undef PRINTER
 
-// Ports & symbols functionality
+// Ports & Symbols Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define MACHINE_WORD_BITS    UINT64_C(64)
@@ -583,7 +583,7 @@ set_phase(uint64_t *const restrict port, const uint64_t phase) {
     MY_ASSERT(DECODE_PHASE_METADATA(*port) == phase);
 }
 
-// Native function pointers
+// Native Function Pointers
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // Casting a function pointer to `void *` is not safe by the standard, but many
@@ -600,7 +600,7 @@ set_phase(uint64_t *const restrict port, const uint64_t phase) {
 #define USER_FUNCTION_OF_U64(function)                                         \
     ((struct lambda_term * (*)(void))(void *)(function))
 
-// O(1) pool allocation & deallocation
+// O(1) Pool Allocation & Deallocation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
@@ -869,7 +869,7 @@ extern void optiscope_close_pools(void) { POOLS }
 #undef POOL_ALLOCATOR
 #undef POOL_CHUNK_LIST_SIZE
 
-// Nodes functionality
+// Nodes Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 struct node {
@@ -997,7 +997,7 @@ is_active(const struct node node) {
 
 #endif // OPTISCOPE_ENABLE_GRAPHVIZ
 
-// Multifocuses functionality
+// Multifocuses Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #ifndef OPTISCOPE_MULTIFOCUS_COUNT
@@ -1100,7 +1100,7 @@ unfocus_or(
          (focus)->count > 0 ? (f = unfocus((focus)), true) : false;            \
          (void)0)
 
-// The main context functionality
+// Main Context Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // clang-format off
@@ -1458,7 +1458,7 @@ free_node(struct context *const restrict graph, const struct node node) {
     }
 }
 
-// Delimiter merging
+// Delimiter Merging
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 struct delimiter {
@@ -1564,7 +1564,7 @@ try_merge_if_delimiter(
     if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(graph, f); }
 }
 
-// Immediate duplication
+// Immediate Duplication
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_NONNULL(1) COMPILER_HOT //
@@ -1589,7 +1589,7 @@ try_duplicate(struct context *const restrict graph, const struct node f) {
     }
 }
 
-// Graphviz graph generation
+// Graphviz Graph Generation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
@@ -1994,7 +1994,7 @@ wait_for_user(struct context *const restrict graph) {
 
 #endif // !defined(NDEBUG) && defined(OPTISCOPE_ENABLE_STEP_BY_STEP)
 
-// Eraser-passing garbage collection
+// Eraser-Passing Garbage Collection
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_NONNULL(1) COMPILER_HOT //
@@ -2179,7 +2179,7 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
     }
 }
 
-// Eager atomic unsharing
+// Eager Atomic Unsharing
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // Eliminates a (higher-order) sharing structure, thus reducing the graph size.
@@ -2238,7 +2238,7 @@ try_unshare(
     return true;
 }
 
-// The core interaction rules
+// Core Interaction Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_NONNULL(1, 2, 3) // forward declaration for expanding references
@@ -2796,7 +2796,7 @@ interact(
     rule(graph, f, g);
 }
 
-// Specialized annihilation rules
+// Specialized Annihilation Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define ANNIHILATION_PROLOGUE(graph, f, g)                                     \
@@ -2849,7 +2849,7 @@ TYPE_CHECK_RULE(annihilate_dup_dup);
 #undef NANNIHILATIONS_PLUS_PLUS
 #undef ANNIHILATION_PROLOGUE
 
-// Specialized commutation rules
+// Specialized Commutation Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define COMMUTATION_PROLOGUE(graph, f, g)                                      \
@@ -3123,7 +3123,7 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
 
 #undef TYPE_CHECK_RULE
 
-// Rule dispatching
+// Rule Dispatching
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define DISPATCH_ACTIVE_PAIR(graph, f, g)                                      \
@@ -3495,7 +3495,7 @@ register_active_pair(
 
 #undef DISPATCH_ACTIVE_PAIR
 
-// Higher-order control structures
+// Higher-Order Control Structures
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
@@ -3553,7 +3553,7 @@ build_duplicator_tree(
     return ports;
 }
 
-// The graph traversal procedure
+// Graph Traversal Procedure
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // This procedure is onely used _after_ weak reduction, in order to transforme
@@ -3589,7 +3589,7 @@ walk_graph(
     free_focus(focus);
 }
 
-// The graph traversal callbacks
+// Graph Traversal Callbacks
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_NONNULL(1) //
@@ -3687,7 +3687,7 @@ multifocus_cb(struct context *const graph, const struct node f) {
     if (condition) { register_active_pair(graph, f, g); }
 }
 
-// Conversion to a lambda term string
+// Conversion to Lambda Term String
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_NONNULL(1) //
@@ -3743,7 +3743,7 @@ to_lambda_string(
     COMPILER_UNREACHABLE();
 }
 
-// The lambda term interface
+// Lambda Term Interface
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 enum lambda_term_type {
@@ -3970,7 +3970,7 @@ expand(struct lambda_term *(*const function)(void)) {
     return term;
 }
 
-// Conversion from a lambda term
+// Conversion From Lambda Terms
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) //
@@ -4219,7 +4219,7 @@ of_lambda_term(
     free(term);
 }
 
-// The complete algorithm
+// Complete Algorithm
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_NONNULL(1) //
