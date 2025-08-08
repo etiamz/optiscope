@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// The testing machinery
+// Testing Machinery
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static int exit_code = EXIT_SUCCESS;
@@ -61,7 +61,7 @@ close_fp:
     if (0 != fclose(fp)) { perror("fclose"); }
 }
 
-// The S, K, I combinators
+// S, K, I Combinators
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
@@ -133,7 +133,7 @@ self_iota_combinator_test(void) {
     return apply(iota_combinator_test(), iota_combinator_test());
 }
 
-// The B, C, W combinators
+// B, C, W Combinators
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
@@ -166,7 +166,7 @@ bcw_test(void) {
         apply(apply(b_combinator(), b_combinator()), c_combinator()));
 }
 
-// Unary arithmetic
+// Unary Arithmetic
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // clang-format off
@@ -188,7 +188,7 @@ unary_arithmetic(void) {
             lambda(x, unary_call(cube, unary_call(square, var(x))))));
 }
 
-// Binary arithmetic
+// Binary Arithmetic
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // clang-format off
@@ -221,7 +221,7 @@ binary_arithmetic(void) {
             binary_call(multiply, binary_call(add, var(x), cell(5)), cell(2))));
 }
 
-// Conditional logic with recursion
+// Conditional Logic With Recursion
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // clang-format off
@@ -292,7 +292,7 @@ fibonacci_test(void) {
     return apply(fibonacci_term(), cell(10));
 }
 
-// Church booleans
+// Church Booleans
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
@@ -371,7 +371,7 @@ boolean_test(void) {
         church_false());
 }
 
-// Church numerals
+// Church Numerals
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
@@ -504,7 +504,7 @@ church_five_predecessor2x(void) {
     return apply(church_predecessor2x(), church_five());
 }
 
-// Iterative factorial
+// Iterative Factorial
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
@@ -562,7 +562,7 @@ factorial_of_three_test(void) {
     return apply(factorial_term(), church_three());
 }
 
-// The Y combinator
+// Y Combinator
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
@@ -653,7 +653,7 @@ y_fibonacci_test(void) {
     return apply(y_fibonacci_term(), church_three());
 }
 
-// The WHY combinator
+// WHY Combinator
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // Suggested by Marvin Borner <git@marvinborner.de>.
@@ -714,7 +714,7 @@ why_factorial_test(void) {
     return apply(why_factorial_term(), church_three());
 }
 
-// Church lists
+// Church Lists
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
@@ -828,7 +828,7 @@ church_append_test(void) {
         apply(church_append(), church_list_1_2_3()), church_list_4_5_6());
 }
 
-// Scott numerals
+// Scott Numerals
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
@@ -880,7 +880,7 @@ scott_three_successor_predecessor2x_test(void) {
         apply(scott_predecessor(), apply(scott_successor(), scott_three())));
 }
 
-// Scott lists
+// Scott Lists
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
@@ -1036,7 +1036,7 @@ scott_insertion_sort_test(void) {
         apply(scott_insertion_sort(), scott_list_3_1_4_1_5()));
 }
 
-// Scott quicksort
+// Scott Quicksort
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // clang-format off
@@ -1143,7 +1143,7 @@ scott_quicksort_test(void) {
         apply(scott_quicksort(), scott_list_9_2_7_3_8_1_4()));
 }
 
-// Scott binary trees
+// Scott Binary Trees
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
@@ -1235,7 +1235,7 @@ scott_tree_map_and_sum_test(void) {
             scott_example_tree()));
 }
 
-// The Ackermann function
+// Ackermann Function
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // clang-format off
@@ -1274,7 +1274,7 @@ fix_ackermann_test(void) {
     return apply(apply(fix_ackermann(), cell(3)), cell(3));
 }
 
-// Examples from the literature
+// Examples From Literature
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
@@ -1344,7 +1344,7 @@ wadsworth_counterexample(void) { // Asperti & Guerrini
                 lambda(w, apply(once, var(w))))));
 }
 
-// The test driver
+// Test Driver
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #ifndef OPTISCOPE_TESTS_NO_MAIN
