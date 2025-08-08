@@ -184,34 +184,3 @@ Annihilation interactions: 41800200
 ```
 
 </details>
-
-### [Scott trees](scott-tree-map-and-sum.c)
-
-Description: Multiplies by 2 all the cells in a Scott-encoded binary tree of size 2^16, then sums all the cells up.
-
-```
-Benchmark 1: ./scott-tree-map-and-sum
-  Time (mean ± σ):      1.017 s ±  0.006 s    [User: 0.971 s, System: 0.045 s]
-  Range (min … max):    1.008 s …  1.025 s    5 runs
-```
-
-<details>
-<summary>Statistics profile</summary>
-
-```
-Annihilation interactions: 9174902
- Commutation interactions: 40468491
-        Beta interactions: 1507314
-               Expansions: 262140
-    Native function calls: 262142
-            If-then-elses: 0
-       Total interactions: 51412849
-      Garbage collections: 4587512
-       Delimiter mergings: 1671022
-     Total graph rewrites: 57671383
-    Duplicators allocated: 393212
-     Delimiters allocated: 25263975
-    Total nodes allocated: 32669493
-```
-
-</details>
