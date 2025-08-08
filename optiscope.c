@@ -2084,7 +2084,7 @@ gc_step(
                 *const shares_with = DECODE_ADDRESS(g.ports[1 == i ? 2 : 1]);
 
             const struct node h = node_of_port(shares_with),
-                              sharable = node_of_port(points_to);
+                              shareable = node_of_port(points_to);
 
             if (SYMBOL_ERASER == h.ports[-1]) {
                 connect_ports(&f.ports[0], points_to);
@@ -2093,8 +2093,8 @@ gc_step(
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
-            } else if (is_atomic_symbol(sharable.ports[-1])) {
-                connect_ports(&sharable.ports[0], shares_with);
+            } else if (is_atomic_symbol(shareable.ports[-1])) {
+                connect_ports(&shareable.ports[0], shares_with);
                 free_node(graph, g), free_node(graph, f);
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
