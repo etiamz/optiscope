@@ -32,7 +32,7 @@ On GNU/Linux, you need to reserve huge pages as follows: `sudo sysctl vm.nr_huge
 
 ### [Fibonacci (native cells)](fibonacci-of-30.c)
 
-Description: Recursively computes the 30th Fibonacci number using native cells & the built-in fixpoint operator.
+Description: Exponentially computes the 30th Fibonacci number using native cells & the built-in fixpoint operator.
 
 ```
 Benchmark 1: ./fibonacci-of-30
@@ -63,7 +63,7 @@ Annihilation interactions: 0
 
 ### [Fibonacci (Church numerals)](church-y-fibonacci-of-20.c)
 
-Description: Recursively computes the 20th Fibonacci number using Church numerals & the standard Y combinator.
+Description: Exponentially computes the 20th Fibonacci number using Church numerals & the standard Y combinator.
 
 ```
 Benchmark 1: ./church-y-fibonacci-of-20
