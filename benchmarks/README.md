@@ -94,31 +94,31 @@ Annihilation interactions: 7586395
 
 ### [Church lists](church-list-reverse-and-sum.c)
 
-Description: Reverses the Church-encoded list of 5000 cells & then sums all the cells up.
+Description: Reverses the Church-encoded list of 10000 cells & then sums all the cells up.
 
 ```
 Benchmark 1: ./church-list-reverse-and-sum
-  Time (mean ± σ):      1.510 s ±  0.088 s    [User: 1.501 s, System: 0.009 s]
-  Range (min … max):    1.436 s …  1.608 s    5 runs
+  Time (mean ± σ):      6.144 s ±  0.072 s    [User: 6.133 s, System: 0.011 s]
+  Range (min … max):    6.093 s …  6.269 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-Annihilation interactions: 12562495
- Commutation interactions: 100145031
-        Beta interactions: 45004
+Annihilation interactions: 50124995
+ Commutation interactions: 400290031
+        Beta interactions: 90004
                Expansions: 0
-    Native function calls: 10000
+    Native function calls: 20000
             If-then-elses: 0
-       Total interactions: 112762530
-      Garbage collections: 5008
-       Delimiter mergings: 20000
-     Total graph rewrites: 112787538
-    Duplicators allocated: 70001
-     Delimiters allocated: 37622514
-    Total nodes allocated: 37797544
+       Total interactions: 450525030
+      Garbage collections: 10008
+       Delimiter mergings: 40000
+     Total graph rewrites: 450575038
+    Duplicators allocated: 140001
+     Delimiters allocated: 150245014
+    Total nodes allocated: 150595044
 ```
 
 </details>

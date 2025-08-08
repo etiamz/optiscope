@@ -12,7 +12,7 @@ generate_list(const uint64_t n) {
 }
 
 #define BENCHMARK_TERM                                                         \
-    apply(church_sum_list(), apply(church_reverse(), generate_list(5000)))
+    apply(church_sum_list(), apply(church_reverse(), generate_list(10000)))
 
 int
 main(void) {
