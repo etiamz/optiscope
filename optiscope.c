@@ -3408,7 +3408,7 @@ register_active_pair(
 #define BETA_C(graph, f, g)                 focus_on(graph->closed_betas, f)
 #define IDENTITY_BETA(graph, f, g)          focus_on(graph->identity_betas, f)
 #define GC_BETA(graph, f, g)                focus_on(graph->gc_betas, f)
-#define EXPAND(graph, g, f)                 focus_on(graph->expansions, f)
+#define EXPAND(graph, f, g)                 focus_on(graph->expansions, f)
 #define DO_UNARY_CALL(graph, f, g)          focus_on(graph->unary_calls, f)
 #define DO_BINARY_CALL(graph, f, g)         focus_on(graph->binary_calls, f)
 #define DO_BINARY_CALL_AUX(graph, f, g)     focus_on(graph->binary_calls_aux, f)
