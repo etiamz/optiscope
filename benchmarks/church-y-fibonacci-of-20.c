@@ -14,9 +14,7 @@ church_twenty(void) {
 #define BENCHMARK_TERM                                                         \
     apply(                                                                     \
         apply(                                                                 \
-            apply(                                                             \
-                apply(y_combinator(), y_fibonacci_function()),                 \
-                church_twenty()),                                              \
+            apply(y_fibonacci_term(), church_twenty()), /* */                  \
             i_combinator()),                                                   \
         i_combinator())
 
