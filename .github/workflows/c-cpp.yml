@@ -40,9 +40,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install Hyperfine
-        run: cargo install hyperfine
-
       - name: Reserve huge pages
         run: sudo sysctl vm.nr_hugepages=4096
 

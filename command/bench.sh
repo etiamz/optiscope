@@ -10,17 +10,15 @@ if [ -z $CC ]; then
     CC=gcc
 fi
 
-if [ "$GITHUB_ACTIONS" = "true" ]; then
-    warmup=0
-    runs=1
-else
-    warmup=1
-    runs=5
-fi
-
 for filename in benchmarks/*.c; do
     base_filename="$(basename $filename .c)"
     $CC "$filename" optiscope.c -o "$base_filename" $all_options
-    hyperfine --warmup=$warmup --runs=$runs ./$base_filename
+    if [ "$GITHUB_ACTIONS" = "true" ]; then
+        echo "Running './$base_filename'..."
+        ./$base_filename
+        echo "Done."
+    else
+        hyperfine --warmup=1 --runs=5 ./$base_filename
+    fi
     rm "$base_filename"
 done
