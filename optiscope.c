@@ -1138,7 +1138,8 @@ struct context {
     // The numbers of non-interaction graph rewrites.
     uint64_t nmergings, ngc;
     // The memory usage statistics.
-    uint64_t nduplicators, ndelimiters, ntotal;
+    uint64_t nduplicators, ndelimiters, ntotal, //
+        nmax_duplicators, nmax_delimiters, nmax_total;
 #endif
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
@@ -1175,7 +1176,9 @@ alloc_context(void) {
     CONTEXT_MULTIFOCUSES
 #undef X
     graph->nmergings = graph->ngc = 0;
-    graph->nduplicators = graph->ndelimiters = graph->ntotal = 0;
+    graph->nduplicators = graph->ndelimiters = graph->ntotal = //
+        graph->nmax_duplicators = graph->nmax_delimiters = graph->nmax_total =
+            0;
 #endif
 
     graph->gc_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
@@ -1247,9 +1250,9 @@ print_stats(const struct context *const restrict graph) {
 
     printf("     Total graph rewrites: %" PRIu64 "\n", nrewrites);
 
-    printf("    Duplicators allocated: %" PRIu64 "\n", graph->nduplicators);
-    printf("     Delimiters allocated: %" PRIu64 "\n", graph->ndelimiters);
-    printf("    Total nodes allocated: %" PRIu64 "\n", graph->ntotal);
+    printf("      Maximum duplicators: %" PRIu64 "\n", graph->nmax_duplicators);
+    printf("       Maximum delimiters: %" PRIu64 "\n", graph->nmax_delimiters);
+    printf("      Maximum total nodes: %" PRIu64 "\n", graph->nmax_total);
 }
 
 #else
@@ -1357,6 +1360,9 @@ alloc_node_from(
         ports = ALLOC_POOL_OBJECT(duplicator_pool), SET_PORTS_2();
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nduplicators++;
+        if (graph->nmax_duplicators < graph->nduplicators) {
+            graph->nmax_duplicators = graph->nduplicators;
+        }
 #endif
         break;
     delimiter:
@@ -1365,6 +1371,9 @@ alloc_node_from(
         SET_PORTS_1();
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ndelimiters++;
+        if (graph->nmax_delimiters < graph->ndelimiters) {
+            graph->nmax_delimiters = graph->ndelimiters;
+        }
 #endif
         break;
     default:
@@ -1375,6 +1384,9 @@ alloc_node_from(
 
 #ifdef OPTISCOPE_ENABLE_STATS
     graph->ntotal++;
+    if (graph->ntotal > graph->nmax_total) {
+        graph->nmax_total = graph->ntotal;
+    }
 #endif
 
     ports[-1] = symbol;
@@ -1402,11 +1414,12 @@ alloc_gc_node(
     return eraser;
 }
 
-COMPILER_HOT //
+COMPILER_NONNULL(1) COMPILER_HOT //
 static void
-free_node(const struct node node) {
+free_node(struct context *const restrict graph, const struct node node) {
     debug("🧹 %p", (void *)node.ports);
 
+    MY_ASSERT(graph);
     XASSERT(node.ports);
 
     const uint64_t symbol = node.ports[-1];
@@ -1450,11 +1463,21 @@ free_node(const struct node node) {
         else COMPILER_UNREACHABLE();
     duplicator:
         FREE_POOL_OBJECT(duplicator_pool, p);
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->nduplicators--;
+#endif
         break;
     delimiter:
         FREE_POOL_OBJECT(delimiter_pool, p);
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->ndelimiters--;
+#endif
         break;
     }
+
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->ntotal--;
+#endif
 }
 
 // Delimiter Compression
@@ -1549,7 +1572,7 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
         return;
     }
 
-    free_node(f);
+    free_node(graph, f);
 }
 
 COMPILER_NONNULL(1) COMPILER_HOT //
@@ -1581,7 +1604,7 @@ try_duplicate(struct context *const restrict graph, const struct node f) {
         const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
         connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
         connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
-        free_node(f);
+        free_node(graph, f);
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ncommutations++;
 #endif
@@ -2015,7 +2038,7 @@ gc_step(
 
         focus_on(graph->gc_focus, f);
 
-        free_node(g);
+        free_node(graph, g);
 
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ngc++;
@@ -2035,7 +2058,7 @@ gc_step(
         focus_on(graph->gc_focus, f);
         focus_on(graph->gc_focus, fx);
 
-        free_node(g);
+        free_node(graph, g);
 
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ngc++;
@@ -2059,7 +2082,7 @@ gc_step(
         focus_on(graph->gc_focus, fx);
         focus_on(graph->gc_focus, fxx);
 
-        free_node(g);
+        free_node(graph, g);
 
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ngc++;
@@ -2068,7 +2091,7 @@ gc_step(
     }
     annihilate:
         if (PHASE_GC != DECODE_PHASE_METADATA(g.ports[0])) {
-            free_node(f), free_node(g);
+            free_node(graph, f), free_node(graph, g);
         }
 
 #ifdef OPTISCOPE_ENABLE_STATS
@@ -2088,19 +2111,19 @@ gc_step(
             if (SYMBOL_ERASER == h.ports[-1]) {
                 connect_ports(&f.ports[0], points_to);
                 focus_on(graph->gc_focus, f);
-                free_node(g), free_node(h);
+                free_node(graph, g), free_node(graph, h);
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
             } else if (is_atomic_symbol(shareable.ports[-1])) {
                 connect_ports(&shareable.ports[0], shares_with);
-                free_node(g), free_node(f);
+                free_node(graph, g), free_node(graph, f);
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
             } else if (0 == symbol_index(g.ports[-1])) {
                 connect_ports(points_to, shares_with);
-                free_node(g);
+                free_node(graph, g);
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
@@ -2161,7 +2184,7 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
         XASSERT(f.ports);
 
         if (PHASE_GC_AUX == DECODE_PHASE_METADATA(f.ports[0])) {
-            free_node(f);
+            free_node(graph, f);
         } else {
             uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
 
@@ -2169,7 +2192,7 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
             XASSERT(g.ports);
 
             if (PHASE_GC == DECODE_PHASE_METADATA(g.ports[0])) {
-                free_node(f);
+                free_node(graph, f);
                 set_phase(&g.ports[0], PHASE_GC_AUX);
             } else {
                 gc_step(graph, f, g, points_to - g.ports);
@@ -2221,7 +2244,7 @@ try_unshare(
 #ifdef OPTISCOPE_ENABLE_STATS
             graph->ncommutations++;
 #endif
-            free_node(g);
+            free_node(graph, g);
         } else if (IS_DELIMITER(g.ports[-1])) {
             connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
 
@@ -2230,7 +2253,7 @@ try_unshare(
 #ifdef OPTISCOPE_ENABLE_STATS
             graph->ncommutations++;
 #endif
-            free_node(g);
+            free_node(graph, g);
         }
     }
 
@@ -2475,7 +2498,7 @@ RULE_DEFINITION(annihilate, graph, f, g) {
         connect_ports(DECODE_ADDRESS(f.ports[i]), DECODE_ADDRESS(g.ports[i]));
     }
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(annihilate);
@@ -2555,7 +2578,7 @@ RULE_DEFINITION(commute, graph, f, g) {
         }
     }
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(commute);
@@ -2585,7 +2608,7 @@ RULE_DEFINITION(beta, graph, f, g) {
             graph, (struct delimiter){.idx = 0, rand_port, binder_port});
     }
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(beta);
@@ -2603,7 +2626,7 @@ RULE_DEFINITION(beta_c, graph, f, g) {
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
     connect_ports(DECODE_ADDRESS(g.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(beta_c);
@@ -2620,7 +2643,7 @@ RULE_DEFINITION(identity_beta, graph, f, g) {
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(identity_beta);
@@ -2644,7 +2667,7 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
     // if so, we must garbage-collect it.
     gc(graph, DECODE_ADDRESS(f.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(gc_beta);
@@ -2664,7 +2687,7 @@ RULE_DEFINITION(do_expand, graph, f, g) {
     of_lambda_term(graph, USER_FUNCTION_OF_U64(f.ports[1])(), &g.ports[0], 0);
 #pragma GCC diagnostic pop
 
-    free_node(f);
+    free_node(graph, f);
 }
 
 TYPE_CHECK_RULE(do_expand);
@@ -2685,7 +2708,7 @@ RULE_DEFINITION(do_unary_call, graph, f, g) {
 #pragma GCC diagnostic pop
     connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 
-    free_node(f);
+    free_node(graph, f);
 }
 
 TYPE_CHECK_RULE(do_unary_call);
@@ -2706,7 +2729,7 @@ RULE_DEFINITION(do_binary_call, graph, f, g) {
     aux.ports[3] = g.ports[1];
     connect_ports(&aux.ports[0], DECODE_ADDRESS(f.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(do_binary_call);
@@ -2727,7 +2750,7 @@ RULE_DEFINITION(do_binary_call_aux, graph, f, g) {
 #pragma GCC diagnostic pop
     connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 
-    free_node(f);
+    free_node(graph, f);
 }
 
 TYPE_CHECK_RULE(do_binary_call_aux);
@@ -2752,7 +2775,7 @@ RULE_DEFINITION(do_if_then_else, graph, f, g) {
     connect_ports(DECODE_ADDRESS(f.ports[1]), choose);
     gc(graph, discard);
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(do_if_then_else);
@@ -2773,7 +2796,7 @@ RULE_DEFINITION(do_perform, graph, f, g) {
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(do_perform);
@@ -2820,17 +2843,17 @@ RULE_DEFINITION(annihilate_delim_delim, graph, f, g) {
 
     if (f.ports[2] == g.ports[2]) {
         connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
-        free_node(f), free_node(g);
+        free_node(graph, f), free_node(graph, g);
     } else if (f.ports[2] > g.ports[2]) {
         f.ports[2] -= g.ports[2];
         connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
         try_merge_delimiter(graph, f);
-        free_node(g);
+        free_node(graph, g);
     } else {
         g.ports[2] -= f.ports[2];
         connect_ports(DECODE_ADDRESS(f.ports[1]), &g.ports[0]);
         try_merge_delimiter(graph, g);
-        free_node(f);
+        free_node(graph, f);
     }
 }
 
@@ -2842,7 +2865,7 @@ RULE_DEFINITION(annihilate_dup_dup, graph, f, g) {
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
     connect_ports(DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[2]));
 
-    free_node(f), free_node(g);
+    free_node(graph, f), free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(annihilate_dup_dup);
@@ -2874,7 +2897,7 @@ RULE_DEFINITION(commute_1_2, graph, f, g) {
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
 
-    free_node(g);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(commute_1_2);
@@ -2889,7 +2912,7 @@ RULE_DEFINITION(commute_1_3, graph, f, g) {
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
     connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
 
-    free_node(g);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(commute_1_3);
@@ -3106,7 +3129,7 @@ RULE_DEFINITION(commute_lambda_c_delim, graph, f, g) {
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
 
-    free_node(g);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(commute_lambda_c_delim);
@@ -3627,7 +3650,7 @@ scope_remove_cb(struct context *const graph, const struct node node) {
         DECODE_ADDRESS(node.ports[1]), DECODE_ADDRESS(node.ports[0]));
     // clang-format on
 
-    free_node(node);
+    free_node(graph, node);
 }
 
 COMPILER_NONNULL(1) //
@@ -3666,7 +3689,7 @@ normalize_delimiters_cb(struct context *const graph, const struct node node) {
 
     connect_ports(output_port, DECODE_ADDRESS(node.ports[1]));
 
-    free_node(node);
+    free_node(graph, node);
 }
 
 COMPILER_NONNULL(1) //

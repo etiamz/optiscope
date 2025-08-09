@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Statistics: instead of nodes allocated, measure maximum nodes during reduction.
+
 ## 0.10.0 - 2025-08-09
 
 ### Changed
