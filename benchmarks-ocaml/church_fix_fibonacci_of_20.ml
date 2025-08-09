@@ -50,7 +50,7 @@ let church_is_one =
 let church_if_then_else =
   Lambda (Lambda (Lambda (Apply (Apply (tvar 2, tvar 1), tvar 0))))
 
-let y_fibonacci_function =
+let fibonacci_function =
   Lambda
     (Lambda
        (Apply
@@ -73,17 +73,9 @@ let church_twenty = Apply (Apply (church_add, church_ten), church_ten)
 
 let i_combinator = Lambda (tvar 0)
 
-let y_combinator =
-  Lambda
-    (Apply
-       ( Lambda (Apply (tvar 1, Apply (tvar 0, tvar 0))),
-         Lambda (Apply (tvar 1, Apply (tvar 0, tvar 0))) ))
-
 let benchmark_term =
   Apply
-    ( Apply
-        ( Apply (Apply (y_combinator, y_fibonacci_function), church_twenty),
-          i_combinator ),
+    ( Apply (Apply (Fix fibonacci_function, church_twenty), i_combinator),
       i_combinator )
 
 let () =

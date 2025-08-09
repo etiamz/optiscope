@@ -22,8 +22,7 @@ churchAdd =
     ( Lambda
         ( Lambda
             ( Lambda
-                ( Apply (Apply (TVar 3) (TVar 1)) (Apply (Apply (TVar 2) (TVar 1)) (TVar 0))
-                )
+                (Apply (Apply (TVar 3) (TVar 1)) (Apply (Apply (TVar 2) (TVar 1)) (TVar 0)))
             )
         )
     )
@@ -61,8 +60,8 @@ churchIsOne = Lambda (Apply churchIsZero (Apply churchPredecessor (TVar 0)))
 churchIfThenElse :: Term
 churchIfThenElse = Lambda (Lambda (Lambda (Apply (Apply (TVar 2) (TVar 1)) (TVar 0))))
 
-yFibonacciFunction :: Term
-yFibonacciFunction =
+fibonacciFunction :: Term
+fibonacciFunction =
   Lambda
     ( Lambda
         ( Apply
@@ -86,17 +85,9 @@ churchTwenty = Apply (Apply churchAdd churchTen) churchTen
 iCombinator :: Term
 iCombinator = Lambda (TVar 0)
 
-yCombinator :: Term
-yCombinator =
-  Lambda
-    ( Apply
-        (Lambda (Apply (TVar 1) (Apply (TVar 0) (TVar 0))))
-        (Lambda (Apply (TVar 1) (Apply (TVar 0) (TVar 0))))
-    )
-
 benchmarkTerm :: Term
 benchmarkTerm =
-  Apply (Apply (Apply (Apply yCombinator yFibonacciFunction) churchTwenty) iCombinator) iCombinator
+  Apply (Apply (Apply (Fix fibonacciFunction) churchTwenty) iCombinator) iCombinator
 
 main :: IO ()
 main = case denote [] benchmarkTerm of
