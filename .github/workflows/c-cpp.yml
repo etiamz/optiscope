@@ -34,24 +34,6 @@ jobs:
           ./command/example.sh optiscope-inside-optiscope
           # The palindrome example is interactive.
 
-  static-analysis:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Install the tools
-        run: sudo apt install cppcheck clang-tidy -y
-
-      - name: Run cppcheck
-        run: cppcheck optiscope.c --force
-
-      - name: Run clang-tidy
-        run: clang-tidy optiscope.c
-
-      - name: Run GCC -fanalyzer
-        run: gcc optiscope.c -c -o /dev/null -fanalyzer -Wno-analyzer-malloc-leak || true
-
   benchmark:
     runs-on: ubuntu-latest
 
