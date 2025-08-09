@@ -52,7 +52,7 @@ Annihilation interactions: 0
             If-then-elses: 4870845
        Total interactions: 28589446
       Garbage collections: 20390451
-       Delimiter mergings: 0
+   Delimiter compressions: 0
      Total graph rewrites: 48979897
     Duplicators allocated: 8077611
      Delimiters allocated: 0
@@ -83,7 +83,7 @@ Annihilation interactions: 7278199
             If-then-elses: 0
        Total interactions: 45559275
       Garbage collections: 2067516
-       Delimiter mergings: 1622053
+   Delimiter compressions: 1622053
      Total graph rewrites: 49248844
     Duplicators allocated: 3483467
      Delimiters allocated: 19660374
@@ -114,7 +114,7 @@ Annihilation interactions: 50124995
             If-then-elses: 0
        Total interactions: 450545031
       Garbage collections: 10008
-       Delimiter mergings: 40001
+   Delimiter compressions: 40001
      Total graph rewrites: 450595040
     Duplicators allocated: 140001
      Delimiters allocated: 150255014
@@ -145,7 +145,7 @@ Annihilation interactions: 84454257
             If-then-elses: 124750
        Total interactions: 446391497
       Garbage collections: 67766332
-       Delimiter mergings: 2496503
+   Delimiter compressions: 2496503
      Total graph rewrites: 516654332
     Duplicators allocated: 751506
      Delimiters allocated: 236052519
@@ -176,7 +176,7 @@ Annihilation interactions: 41800202
             If-then-elses: 89700
        Total interactions: 363660671
       Garbage collections: 28769535
-       Delimiter mergings: 46806957
+   Delimiter compressions: 46806957
      Total graph rewrites: 439237163
     Duplicators allocated: 904512
      Delimiters allocated: 167379139

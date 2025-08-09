@@ -1136,7 +1136,7 @@ struct context {
     CONTEXT_MULTIFOCUSES
 #undef X
     // The numbers of non-interaction graph rewrites.
-    uint64_t nmergings, ngc;
+    uint64_t ncompressions, ngc;
     // The memory usage statistics.
     uint64_t nduplicators, ndelimiters, ntotal;
 #endif
@@ -1174,7 +1174,7 @@ alloc_context(void) {
 #define X(focus_name) graph->n##focus_name = 0;
     CONTEXT_MULTIFOCUSES
 #undef X
-    graph->nmergings = graph->ngc = 0;
+    graph->ncompressions = graph->ngc = 0;
     graph->nduplicators = graph->ndelimiters = graph->ntotal = 0;
 #endif
 
@@ -1240,10 +1240,10 @@ print_stats(const struct context *const restrict graph) {
 
     printf("       Total interactions: %" PRIu64 "\n", ninteractions);
     printf("      Garbage collections: %" PRIu64 "\n", graph->ngc);
-    printf("       Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
+    printf("   Delimiter compressions: %" PRIu64 "\n", graph->ncompressions);
 
     const uint64_t nrewrites = //
-        ninteractions + graph->nmergings + graph->ngc;
+        ninteractions + graph->ncompressions + graph->ngc;
 
     printf("     Total graph rewrites: %" PRIu64 "\n", nrewrites);
 
@@ -1457,7 +1457,7 @@ free_node(const struct node node) {
     }
 }
 
-// Delimiter Merging
+// Delimiter Compression
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 struct delimiter {
@@ -1510,7 +1510,7 @@ inst_delimiter(
         g.ports[2]++;
         connect_ports(&g.ports[1], template.goes_from);
 #ifdef OPTISCOPE_ENABLE_STATS
-        graph->nmergings++;
+        graph->ncompressions++;
 #endif
     } else {
         inst_delimiter_as_is(graph, template);
@@ -1519,7 +1519,8 @@ inst_delimiter(
 
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
-try_merge_delimiter(struct context *const restrict graph, const struct node f) {
+try_compress_delimiter(
+    struct context *const restrict graph, const struct node f) {
     MY_ASSERT(graph);
     XASSERT(f.ports);
     XASSERT(IS_DELIMITER(f.ports[-1]));
@@ -1538,7 +1539,7 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
         g.ports[2] += f.ports[2];
         connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
 #ifdef OPTISCOPE_ENABLE_STATS
-        graph->nmergings++;
+        graph->ncompressions++;
 #endif
     } else if (is_atomic_symbol(g.ports[-1])) {
         connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
@@ -1554,13 +1555,13 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
 
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
-try_merge_if_delimiter(
+try_compress_if_delimiter(
     struct context *const restrict graph, const struct node f) {
     MY_ASSERT(graph);
     XASSERT(f.ports);
     MY_ASSERT(PHASE_REDUCE_WEAKLY == graph->phase);
 
-    if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(graph, f); }
+    if (IS_DELIMITER(f.ports[-1])) { try_compress_delimiter(graph, f); }
 }
 
 // Immediate Duplication
@@ -2824,12 +2825,12 @@ RULE_DEFINITION(annihilate_delim_delim, graph, f, g) {
     } else if (f.ports[2] > g.ports[2]) {
         f.ports[2] -= g.ports[2];
         connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-        try_merge_delimiter(graph, f);
+        try_compress_delimiter(graph, f);
         free_node(g);
     } else {
         g.ports[2] -= f.ports[2];
         connect_ports(DECODE_ADDRESS(f.ports[1]), &g.ports[0]);
-        try_merge_delimiter(graph, g);
+        try_compress_delimiter(graph, g);
         free_node(f);
     }
 }
@@ -2904,8 +2905,8 @@ RULE_DEFINITION(commute_2_2_core, graph, f, g) {
 
     connect_ports(&f.ports[1], &g.ports[1]);
 
-    try_merge_if_delimiter(graph, f);
-    try_merge_if_delimiter(graph, g);
+    try_compress_if_delimiter(graph, f);
+    try_compress_if_delimiter(graph, g);
 }
 
 TYPE_CHECK_RULE(commute_2_2_core);
@@ -2930,8 +2931,8 @@ RULE_DEFINITION(commute_3_2_core, graph, f, g) {
     if (IS_DUPLICATOR(f.ports[-1])) { try_duplicate(graph, f); }
 
     if (IS_DELIMITER(g.ports[-1])) {
-        try_merge_delimiter(graph, g);
-        try_merge_delimiter(graph, gx);
+        try_compress_delimiter(graph, g);
+        try_compress_delimiter(graph, gx);
     }
 }
 
@@ -2998,9 +2999,9 @@ RULE_DEFINITION(commute_4_2, graph, f, g) {
     connect_ports(&f.ports[3], &gxx.ports[1]);
 
     if (IS_DELIMITER(g.ports[-1])) {
-        try_merge_delimiter(graph, g);
-        try_merge_delimiter(graph, gx);
-        try_merge_delimiter(graph, gxx);
+        try_compress_delimiter(graph, g);
+        try_compress_delimiter(graph, gx);
+        try_compress_delimiter(graph, gxx);
     }
 }
 
