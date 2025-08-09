@@ -145,8 +145,8 @@ Annihilation interactions: 84454257
             If-then-elses: 124750
        Total interactions: 446391497
       Garbage collections: 67766332
-       Delimiter mergings: 2496004
-     Total graph rewrites: 516653833
+       Delimiter mergings: 2496503
+     Total graph rewrites: 516654332
     Duplicators allocated: 751506
      Delimiters allocated: 236052519
     Total nodes allocated: 246589149
@@ -169,15 +169,15 @@ Benchmark 1: ./scott-quicksort
 
 ```
 Annihilation interactions: 41800202
- Commutation interactions: 320505665
+ Commutation interactions: 320505663
         Beta interactions: 1085106
                Expansions: 135450
     Native function calls: 180000
             If-then-elses: 89700
-       Total interactions: 363660673
+       Total interactions: 363660671
       Garbage collections: 28769535
        Delimiter mergings: 46806957
-     Total graph rewrites: 439237165
+     Total graph rewrites: 439237163
     Duplicators allocated: 904512
      Delimiters allocated: 167379139
     Total nodes allocated: 173230541

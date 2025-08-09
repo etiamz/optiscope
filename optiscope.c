@@ -2818,17 +2818,19 @@ RULE_DEFINITION(annihilate_delim_delim, graph, f, g) {
     ANNIHILATION_PROLOGUE(graph, f, g);
     XASSERT(f.ports[2] > 0), XASSERT(g.ports[2] > 0);
 
-    if (f.ports[2] > g.ports[2]) {
-        f.ports[2] -= g.ports[2];
-        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-        free_node(g);
-    } else if (g.ports[2] > f.ports[2]) {
-        g.ports[2] -= f.ports[2];
-        connect_ports(DECODE_ADDRESS(f.ports[1]), &g.ports[0]);
-        free_node(f);
-    } else {
+    if (f.ports[2] == g.ports[2]) {
         connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
         free_node(f), free_node(g);
+    } else if (f.ports[2] > g.ports[2]) {
+        f.ports[2] -= g.ports[2];
+        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+        try_merge_delimiter(graph, f);
+        free_node(g);
+    } else {
+        g.ports[2] -= f.ports[2];
+        connect_ports(DECODE_ADDRESS(f.ports[1]), &g.ports[0]);
+        try_merge_delimiter(graph, g);
+        free_node(f);
     }
 }
 
