@@ -400,6 +400,9 @@ Another interesting example, although perhaps not that practical, is to execute 
 
 [_from within_]: examples/optiscope-inside-optiscope.c
 
+<details>
+<summary>Show the example</summary>
+
 ```c
 // Includes omitted...
 
@@ -475,6 +478,8 @@ optiscope_inside_optiscope(void) {
     return apply(scott_factorial_sum(), scott_list_1_2_3_4_5());
 }
 ```
+
+</details>
 
 Let us break down this example step-by-step:
  1. The `fix_factorial_function` function merely computes the factorial of `n` using recursion & native cells.
