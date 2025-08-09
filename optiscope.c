@@ -1402,7 +1402,7 @@ alloc_gc_node(
     return eraser;
 }
 
-COMPILER_NONNULL(1) COMPILER_HOT //
+COMPILER_HOT //
 static void
 free_node(const struct node node) {
     debug("🧹 %p", (void *)node.ports);
