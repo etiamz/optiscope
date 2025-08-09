@@ -61,33 +61,33 @@ Annihilation interactions: 0
 
 </details>
 
-### [Fibonacci (Church numerals)](church-y-fibonacci-of-20.c)
+### [Fibonacci (Church numerals)](church-fix-fibonacci-of-20.c)
 
 Description: Exponentially computes the 20th Fibonacci number using Church numerals & the standard Y combinator.
 
 ```
-Benchmark 1: ./church-y-fibonacci-of-20
-  Time (mean ± σ):     919.5 ms ±   0.5 ms    [User: 893.0 ms, System: 26.3 ms]
-  Range (min … max):   918.8 ms … 920.1 ms    5 runs
+Benchmark 1: ./church-fix-fibonacci-of-20
+  Time (mean ± σ):     910.7 ms ±  12.3 ms    [User: 885.9 ms, System: 24.5 ms]
+  Range (min … max):   897.4 ms … 924.4 ms    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-Annihilation interactions: 7359361
- Commutation interactions: 38269752
-        Beta interactions: 521847
+Annihilation interactions: 7278199
+ Commutation interactions: 37759561
+        Beta interactions: 521515
                Expansions: 0
     Native function calls: 0
             If-then-elses: 0
-       Total interactions: 46150960
-      Garbage collections: 2658690
-       Delimiter mergings: 1703278
-     Total graph rewrites: 50512928
-    Duplicators allocated: 3439104
-     Delimiters allocated: 19961121
-    Total nodes allocated: 27124206
+       Total interactions: 45559275
+      Garbage collections: 2067516
+       Delimiter mergings: 1622053
+     Total graph rewrites: 49248844
+    Duplicators allocated: 3483467
+     Delimiters allocated: 19660374
+    Total nodes allocated: 26808608
 ```
 
 </details>
