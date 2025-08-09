@@ -1,3 +1,5 @@
+(* NOTE: for some reason, this benchmark does not currently terminate. *)
+
 open Interpreter
 
 let church_zero = Lambda (Lambda (tvar 0))
@@ -80,5 +82,5 @@ let benchmark_term =
 
 let () =
   match denote [] benchmark_term with
-  | VClosure (_, _) -> print_endline "\\x -> x"
+  | VClosure (_, Var (Index 0)) -> print_endline "\\x -> x"
   | _ -> failwith "Expected a lambda term!"
