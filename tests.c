@@ -594,7 +594,7 @@ church_is_one(void) {
 }
 
 static struct lambda_term *
-y_factorial_function(void) {
+church_y_factorial_function(void) {
     struct lambda_term *f, *n;
 
     return lambda(
@@ -610,17 +610,27 @@ y_factorial_function(void) {
 }
 
 static struct lambda_term *
-y_factorial_term(void) {
-    return apply(y_combinator(), y_factorial_function());
+church_y_factorial_term(void) {
+    return apply(y_combinator(), church_y_factorial_function());
 }
 
 static struct lambda_term *
-y_factorial_test(void) {
-    return apply(y_factorial_term(), church_three());
+church_fix_factorial_term(void) {
+    return fix(church_y_factorial_function());
 }
 
 static struct lambda_term *
-y_fibonacci_function(void) {
+church_y_factorial_test(void) {
+    return apply(church_y_factorial_term(), church_three());
+}
+
+static struct lambda_term *
+church_fix_factorial_test(void) {
+    return apply(church_fix_factorial_term(), church_three());
+}
+
+static struct lambda_term *
+church_y_fibonacci_function(void) {
     struct lambda_term *rec, *n;
 
     return lambda(
@@ -644,13 +654,23 @@ y_fibonacci_function(void) {
 }
 
 static struct lambda_term *
-y_fibonacci_term(void) {
-    return apply(y_combinator(), y_fibonacci_function());
+church_y_fibonacci_term(void) {
+    return apply(y_combinator(), church_y_fibonacci_function());
 }
 
 static struct lambda_term *
-y_fibonacci_test(void) {
-    return apply(y_fibonacci_term(), church_three());
+church_fix_fibonacci_term(void) {
+    return fix(church_y_fibonacci_function());
+}
+
+static struct lambda_term *
+church_y_fibonacci_test(void) {
+    return apply(church_y_fibonacci_term(), church_three());
+}
+
+static struct lambda_term *
+church_fix_fibonacci_test(void) {
+    return apply(church_fix_fibonacci_term(), church_three());
 }
 
 // WHY Combinator
@@ -687,7 +707,7 @@ why_combinator(void) {
 }
 
 static struct lambda_term *
-why_factorial_function(void) {
+church_why_factorial_function(void) {
     struct lambda_term *rec, *n;
 
     return lambda(
@@ -705,13 +725,13 @@ why_factorial_function(void) {
 }
 
 static struct lambda_term *
-why_factorial_term(void) {
-    return apply(why_combinator(), why_factorial_function());
+church_why_factorial_term(void) {
+    return apply(why_combinator(), church_why_factorial_function());
 }
 
 static struct lambda_term *
-why_factorial_test(void) {
-    return apply(why_factorial_term(), church_three());
+church_why_factorial_test(void) {
+    return apply(church_why_factorial_term(), church_three());
 }
 
 // Church Lists
@@ -1376,9 +1396,11 @@ main(void) {
         "(λ (λ (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 (1 0)))))))))))))))))");
     TEST_CASE(church_five_predecessor2x, "(λ (λ (1 (1 (1 0)))))");
     TEST_CASE(factorial_of_three_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
-    TEST_CASE(y_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
-    TEST_CASE(y_fibonacci_test, "(λ (λ (1 (1 0))))");
-    TEST_CASE(why_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
+    TEST_CASE(church_y_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
+    TEST_CASE(church_fix_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
+    TEST_CASE(church_y_fibonacci_test, "(λ (λ (1 (1 0))))");
+    TEST_CASE(church_fix_fibonacci_test, "(λ (λ (1 (1 0))))");
+    TEST_CASE(church_why_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
     TEST_CASE(church_sum_list_test, "cell[6]");
     TEST_CASE(
         church_reverse_test,
