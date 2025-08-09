@@ -3973,29 +3973,6 @@ expand(struct lambda_term *(*const function)(void)) {
 // Conversion From Lambda Terms
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) //
-inline static bool
-is_identity_lambda(const struct lambda_data *const restrict lambda) {
-    MY_ASSERT(lambda);
-
-    return LAMBDA_TERM_VAR == lambda->body->ty &&
-           lambda == *lambda->body->data.var;
-}
-
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
-inline static bool
-is_eta_reducible(
-    struct lambda_data *const restrict lambda,
-    struct lambda_term *const restrict body) {
-    MY_ASSERT(lambda);
-    MY_ASSERT(body);
-
-    return LAMBDA_TERM_APPLY == body->ty &&
-           LAMBDA_TERM_VAR == body->data.apply.rator->ty &&
-           lambda == *body->data.apply.rand->data.var && //
-           1 == lambda->nusages;
-}
-
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
 inline static uint64_t
 de_bruijn_level_to_index(const uint64_t lvl, const uint64_t var) {
@@ -4019,22 +3996,6 @@ of_lambda_term(
             *const rand = term->data.apply.rand;
         XASSERT(rator), XASSERT(rand);
 
-        const bool is_linear_lambda =
-            LAMBDA_TERM_LAMBDA == rator->ty && 1 == rator->data.lambda->nusages;
-        if (is_linear_lambda) {
-            // Optimization: in `((\x. body) rand)`, substitute `rand` into
-            // `body`, if `x` occurs onely once in `body`.
-            struct lambda_data *const lambda = rator->data.lambda;
-            if (LAMBDA_TERM_VAR == rand->ty) {
-                (*rand->data.var)->usage = lambda->usage;
-            }
-            *lambda->usage = *rand;
-            of_lambda_term(graph, lambda->body, output_port, lvl);
-            free(rator), free(rand);
-            free(lambda);
-            break;
-        }
-
         const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
         connect_ports(&applicator.ports[1], output_port);
         of_lambda_term(graph, rator, &applicator.ports[0], lvl);
@@ -4048,7 +4009,9 @@ of_lambda_term(
         XASSERT(tlambda);
         XASSERT(body);
 
-        if (is_identity_lambda(tlambda)) {
+        const bool is_identity =
+            LAMBDA_TERM_VAR == body->ty && tlambda == *body->data.var;
+        if (is_identity) {
             // clang-format off
             const struct node lambda = alloc_node(graph, SYMBOL_IDENTITY_LAMBDA);
             // clang-format on
@@ -4062,13 +4025,6 @@ of_lambda_term(
             const struct node lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
             of_lambda_term(graph, body, &lambda.ports[1], lvl + 1);
             connect_ports(&lambda.ports[0], output_port);
-            goto done_with_lambda;
-        }
-
-        if (is_eta_reducible(tlambda, body)) {
-            of_lambda_term(graph, body->data.apply.rator, output_port, lvl);
-            free(body->data.apply.rand);
-            free(body);
             goto done_with_lambda;
         }
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Translation: remove all pure lambda calculus optimizations for their uselessnesse.
+
 ## 0.9.0 - 2025-08-08
 
 ### Changed
