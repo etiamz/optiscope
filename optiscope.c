@@ -35,6 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "optiscope.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <stdarg.h>
@@ -660,9 +661,12 @@ free_chunk(void *const memory) {
     MY_ASSERT(memory);
 
     if (munmap(memory, HUGE_PAGE_SIZE_2MB) < 0) {
-        // `munmap` failed, defaulting to `free`.
-        perror("munmap");
-        free(memory);
+        if (EINVAL == errno) {
+            // This block was allocated with `malloc`, not `mmap`.
+            free(memory);
+        } else {
+            perror("munmap");
+        }
     }
 }
 

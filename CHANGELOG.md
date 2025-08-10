@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Statistics: instead of nodes allocated, measure maximum nodes during reduction.
 
+### Fixed
+
+ - Miscellaneous: doe not print an error message when `free`ing memory blocks.
+
 ## 0.10.0 - 2025-08-09
 
 ### Changed
