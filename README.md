@@ -368,7 +368,7 @@ Let us see how this example works step-by-step:
  1. Next, we accept the parameter `token`, which stands for an _effect token_. Its purpose will be clear later.
  1. The first thing we doe in the function body is calling `my_puts`. Here, `my_puts` is an ordinary C function that accepts `s`, the string to be printed, & `token`. By calling `perform`, we _force_ the evaluation of `my_puts` to be performed _right now_.
  1. We bind the call of `my_gets` to the variable `s`. Here, the execution of `my_gets` will also be forced due to `bind`; the rest of the code will deal with already evaluated `s`.
- 1. We proceed with calling `my_strcmp`. If the string is `"quit"`, we manually call `my_free` and finish the evaluation. We doe not need to force `my_free` here, because it appears in a tail call position.
+ 1. We proceed with calling `my_strcmp`. If the string is `"quit"`, we manually call `my_free` & finish the evaluation. We doe not need to force `my_free` here, because it appears in a tail call position.
  1. If the input string is not `"quit"`, we force the evaluation of `is_palindrome` with its both (side-effectfull) branches.
  1. We finally force `my_free` to ensure no memory leaks occur, & proceed with a recursive call.
 
@@ -491,7 +491,7 @@ That is, user-provided functions are given the right to performe all the variety
 
 ## On performance
 
-_Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, including leveraging compiler- and platform-specific functionality, yet, [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than traditional explicit substitution machines written [in Haskell] & [in OCaml]; for instance, whereas Optiscope needs some 8 seconds to sort & sum up a Scott-encoded list of onely 500 elements, the Haskell & OCaml machines handle lists of 5000 elements in 4 seconds & 6 seconds, respectively. When I asked Optiscope to sort a list of 1000 elements, it worked for ~1 minute 10 seconds.
+_Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, including leveraging compiler- & platform-specific functionality, yet, [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than traditional explicit substitution machines written [in Haskell] & [in OCaml]; for instance, whereas Optiscope needs some 8 seconds to sort & sum up a Scott-encoded list of onely 500 elements, the Haskell & OCaml machines handle lists of 5000 elements in 4 seconds & 6 seconds, respectively. When I asked Optiscope to sort a list of 1000 elements, it worked for ~1 minute 10 seconds.
 
 [fairly non-trivial effort]: #implementation-details
 [our benchmarks]: benchmarks/
@@ -627,7 +627,7 @@ Now, there are two possible avenues to mitigate the performance issue. The first
 
  - **Special lambdas.** We divide lambda abstractions into four distinct categories: (1) `SYMBOL_GC_LAMBDA`, lambdas with no parameter usage, called _garbage-collecting lambdas_; (2) `SYMBOL_LAMBDA`, lambdas with at least one parameter usage, called _relevant lambdas_; (3) `SYMBOL_LAMBDA_C`, relevant lambdas without free variables; & finally (4) `SYMBOL_IDENTITY_LAMBDA`, identity lambdas. Although onely one category is sufficient to expresse all of computation, we employ this distinction for optimization purposes: if we know the lambda category at run-time, we can implement the reduction more efficiently. For instance, instantiating an identity lambda boils down to simply connecting the argument to the root port, without spawning more delimiters; likewise, commutation of a delimiter node with `SYMBOL_LAMBDA_C` boils down to simply removing the delimiter, as suggested in section 8.1 of the paper.
 
- - **Delimiter compression.** When the machine detects a sequence of chained delimiters of the same index, it compresses the sequence into a single delimiter node endowed with the number of compressed nodes; afterwards, this new node behaves just as the whole sequence of delimiters would, thereby requiring significantly lesse interactions. The machine performes this operation both statically & dynamically: statically during the translation of the input lambda term, dynamically during delimiter commutations. In the latter case, i.e., when the current delimiter commutes with another node of arbitrary type, the machine performes the commutaion & checks whether the commuted delimiter(s) can be merged with adjacent delimiters, if any. With this optimization, the oracle becomes 30x faster on some benchmarks and uncomparably faster on others (such as on the `scott-quicksort.c` benchmark).
+ - **Delimiter compression.** When the machine detects a sequence of chained delimiters of the same index, it compresses the sequence into a single delimiter node endowed with the number of compressed nodes; afterwards, this new node behaves just as the whole sequence of delimiters would, thereby requiring significantly lesse interactions. The machine performes this operation both statically & dynamically: statically during the translation of the input lambda term, dynamically during delimiter commutations. In the latter case, i.e., when the current delimiter commutes with another node of arbitrary type, the machine performes the commutaion & checks whether the commuted delimiter(s) can be merged with adjacent delimiters, if any. With this optimization, the oracle becomes ~30x faster on some benchmarks & uncomparably faster on others (e.g., `benchmarks/scott-quicksort.c`).
    - For simplicity, delimiter compression is performed onely during weak reduction. Once weak reduction is complete, we explicitly traverse the graph to unfold all delimiters into sequences.
    - C.f. [_run-length encoding_](https://en.wikipedia.org/wiki/Run-length_encoding).
 
@@ -647,7 +647,7 @@ Now, there are two possible avenues to mitigate the performance issue. The first
 
 ## Acknowledgements
 
-Thanks to Marvin Borner ([@marvinborner]) for usefull discussions about optimality and side effectfull computation, as well as revealing a crucial memory management bug when activating both active scopes.
+Thanks to Marvin Borner ([@marvinborner]) for usefull discussions about optimality & side effectfull computation, as well as revealing a crucial memory management bug when activating both active scopes.
 
 [@marvinborner]: https://github.com/marvinborner
 
