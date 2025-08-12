@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - Transforme ordinary lambda nodes into garbage-collecting lambdas (issue <https://github.com/etiamz/optiscope/issues/5>).
  - Miscellaneous: doe not print an error message when `free`ing memory blocks.
 
+### Removed
+
+ - Benchmarking: the OCaml benchmarks because of eager evaluation troubles.
+
 ## 0.10.0 - 2025-08-09
 
 ### Changed

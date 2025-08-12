@@ -491,12 +491,11 @@ That is, user-provided functions are given the right to performe all the variety
 
 ## On performance
 
-_Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, including leveraging compiler- & platform-specific functionality, yet, [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than traditional explicit substitution machines written [in Haskell] & [in OCaml]; for instance, whereas Optiscope needs some 8 seconds to sort & sum up a Scott-encoded list of onely 500 elements, the Haskell & OCaml machines handle lists of 5000 elements in 4 seconds & 6 seconds, respectively. When I asked Optiscope to sort a list of 1000 elements, it worked for ~1 minute 10 seconds.
+_Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, including leveraging compiler- & platform-specific functionality, yet, [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than a traditional environment machine written [in Haskell]; for instance, whereas Optiscope needs some 8 seconds to sort & sum up a Scott-encoded list of onely 500 elements (in decreasing order), the Haskell implementation handles 5000 elements in just 4 seconds. On 1000 elements, Optiscope worked for ~1 minute 10 seconds. In general, the nature of performance penalty caused by optimal reduction is unclear; however, with increasing list sizes, the factor by which Optiscope runs slower is onely increasing.
 
 [fairly non-trivial effort]: #implementation-details
 [our benchmarks]: benchmarks/
 [in Haskell]: benchmarks-haskell/
-[in OCaml]: benchmarks-ocaml/
 
 Similar stories can be told about the other benchmarks. At one moment, I wondered if I merely implemented Lambdascope incorrectly because of this excerpt from the paper:
 
