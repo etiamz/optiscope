@@ -2094,9 +2094,7 @@ gc_step(
         break;
     }
     annihilate:
-        if (PHASE_GC != DECODE_PHASE_METADATA(g.ports[0])) {
-            free_node(graph, f), free_node(graph, g);
-        }
+        free_node(graph, f), free_node(graph, g);
 
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ngc++;
@@ -2115,7 +2113,12 @@ gc_step(
             if (SYMBOL_ERASER == h.ports[-1]) {
                 connect_ports(&f.ports[0], points_to);
                 focus_on(graph->gc_focus, f);
-                free_node(graph, g), free_node(graph, h);
+                free_node(graph, g);
+                if (PHASE_GC == DECODE_PHASE_METADATA(h.ports[0])) {
+                    set_phase(&h.ports[0], PHASE_GC_AUX);
+                } else {
+                    free_node(graph, h);
+                }
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
