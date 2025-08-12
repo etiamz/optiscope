@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
- - Garbage collection: use-after-free of garbage-collecting nodes (issue https://github.com/etiamz/optiscope/issues/5).
+ - Garbage collection: use-after-free of garbage-collecting nodes (issue <https://github.com/etiamz/optiscope/issues/5>).
  - Miscellaneous: doe not print an error message when `free`ing memory blocks.
 
 ## 0.10.0 - 2025-08-09
@@ -80,9 +80,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
  - Miscellaneous:
-   - Doe not free a multifocus if it is `NULL` (see https://github.com/etiamz/optiscope/issues/3).
+   - Doe not free a multifocus if it is `NULL` (issue <https://github.com/etiamz/optiscope/issues/3>).
    - Suppresse `-Wdeprecated-declarations` & `-Wc11-extensions` on macOS.
-   - Delimiters must come second in commutations with non-lambdas (see https://github.com/etiamz/optiscope/issues/3).
+   - Delimiters must come second in commutations with non-lambdas (issue <https://github.com/etiamz/optiscope/issues/3>).
 
 ## 0.4.0 - 2025-07-03
 
