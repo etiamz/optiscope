@@ -2100,6 +2100,17 @@ gc_step(
         graph->ngc++;
 #endif
         break;
+    case SYMBOL_LAMBDA:
+    case SYMBOL_LAMBDA_C:
+        if (1 == i) {
+            const struct node gc_lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
+            connect_ports(&gc_lambda.ports[0], DECODE_ADDRESS(g.ports[0]));
+            connect_ports(&gc_lambda.ports[1], DECODE_ADDRESS(g.ports[2]));
+            free_node(graph, f);
+            break;
+        } else {
+            goto commute_1_3;
+        }
     duplicator:
         switch (i) {
         case 1:
@@ -2150,10 +2161,8 @@ gc_step(
     delimiter:
         goto commute_1_2;
     case SYMBOL_APPLICATOR:
-    case SYMBOL_LAMBDA:
     case SYMBOL_BINARY_CALL:
-    case SYMBOL_PERFORM:
-    case SYMBOL_LAMBDA_C: goto commute_1_3;
+    case SYMBOL_PERFORM: goto commute_1_3;
     case SYMBOL_IF_THEN_ELSE: goto commute_1_4;
     case SYMBOL_ERASER:
     case SYMBOL_CELL:
