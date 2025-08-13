@@ -569,6 +569,7 @@ bump_index(const uint64_t symbol, const uint64_t offset) {
 #define PHASE_LOOP_CUT         UINT64_C(5)
 #define PHASE_GC               UINT64_C(6)
 #define PHASE_GC_AUX           UINT64_C(7)
+#define PHASE_STACK            UINT64_C(8)
 
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
@@ -2207,10 +2208,20 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
             const struct node g = node_of_port(points_to);
             XASSERT(g.ports);
 
-            if (PHASE_GC == DECODE_PHASE_METADATA(g.ports[0])) {
+            switch (DECODE_PHASE_METADATA(g.ports[0])) {
+            // Two garbage-collecting erasers are interacting. The algorithm is
+            // as follows: free `f` & mark `g` for future encountering; when the
+            // multifocus encounters `g`, it will instantly free it without
+            // following its port.
+            case PHASE_GC:
                 free_node(graph, f);
                 set_phase(&g.ports[0], PHASE_GC_AUX);
-            } else {
+                break;
+            // We shall not deallocate nodes from the reduction stack.
+            case PHASE_STACK:
+                set_phase(&f.ports[0], PHASE_REDUCE_WEAKLY);
+                break;
+            default: //
                 gc_step(graph, f, g, points_to - g.ports);
             }
         }
@@ -4237,6 +4248,7 @@ weak_reduction(struct context *const restrict graph) {
             fire_rule(graph, f, g);
             f = unfocus_or(stack, graph->root);
         } else {
+            set_phase(&f.ports[0], PHASE_STACK);
             focus_on(stack, f);
             f = g;
         }

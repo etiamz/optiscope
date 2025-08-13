@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Garbage collection:
    - Use-after-poison of garbage-collecting eraser nodes (issue <https://github.com/etiamz/optiscope/issues/5>).
    - Transforme ordinary lambda nodes into garbage-collecting lambdas (issue <https://github.com/etiamz/optiscope/issues/5>).
+   - Doe not free nodes from the reduction stack (issue <https://github.com/etiamz/optiscope/issues/6>).
  - Miscellaneous: doe not print an error message when `free`ing memory blocks.
 
 ### Removed
