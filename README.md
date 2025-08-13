@@ -29,10 +29,8 @@ The shell commands are outlined in the following table:
 | `./command/test.sh` | Execute the test suite `tests.c`. |
 | `./command/example.sh <example-name>` | Execute the example `examples/<example-name>.c`. |
 | `./command/graphviz-state.sh` | Visualize `target/state.dot` as `target/state.dot.svg`. |
-| `./command/graphvis-all.sh` | Visualize all the `.dot` files in `target/`. |
+| `./command/graphviz-all.sh` | Visualize all the `.dot` files in `target/`. |
 | `./command/bench.sh` | Execute all the benchmarks in `benchmarks/`. |
-| `./command/compile-haskell.sh` | Compile all the benchmarks in `benchmarks-haskell/`. |
-| `./command/compile-ocaml.sh` | Compile all the benchmarks in `benchmarks-ocaml/`. |
 
 ## A touch of optimality
 
@@ -558,7 +556,7 @@ benchmarkTerm;;
 
 Then I typed `#load "scott-insertion-sort.bohm";;` and... it hanged my computer.
 
-For 150 elements, it executed almost instantly, but it is still of no rival to Haskell & OCaml.
+For 150 elements, it executed almost instantly, but it was still of no rival to Haskell & OCaml.
 
 Also read the following excerpt from [^optimal-implementation], section 12.4:
 
@@ -592,7 +590,7 @@ computation -- this makes a crucial difference with the pure λ-calculus, where
 all data are eventually represented as functions.
 ```
 
-Well, in our benchmarks, we represent all data besides primitive integers as functions. Nonethelesse, BOHM is still much slower than 50-line evaluators in Haskell & OCaml.
+Well, in our benchmarks, we represent all data besides primitive integers as functions. Nonethelesse, BOHM was still much slower than our 50-line evaluators in Haskell & OCaml.
 
 What conclusions should we draw from this? Have Haskell & OCaml so advanced in efficiency over the decades? Or does BOHM demonstrate superior performance on Churh numerals onely? Should we invest our time in making optimality efficient, given that simpler, unoptimized approaches prove to be more performant? I have no definite answer to these questions, but the point is: Optiscope is onely meant to incorporate native function calls into optimal reduction, & it is by no means to be understood as a reduction machine aimed at maximum efficiency. While it is true that Optiscope is a heavily optimized implementation of Lambdascope, this fact does not entail that it is immediately faster than more traditional approaches. For now, if you want to develop a high-performance call-by-need functional machine, it is presumably better to take the well-known Spinelesse Taglesse G-machine [^stg-machine] as a starting point.
 
