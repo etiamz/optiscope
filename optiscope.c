@@ -4247,6 +4247,7 @@ weak_reduction(struct context *const restrict graph) {
         if (is_interacting_with(f, g)) {
             fire_rule(graph, f, g);
             f = unfocus_or(stack, graph->root);
+            set_phase(&f.ports[0], PHASE_REDUCE_WEAKLY);
         } else {
             set_phase(&f.ports[0], PHASE_STACK);
             focus_on(stack, f);
