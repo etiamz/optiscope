@@ -44,19 +44,19 @@ Benchmark 1: ./fibonacci-of-30
 <summary>Statistics profile</summary>
 
 ```
-Annihilation interactions: 0
- Commutation interactions: 8077611
-        Beta interactions: 2692537
-               Expansions: 2692536
-    Native function calls: 12948453
-            If-then-elses: 4870845
-       Total interactions: 28589446
-      Garbage collections: 20390451
-       Delimiter mergings: 0
-     Total graph rewrites: 48979897
-      Maximum duplicators: 3
-       Maximum delimiters: 0
-      Maximum total nodes: 198
+    Family reductions: 2692537
+         Commutations: 8077611
+        Annihilations: 0
+           Expansions: 2692536
+Native function calls: 12948453
+        If-then-elses: 4870845
+   Total interactions: 28589446
+  Garbage collections: 20390451
+   Delimiter mergings: 0
+       Total rewrites: 48979897
+      Max duplicators: 3
+       Max delimiters: 0
+      Max total nodes: 198
 ```
 
 </details>
@@ -75,19 +75,19 @@ Benchmark 1: ./church-fix-fibonacci-of-20
 <summary>Statistics profile</summary>
 
 ```
-Annihilation interactions: 7278199
- Commutation interactions: 37759561
-        Beta interactions: 521515
-               Expansions: 0
-    Native function calls: 0
-            If-then-elses: 0
-       Total interactions: 45559275
-      Garbage collections: 2067516
-       Delimiter mergings: 1622053
-     Total graph rewrites: 49248844
-      Maximum duplicators: 607110
-       Maximum delimiters: 3465484
-      Maximum total nodes: 5741885
+    Family reductions: 521515
+         Commutations: 37759561
+        Annihilations: 7278199
+           Expansions: 0
+Native function calls: 0
+        If-then-elses: 0
+   Total interactions: 45559275
+  Garbage collections: 2067516
+   Delimiter mergings: 1622053
+       Total rewrites: 49248844
+      Max duplicators: 607110
+       Max delimiters: 3465484
+      Max total nodes: 5741885
 ```
 
 </details>
@@ -106,19 +106,19 @@ Benchmark 1: ./church-list-reverse-and-sum
 <summary>Statistics profile</summary>
 
 ```
-Annihilation interactions: 50124995
- Commutation interactions: 400300030
-        Beta interactions: 100006
-               Expansions: 0
-    Native function calls: 20000
-            If-then-elses: 0
-       Total interactions: 450545031
-      Garbage collections: 10008
-       Delimiter mergings: 40001
-     Total graph rewrites: 450595040
-      Maximum duplicators: 70002
-       Maximum delimiters: 50085005
-      Maximum total nodes: 50165012
+    Family reductions: 100006
+         Commutations: 400300030
+        Annihilations: 50124995
+           Expansions: 0
+Native function calls: 20000
+        If-then-elses: 0
+   Total interactions: 450545031
+  Garbage collections: 10008
+   Delimiter mergings: 40001
+       Total rewrites: 450595040
+      Max duplicators: 70002
+       Max delimiters: 50085005
+      Max total nodes: 50165012
 ```
 
 </details>
@@ -137,19 +137,19 @@ Benchmark 1: ./scott-insertion-sort
 <summary>Statistics profile</summary>
 
 ```
-Annihilation interactions: 84454257
- Commutation interactions: 360554484
-        Beta interactions: 1007506
-               Expansions: 125750
-    Native function calls: 250500
-            If-then-elses: 124750
-       Total interactions: 446391497
-      Garbage collections: 67766332
-       Delimiter mergings: 2496503
-     Total graph rewrites: 516654332
-      Maximum duplicators: 3006
-       Maximum delimiters: 260020
-      Maximum total nodes: 348219
+    Family reductions: 1007506
+         Commutations: 360554484
+        Annihilations: 84454257
+           Expansions: 125750
+Native function calls: 250500
+        If-then-elses: 124750
+   Total interactions: 446391497
+  Garbage collections: 67766332
+   Delimiter mergings: 2496503
+       Total rewrites: 516654332
+      Max duplicators: 3006
+       Max delimiters: 260020
+      Max total nodes: 348219
 ```
 
 </details>
@@ -168,19 +168,19 @@ Benchmark 1: ./scott-quicksort
 <summary>Statistics profile</summary>
 
 ```
-Annihilation interactions: 41800202
- Commutation interactions: 320505663
-        Beta interactions: 1085106
-               Expansions: 135450
-    Native function calls: 180000
-            If-then-elses: 89700
-       Total interactions: 363660671
-      Garbage collections: 28769535
-       Delimiter mergings: 46806957
-     Total graph rewrites: 439237163
-      Maximum duplicators: 3015
-       Maximum delimiters: 172912
-      Maximum total nodes: 451291
+    Family reductions: 1085106
+         Commutations: 320505663
+        Annihilations: 41800202
+           Expansions: 135450
+Native function calls: 180000
+        If-then-elses: 89700
+   Total interactions: 363660671
+  Garbage collections: 28769535
+   Delimiter mergings: 46806957
+       Total rewrites: 439237163
+      Max duplicators: 3015
+       Max delimiters: 172912
+      Max total nodes: 451291
 ```
 
 </details>
