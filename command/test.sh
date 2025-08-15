@@ -6,7 +6,7 @@ if [ -z $CC ]; then
     CC=gcc
 fi
 
-options="-Wall -Wextra -pedantic -std=c99 -g -fsanitize=address -fsanitize=undefined"
+options="-Wall -Wextra -pedantic -std=c99 -g -fsanitize=address,undefined"
 gcc_suggest_options="-Wsuggest-attribute=pure -Wsuggest-attribute=const -Wsuggest-attribute=noreturn -Wsuggest-attribute=cold"
 macos_suppress_options="-Wno-deprecated-declarations -Wno-c11-extensions"
 
