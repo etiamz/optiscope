@@ -53,6 +53,7 @@ Benchmark 1: ./fibonacci-of-30
 Garbage collections: 20390451
  Delimiter mergings: 0
      Total rewrites: 51672433
+   Bookkeeping work: 0.00%
     Max duplicators: 3
      Max delimiters: 0
     Max total nodes: 198
@@ -83,6 +84,7 @@ Benchmark 1: ./church-fix-fibonacci-of-20
 Garbage collections: 2067516
  Delimiter mergings: 1622053
      Total rewrites: 49248844
+   Bookkeeping work: 82.68%
     Max duplicators: 607110
      Max delimiters: 3465484
     Max total nodes: 5741885
@@ -113,6 +115,7 @@ Benchmark 1: ./church-list-reverse-and-sum
 Garbage collections: 10008
  Delimiter mergings: 40001
      Total rewrites: 450595040
+   Bookkeeping work: 99.93%
     Max duplicators: 70002
      Max delimiters: 50085005
     Max total nodes: 50165012
@@ -143,6 +146,7 @@ Benchmark 1: ./scott-insertion-sort
 Garbage collections: 67766332
  Delimiter mergings: 2496503
      Total rewrites: 516780082
+   Bookkeeping work: 86.47%
     Max duplicators: 3006
      Max delimiters: 260020
     Max total nodes: 348219
@@ -173,6 +177,7 @@ Benchmark 1: ./scott-quicksort
 Garbage collections: 28769535
  Delimiter mergings: 46806957
      Total rewrites: 439372613
+   Bookkeeping work: 90.70%
     Max duplicators: 3015
      Max delimiters: 172912
     Max total nodes: 451291

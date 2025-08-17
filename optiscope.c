@@ -1140,6 +1140,8 @@ struct context {
     // The numbers of proper interactions.
     CONTEXT_MULTIFOCUSES
 #undef X
+    // The number of bookkeeping ("oracle") interactions.
+    uint64_t nbookkeeping_interactions;
     // The numbers of non-interaction graph rewrites.
     uint64_t nmergings, ngc;
     // The memory usage statistics.
@@ -1180,6 +1182,7 @@ alloc_context(void) {
 #define X(focus_name) graph->n##focus_name = 0;
     CONTEXT_MULTIFOCUSES
 #undef X
+    graph->nbookkeeping_interactions = 0;
     graph->nmergings = graph->ngc = 0;
     graph->nduplicators = graph->ndelimiters = graph->ntotal = //
         graph->nmax_duplicators = graph->nmax_delimiters = graph->nmax_total =
@@ -1243,6 +1246,12 @@ print_stats(const struct context *const restrict graph) {
     const uint64_t ntotal_rewrites = //
         ntotal_interactions + graph->nmergings + graph->ngc;
 
+    const uint64_t nbookkeeping_rewrites = //
+        graph->nbookkeeping_interactions + graph->nmergings;
+
+    const double bookkeeping_percentage = //
+        ((double)nbookkeeping_rewrites / (double)ntotal_rewrites) * 100.0;
+
     printf("  Family reductions: %" PRIu64 "\n", graph->nbetas);
     printf("       Commutations: %" PRIu64 "\n", graph->ncommutations);
     printf("      Annihilations: %" PRIu64 "\n", graph->nannihilations);
@@ -1252,6 +1261,7 @@ print_stats(const struct context *const restrict graph) {
     printf("Garbage collections: %" PRIu64 "\n", graph->ngc);
     printf(" Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
     printf("     Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
+    printf("   Bookkeeping work: %.2f%%\n", bookkeeping_percentage);
     printf("    Max duplicators: %" PRIu64 "\n", graph->nmax_duplicators);
     printf("     Max delimiters: %" PRIu64 "\n", graph->nmax_delimiters);
     printf("    Max total nodes: %" PRIu64 "\n", graph->nmax_total);
@@ -3174,9 +3184,26 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
 // Rule Dispatching
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+#ifdef OPTISCOPE_ENABLE_STATS
+
+#define COUNT_BOOKKEEPING(graph, fsym, gsym)                                   \
+    do {                                                                       \
+        if (IS_DELIMITER((fsym)) || IS_DELIMITER((gsym))) {                    \
+            (graph)->nbookkeeping_interactions++;                              \
+        }                                                                      \
+    } while (false)
+
+#else
+
+#define COUNT_BOOKKEEPING(graph, fsym, gsym) ((void)0)
+
+#endif // OPTISCOPE_ENABLE_STATS
+
 #define DISPATCH_ACTIVE_PAIR(graph, f, g)                                      \
     do {                                                                       \
         const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];                 \
+                                                                               \
+        COUNT_BOOKKEEPING(graph, fsym, gsym);                                  \
                                                                                \
         switch (fsym) {                                                        \
         duplicator:                                                            \
@@ -3542,6 +3569,7 @@ register_active_pair(
 }
 
 #undef DISPATCH_ACTIVE_PAIR
+#undef COUNT_BOOKKEEPING
 
 // Higher-Order Control Structures
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
