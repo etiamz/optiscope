@@ -18,9 +18,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     options="$options $macos_suppress_options"
 fi
 
-# Detect potential fallback linked list bugs.
-options="$options -DOPTISCOPE_MULTIFOCUS_COUNT=1000"
-
 $CC tests.c optiscope.c -o tests $options
 ./tests
 rm tests

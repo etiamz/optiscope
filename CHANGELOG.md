@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+ - User interface: the `OPTISCOPE_MULTIFOCUS_COUNT` setting as outdated.
  - Benchmarking: the OCaml benchmarks because of eager evaluation troubles.
 
 ## 0.10.0 - 2025-08-09

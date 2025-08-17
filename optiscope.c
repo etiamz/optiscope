@@ -1005,9 +1005,7 @@ is_active(const struct node node) {
 // Multifocuses Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-#ifndef OPTISCOPE_MULTIFOCUS_COUNT
-#define OPTISCOPE_MULTIFOCUS_COUNT 4096
-#endif
+#define INITIAL_MULTIFOCUS_CAPACITY 4096
 
 struct multifocus {
     size_t count, capacity;
@@ -1189,8 +1187,8 @@ alloc_context(void) {
             0;
 #endif
 
-    graph->gc_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
-    graph->unshare_focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
+    graph->gc_focus = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
+    graph->unshare_focus = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
     CLEAR_MEMORY(graph->current_pair);
@@ -1984,7 +1982,7 @@ graphviz(
         fp, GRAPHVIZ_INDENT "{ rank=min; n%p }\n", (void *)graph->root.ports);
     struct graphviz_context ctx = {
         .graph = graph,
-        .history = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT),
+        .history = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY),
         .stream = fp,
     };
     go_graphviz(&ctx, graph->root, 0);
@@ -3642,7 +3640,7 @@ walk_graph(
     MY_ASSERT(graph);
     XASSERT(graph->root.ports);
 
-    struct multifocus *const focus = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
+    struct multifocus *const focus = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
 
     focus_on(focus, graph->root);
     set_phase(&graph->root.ports[0], graph->phase);
@@ -4261,7 +4259,7 @@ weak_reduction(struct context *const restrict graph) {
 
     MY_ASSERT(graph);
 
-    struct multifocus *const stack = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
+    struct multifocus *const stack = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
 
     struct node f = graph->root;
 
@@ -4339,7 +4337,7 @@ optiscope_algorithm(
     if (NULL == stream) { goto finish; }
 
 #define X(focus_name)                                                          \
-    graph->focus_name = alloc_focus(OPTISCOPE_MULTIFOCUS_COUNT);
+    graph->focus_name = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
     CONTEXT_MULTIFOCUSES
 #undef X
 
