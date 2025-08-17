@@ -50,10 +50,10 @@ Benchmark 1: ./fibonacci-of-30
            Expansions: 2692536
 Native function calls: 12948453
         If-then-elses: 4870845
-   Total interactions: 28589446
+   Total interactions: 31281982
   Garbage collections: 20390451
    Delimiter mergings: 0
-       Total rewrites: 48979897
+       Total rewrites: 51672433
       Max duplicators: 3
        Max delimiters: 0
       Max total nodes: 198
@@ -143,10 +143,10 @@ Benchmark 1: ./scott-insertion-sort
            Expansions: 125750
 Native function calls: 250500
         If-then-elses: 124750
-   Total interactions: 446391497
+   Total interactions: 446517247
   Garbage collections: 67766332
    Delimiter mergings: 2496503
-       Total rewrites: 516654332
+       Total rewrites: 516780082
       Max duplicators: 3006
        Max delimiters: 260020
       Max total nodes: 348219
@@ -174,10 +174,10 @@ Benchmark 1: ./scott-quicksort
            Expansions: 135450
 Native function calls: 180000
         If-then-elses: 89700
-   Total interactions: 363660671
+   Total interactions: 363796121
   Garbage collections: 28769535
    Delimiter mergings: 46806957
-       Total rewrites: 439237163
+       Total rewrites: 439372613
       Max duplicators: 3015
        Max delimiters: 172912
       Max total nodes: 451291

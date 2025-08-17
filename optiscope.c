@@ -1243,8 +1243,8 @@ print_stats(const struct context *const restrict graph) {
     printf("        If-then-elses: %" PRIu64 "\n", graph->nif_then_elses);
 
     const uint64_t ninteractions = //
-        graph->nbetas + graph->ncommutations + graph->nannihilations + ncalls +
-        graph->nif_then_elses;
+        graph->nbetas + graph->ncommutations + graph->nannihilations +
+        graph->nexpansions + ncalls + graph->nif_then_elses;
 
     printf("   Total interactions: %" PRIu64 "\n", ninteractions);
     printf("  Garbage collections: %" PRIu64 "\n", graph->ngc);
