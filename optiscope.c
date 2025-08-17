@@ -1232,32 +1232,29 @@ static void
 print_stats(const struct context *const restrict graph) {
     MY_ASSERT(graph);
 
-    const uint64_t ncalls =
-        graph->nunary_calls + graph->nbinary_calls + graph->nbinary_calls_aux;
+    const uint64_t ncell_operations = //
+        graph->nunary_calls + graph->nbinary_calls + graph->nbinary_calls_aux +
+        graph->nif_then_elses;
 
-    printf("    Family reductions: %" PRIu64 "\n", graph->nbetas);
-    printf("         Commutations: %" PRIu64 "\n", graph->ncommutations);
-    printf("        Annihilations: %" PRIu64 "\n", graph->nannihilations);
-    printf("           Expansions: %" PRIu64 "\n", graph->nexpansions);
-    printf("Native function calls: %" PRIu64 "\n", ncalls);
-    printf("        If-then-elses: %" PRIu64 "\n", graph->nif_then_elses);
-
-    const uint64_t ninteractions = //
+    const uint64_t ntotal_interactions = //
         graph->nbetas + graph->ncommutations + graph->nannihilations +
-        graph->nexpansions + ncalls + graph->nif_then_elses;
+        graph->nexpansions + ncell_operations;
 
-    printf("   Total interactions: %" PRIu64 "\n", ninteractions);
-    printf("  Garbage collections: %" PRIu64 "\n", graph->ngc);
-    printf("   Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
+    const uint64_t ntotal_rewrites = //
+        ntotal_interactions + graph->nmergings + graph->ngc;
 
-    const uint64_t nrewrites = //
-        ninteractions + graph->nmergings + graph->ngc;
-
-    printf("       Total rewrites: %" PRIu64 "\n", nrewrites);
-
-    printf("      Max duplicators: %" PRIu64 "\n", graph->nmax_duplicators);
-    printf("       Max delimiters: %" PRIu64 "\n", graph->nmax_delimiters);
-    printf("      Max total nodes: %" PRIu64 "\n", graph->nmax_total);
+    printf("  Family reductions: %" PRIu64 "\n", graph->nbetas);
+    printf("       Commutations: %" PRIu64 "\n", graph->ncommutations);
+    printf("      Annihilations: %" PRIu64 "\n", graph->nannihilations);
+    printf("         Expansions: %" PRIu64 "\n", graph->nexpansions);
+    printf("    Cell operations: %" PRIu64 "\n", ncell_operations);
+    printf(" Total interactions: %" PRIu64 "\n", ntotal_interactions);
+    printf("Garbage collections: %" PRIu64 "\n", graph->ngc);
+    printf(" Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
+    printf("     Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
+    printf("    Max duplicators: %" PRIu64 "\n", graph->nmax_duplicators);
+    printf("     Max delimiters: %" PRIu64 "\n", graph->nmax_delimiters);
+    printf("    Max total nodes: %" PRIu64 "\n", graph->nmax_total);
 }
 
 #else

@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Statistics: instead of nodes allocated, measure maximum nodes during reduction.
+ - Statistics:
+   - Instead of _total_ nodes allocated, measure _maximum_ nodes during reduction.
+   - Include expansion interactions in the total interactions count.
+   - Include calls, partially applied calls, & if-then-elses into a single category.
 
 ### Fixed
 
@@ -17,8 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - Use-after-poison of garbage-collecting eraser nodes (issue <https://github.com/etiamz/optiscope/issues/5>).
    - Transforme ordinary lambda nodes into garbage-collecting lambdas (issue <https://github.com/etiamz/optiscope/issues/5>).
    - Doe not free nodes from the reduction stack (issue <https://github.com/etiamz/optiscope/issues/6>).
- - Statistics:
-   - Include expansion interactions in the total interactions count.
  - Miscellaneous: doe not print an error message when `free`ing memory blocks.
 
 ### Removed
