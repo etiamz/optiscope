@@ -76,18 +76,18 @@ Benchmark 1: ./church-fix-fibonacci-of-20
 
 ```
   Family reductions: 521515
-       Commutations: 37759561
+       Commutations: 37741839
       Annihilations: 7278199
          Expansions: 0
     Cell operations: 0
- Total interactions: 45559275
+ Total interactions: 45541553
 Garbage collections: 2067516
- Delimiter mergings: 1622053
-     Total rewrites: 49248844
-   Bookkeeping work: 82.68%
+ Delimiter mergings: 1633003
+     Total rewrites: 49242072
+   Bookkeeping work: 82.67%
     Max duplicators: 607110
-     Max delimiters: 3465484
-    Max total nodes: 5741885
+     Max delimiters: 3465471
+    Max total nodes: 5741872
 ```
 
 </details>
@@ -107,18 +107,18 @@ Benchmark 1: ./church-list-reverse-and-sum
 
 ```
   Family reductions: 100006
-       Commutations: 400300030
+       Commutations: 400270029
       Annihilations: 50124995
          Expansions: 0
     Cell operations: 20000
- Total interactions: 450545031
+ Total interactions: 450515030
 Garbage collections: 10008
- Delimiter mergings: 40001
-     Total rewrites: 450595040
+ Delimiter mergings: 60003
+     Total rewrites: 450585041
    Bookkeeping work: 99.93%
     Max duplicators: 70002
-     Max delimiters: 50085005
-    Max total nodes: 50165012
+     Max delimiters: 50065006
+    Max total nodes: 50155013
 ```
 
 </details>
@@ -138,18 +138,18 @@ Benchmark 1: ./scott-insertion-sort
 
 ```
   Family reductions: 1007506
-       Commutations: 360554484
+       Commutations: 360427735
       Annihilations: 84454257
          Expansions: 125750
     Cell operations: 375250
- Total interactions: 446517247
+ Total interactions: 446390498
 Garbage collections: 67766332
- Delimiter mergings: 2496503
-     Total rewrites: 516780082
+ Delimiter mergings: 2497006
+     Total rewrites: 516653836
    Bookkeeping work: 86.47%
     Max duplicators: 3006
      Max delimiters: 260020
-    Max total nodes: 348219
+    Max total nodes: 348044
 ```
 
 </details>
@@ -169,18 +169,18 @@ Benchmark 1: ./scott-quicksort
 
 ```
   Family reductions: 1085106
-       Commutations: 320505663
-      Annihilations: 41800202
+       Commutations: 320234467
+      Annihilations: 41755949
          Expansions: 135450
     Cell operations: 269700
- Total interactions: 363796121
+ Total interactions: 363480672
 Garbage collections: 28769535
- Delimiter mergings: 46806957
-     Total rewrites: 439372613
-   Bookkeeping work: 90.70%
+ Delimiter mergings: 46807259
+     Total rewrites: 439057466
+   Bookkeeping work: 90.69%
     Max duplicators: 3015
-     Max delimiters: 172912
-    Max total nodes: 451291
+     Max delimiters: 150605
+    Max total nodes: 440105
 ```
 
 </details>

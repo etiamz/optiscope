@@ -1532,7 +1532,7 @@ inst_delimiter(
     MY_ASSERT(graph);
     assert_delimiter_template(template);
 
-    const struct node g = follow_port(&template.points_to[0]);
+    const struct node g = node_of_port(&template.points_to[0]);
     XASSERT(g.ports);
 
     const bool condition = PHASE_REDUCE_WEAKLY == graph->phase &&
