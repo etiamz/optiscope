@@ -107,18 +107,18 @@ Benchmark 1: ./church-list-reverse-and-sum
 
 ```
   Family reductions: 100006
-       Commutations: 400270029
+       Commutations: 400270030
       Annihilations: 50124995
          Expansions: 0
     Cell operations: 20000
- Total interactions: 450515030
+ Total interactions: 450515031
 Garbage collections: 10008
- Delimiter mergings: 60003
+ Delimiter mergings: 60002
      Total rewrites: 450585041
-   Bookkeeping work: 99.93%
+   Bookkeeping work: 88.83%
     Max duplicators: 70002
-     Max delimiters: 50065006
-    Max total nodes: 50155013
+     Max delimiters: 60006
+    Max total nodes: 160030
 ```
 
 </details>
@@ -138,18 +138,18 @@ Benchmark 1: ./scott-insertion-sort
 
 ```
   Family reductions: 1007506
-       Commutations: 360427735
+       Commutations: 360804487
       Annihilations: 84454257
          Expansions: 125750
     Cell operations: 375250
- Total interactions: 446390498
-Garbage collections: 67766332
- Delimiter mergings: 2497006
-     Total rewrites: 516653836
-   Bookkeeping work: 86.47%
-    Max duplicators: 3006
-     Max delimiters: 260020
-    Max total nodes: 348044
+ Total interactions: 446767250
+Garbage collections: 67515332
+ Delimiter mergings: 2497005
+     Total rewrites: 516779587
+   Bookkeeping work: 86.33%
+    Max duplicators: 1506
+     Max delimiters: 129502
+    Max total nodes: 240103
 ```
 
 </details>
@@ -169,18 +169,18 @@ Benchmark 1: ./scott-quicksort
 
 ```
   Family reductions: 1085106
-       Commutations: 320234467
+       Commutations: 320234168
       Annihilations: 41755949
          Expansions: 135450
     Cell operations: 269700
- Total interactions: 363480672
+ Total interactions: 363480373
 Garbage collections: 28769535
  Delimiter mergings: 46807259
-     Total rewrites: 439057466
-   Bookkeeping work: 90.69%
+     Total rewrites: 439057167
+   Bookkeeping work: 90.67%
     Max duplicators: 3015
-     Max delimiters: 150605
-    Max total nodes: 440105
+     Max delimiters: 150603
+    Max total nodes: 440103
 ```
 
 </details>

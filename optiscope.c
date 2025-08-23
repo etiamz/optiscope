@@ -2656,7 +2656,13 @@ RULE_DEFINITION(beta_c, graph, f, g) {
 #endif
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
-    connect_ports(DECODE_ADDRESS(g.ports[1]), DECODE_ADDRESS(f.ports[2]));
+
+    uint64_t *const binder_port = DECODE_ADDRESS(g.ports[1]), //
+        *const rand_port = DECODE_ADDRESS(f.ports[2]);
+    const struct node rand = node_of_port(rand_port);
+    if (!try_unshare(graph, binder_port, rand)) {
+        connect_ports(rand_port, binder_port);
+    }
 
     free_node(graph, f), free_node(graph, g);
 }
