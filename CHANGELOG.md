@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Fixed
+
+ - Optimization:
+   - Properly merge newly instantiated delimiters by checking `node_of_port` not `follow_port`.
+   - Eagerly eliminate sharing during closed Beta interactions too.
+
 ## 0.11.0 - 2025-08-17
 
 ### Added
