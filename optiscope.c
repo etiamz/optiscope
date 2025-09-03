@@ -376,7 +376,7 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX, "Every bit of a symbol must be 
 #define SYMBOL_GC_LAMBDA       UINT64_C(12) // a lambda discarding its parameter
 #define SYMBOL_LAMBDA_C        UINT64_C(13) // a closed lambda
 #define SYMBOL_REFERENCE       UINT64_C(14)
-#define SYMBOL_UNUSED          UINT64_C(15)
+#define SYMBOL_BARRIER         UINT64_C(15)
 #define SYMBOL_DUPLICATOR(i)   (MAX_REGULAR_SYMBOL + 1 + (i))
 #define SYMBOL_DELIMITER(i)    (MAX_DUPLICATOR_INDEX + 1 + (i))
 
@@ -438,6 +438,7 @@ ports_count(const uint64_t symbol) {
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_GC_LAMBDA:
+    case SYMBOL_BARRIER:
     delimiter:
         return 2;
     case SYMBOL_APPLICATOR:
@@ -533,6 +534,7 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_GC_LAMBDA: sprintf(buffer, "λ◉"); break;
     case SYMBOL_LAMBDA_C: sprintf(buffer, "λc"); break;
     case SYMBOL_REFERENCE: sprintf(buffer, "&"); break;
+    case SYMBOL_BARRIER: sprintf(buffer, "🚧"); break;
     default:
         if (IS_DUPLICATOR(symbol)) goto duplicator;
         else if (IS_DELIMITER(symbol)) goto delimiter;
@@ -561,15 +563,17 @@ bump_index(const uint64_t symbol, const uint64_t offset) {
     return symbol + offset;
 }
 
-#define PHASE_REDUCE_WEAKLY    UINT64_C(0)
-#define PHASE_REDUCE_FULLY     UINT64_C(1)
-#define PHASE_REDUCE_FULLY_AUX UINT64_C(2)
-#define PHASE_UNWIND           UINT64_C(3)
-#define PHASE_SCOPE_REMOVE     UINT64_C(4)
-#define PHASE_LOOP_CUT         UINT64_C(5)
-#define PHASE_GC               UINT64_C(6)
-#define PHASE_GC_AUX           UINT64_C(7)
-#define PHASE_STACK            UINT64_C(8)
+#define PHASE_REDUCE_WEAKLY        UINT64_C(0)
+#define PHASE_NORMALIZE_DELIMITERS UINT64_C(1)
+#define PHASE_REMOVE_BARRIERS      UINT64_C(2)
+#define PHASE_REDUCE_FULLY         UINT64_C(3)
+#define PHASE_REDUCE_FULLY_AUX     UINT64_C(4)
+#define PHASE_UNWIND               UINT64_C(5)
+#define PHASE_SCOPE_REMOVE         UINT64_C(6)
+#define PHASE_LOOP_CUT             UINT64_C(7)
+#define PHASE_GC                   UINT64_C(8)
+#define PHASE_GC_AUX               UINT64_C(9)
+#define PHASE_STACK                UINT64_C(10)
 
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
@@ -816,6 +820,7 @@ POOL_ALLOCATOR(identity_lambda, sizeof(uint64_t) * 2)
 POOL_ALLOCATOR(gc_lambda, sizeof(uint64_t) * 3)
 POOL_ALLOCATOR(lambda_c, sizeof(uint64_t) * 4)
 POOL_ALLOCATOR(reference, sizeof(uint64_t) * 3)
+POOL_ALLOCATOR(barrier, sizeof(uint64_t) * 4)
 
 #define ALLOC_POOL_OBJECT(pool_name) pool_name##_alloc(pool_name)
 #define FREE_POOL_OBJECT(pool_name, object)                                    \
@@ -837,7 +842,8 @@ POOL_ALLOCATOR(reference, sizeof(uint64_t) * 3)
     X(identity_lambda_pool)                                                    \
     X(gc_lambda_pool)                                                          \
     X(lambda_c_pool)                                                           \
-    X(reference_pool)
+    X(reference_pool)                                                          \
+    X(barrier_pool)
 
 #define X(pool_name) static struct pool_name *pool_name = NULL;
 POOLS
@@ -1138,6 +1144,8 @@ struct context {
     // The numbers of proper interactions.
     CONTEXT_MULTIFOCUSES
 #undef X
+    // The numbers of barrier operations.
+    uint64_t nbarriers, nunbarriers;
     // The number of bookkeeping ("oracle") interactions.
     uint64_t nbookkeeping_interactions;
     // The numbers of non-interaction graph rewrites.
@@ -1180,6 +1188,7 @@ alloc_context(void) {
 #define X(focus_name) graph->n##focus_name = 0;
     CONTEXT_MULTIFOCUSES
 #undef X
+    graph->nbarriers = graph->nunbarriers = 0;
     graph->nbookkeeping_interactions = 0;
     graph->nmergings = graph->ngc = 0;
     graph->nduplicators = graph->ndelimiters = graph->ntotal = //
@@ -1237,9 +1246,12 @@ print_stats(const struct context *const restrict graph) {
         graph->nunary_calls + graph->nbinary_calls + graph->nbinary_calls_aux +
         graph->nif_then_elses;
 
+    const uint64_t nbarrier_operations = //
+        graph->nbarriers + graph->nunbarriers;
+
     const uint64_t ntotal_interactions = //
         graph->nbetas + graph->ncommutations + graph->nannihilations +
-        graph->nexpansions + ncell_operations;
+        graph->nexpansions + ncell_operations + nbarrier_operations;
 
     const uint64_t ntotal_rewrites = //
         ntotal_interactions + graph->nmergings + graph->ngc;
@@ -1255,6 +1267,7 @@ print_stats(const struct context *const restrict graph) {
     printf("      Annihilations: %" PRIu64 "\n", graph->nannihilations);
     printf("         Expansions: %" PRIu64 "\n", graph->nexpansions);
     printf("    Cell operations: %" PRIu64 "\n", ncell_operations);
+    printf(" Barrier operations: %" PRIu64 "\n", nbarrier_operations);
     printf(" Total interactions: %" PRIu64 "\n", ntotal_interactions);
     printf("Garbage collections: %" PRIu64 "\n", graph->ngc);
     printf(" Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
@@ -1366,6 +1379,11 @@ alloc_node_from(
         ports = ALLOC_POOL_OBJECT(reference_pool), SET_PORTS_0();
         if (prototype) { ports[1] = prototype->ports[1]; }
         break;
+    case SYMBOL_BARRIER:
+        ports = ALLOC_POOL_OBJECT(barrier_pool);
+        if (prototype) { ports[2] = prototype->ports[2]; }
+        SET_PORTS_1();
+        break;
     duplicator:
         ports = ALLOC_POOL_OBJECT(duplicator_pool), SET_PORTS_2();
 #ifdef OPTISCOPE_ENABLE_STATS
@@ -1467,6 +1485,7 @@ free_node(struct context *const restrict graph, const struct node node) {
     case SYMBOL_GC_LAMBDA: FREE_POOL_OBJECT(gc_lambda_pool, p); break;
     case SYMBOL_LAMBDA_C: FREE_POOL_OBJECT(lambda_c_pool, p); break;
     case SYMBOL_REFERENCE: FREE_POOL_OBJECT(reference_pool, p); break;
+    case SYMBOL_BARRIER: FREE_POOL_OBJECT(barrier_pool, p); break;
     default:
         if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
         else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
@@ -1515,12 +1534,14 @@ assert_delimiter_template(const struct delimiter template) {
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 inst_delimiter_as_is(
-    struct context *const restrict graph, const struct delimiter template) {
+    struct context *const restrict graph,
+    const struct delimiter template,
+    const uint64_t count) {
     MY_ASSERT(graph);
     assert_delimiter_template(template);
 
     const struct node delim = alloc_node(graph, SYMBOL_DELIMITER(template.idx));
-    delim.ports[2] = 1;
+    delim.ports[2] = count;
     connect_ports(&delim.ports[0], template.points_to);
     connect_ports(&delim.ports[1], template.goes_from);
 }
@@ -1528,9 +1549,12 @@ inst_delimiter_as_is(
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 inst_delimiter(
-    struct context *const restrict graph, const struct delimiter template) {
+    struct context *const restrict graph,
+    const struct delimiter template,
+    const uint64_t count) {
     MY_ASSERT(graph);
     assert_delimiter_template(template);
+    MY_ASSERT(count > 0);
 
     const struct node g = node_of_port(&template.points_to[0]);
     XASSERT(g.ports);
@@ -1540,13 +1564,13 @@ inst_delimiter(
                            1 == DECODE_OFFSET_METADATA(*template.points_to) &&
                            SYMBOL_DELIMITER(template.idx) == g.ports[-1];
     if (condition) {
-        g.ports[2]++;
+        g.ports[2] += count;
         connect_ports(&g.ports[1], template.goes_from);
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nmergings++;
 #endif
     } else {
-        inst_delimiter_as_is(graph, template);
+        inst_delimiter_as_is(graph, template, count);
     }
 }
 
@@ -1800,9 +1824,10 @@ graphviz_edge_tailport(
         case 2: return "ne";
         default: COMPILER_UNREACHABLE();
         }
-    delimiter:
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
+    case SYMBOL_BARRIER:
+    delimiter:
         switch (i) {
         case 0: return "s";
         case 1: return "n";
@@ -1826,6 +1851,8 @@ graphviz_print_symbol(const struct node node) {
         SPRINTF(" %" PRIu64, node.ports[1]);
     } else if (SYMBOL_BINARY_CALL_AUX == node.ports[-1]) {
         SPRINTF(" %" PRIu64, node.ports[3]);
+    } else if (SYMBOL_BARRIER == node.ports[-1]) {
+        SPRINTF(" %" PRIu64, node.ports[2]);
     } else if (IS_DELIMITER(node.ports[-1])) {
         SPRINTF(" %" PRIu64, node.ports[2]);
     }
@@ -2125,7 +2152,7 @@ gc_step(
                 *const shares_with = DECODE_ADDRESS(g.ports[1 == i ? 2 : 1]);
 
             const struct node h = node_of_port(shares_with),
-                              shareable = node_of_port(points_to);
+                              shared = node_of_port(points_to);
 
             if (SYMBOL_ERASER == h.ports[-1]) {
                 connect_ports(&f.ports[0], points_to);
@@ -2139,13 +2166,13 @@ gc_step(
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
-            } else if (is_atomic_symbol(shareable.ports[-1])) {
-                connect_ports(&shareable.ports[0], shares_with);
+            } else if (is_atomic_symbol(shared.ports[-1])) {
+                connect_ports(&shared.ports[0], shares_with);
                 free_node(graph, g), free_node(graph, f);
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
-            } else if (0 == symbol_index(g.ports[-1])) {
+            } else if (SYMBOL_DUPLICATOR(UINT64_C(0)) == g.ports[-1]) {
                 connect_ports(points_to, shares_with);
                 free_node(graph, g);
 #ifdef OPTISCOPE_ENABLE_STATS
@@ -2164,6 +2191,7 @@ gc_step(
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_GC_LAMBDA:
+    case SYMBOL_BARRIER:
     delimiter:
         goto commute_1_2;
     case SYMBOL_APPLICATOR:
@@ -2449,6 +2477,30 @@ assert_perform(
     MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
 }
 
+static void
+assert_barrier(
+    const struct context *const restrict graph,
+    const struct node f,
+    const struct node g) {
+    MY_ASSERT(graph);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(SYMBOL_BARRIER == f.ports[-1]);
+    MY_ASSERT(SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1]);
+}
+
+static void
+assert_unbarrier(
+    const struct context *const restrict graph,
+    const struct node f,
+    const struct node g) {
+    MY_ASSERT(graph);
+    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(is_interaction(f, g));
+    MY_ASSERT(SYMBOL_BARRIER == f.ports[-1]);
+    // `g` is unspecified.
+}
+
 #else
 
 #define assert_annihilation(f, g)           ((void)0)
@@ -2463,6 +2515,8 @@ assert_perform(
 #define assert_binary_call_aux(graph, f, g) ((void)0)
 #define assert_if_then_else(graph, f, g)    ((void)0)
 #define assert_perform(graph, f, g)         ((void)0)
+#define assert_barrier(graph, f, g)         ((void)0)
+#define assert_unbarrier(graph, f, g)       ((void)0)
 
 #endif // NDEBUG
 
@@ -2628,7 +2682,8 @@ RULE_DEFINITION(beta, graph, f, g) {
     inst_delimiter(
         graph,
         (struct delimiter){
-            .idx = 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2])});
+            .idx = 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2])},
+        1);
 
     uint64_t *const binder_port = DECODE_ADDRESS(g.ports[1]), //
         *const rand_port = DECODE_ADDRESS(f.ports[2]);
@@ -2637,7 +2692,7 @@ RULE_DEFINITION(beta, graph, f, g) {
         connect_ports(binder_port, rand_port);
     } else if (!try_unshare(graph, binder_port, rand)) {
         inst_delimiter(
-            graph, (struct delimiter){.idx = 0, rand_port, binder_port});
+            graph, (struct delimiter){.idx = 0, rand_port, binder_port}, 1);
     }
 
     free_node(graph, f), free_node(graph, g);
@@ -2699,7 +2754,8 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
     inst_delimiter(
         graph,
         (struct delimiter){
-            .idx = 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1])});
+            .idx = 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1])},
+        1);
 
     // There is a chance that the argument is fully disconnected from the root;
     // if so, we must garbage-collect it.
@@ -2709,6 +2765,44 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
 }
 
 TYPE_CHECK_RULE(gc_beta);
+
+RULE_DEFINITION(barrier, graph, f, g) {
+    MY_ASSERT(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
+    assert_barrier(graph, f, g);
+    debug_interaction(__func__, graph, f, g);
+
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->nbarriers++;
+#endif
+
+    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+    f.ports[2] += g.ports[2];
+
+    free_node(graph, g);
+}
+
+TYPE_CHECK_RULE(barrier);
+
+RULE_DEFINITION(unbarrier, graph, f, g) {
+    MY_ASSERT(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
+    assert_unbarrier(graph, f, g);
+    debug_interaction(__func__, graph, f, g);
+
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->nunbarriers++;
+#endif
+
+    inst_delimiter(
+        graph,
+        (struct delimiter){.idx = 0, DECODE_ADDRESS(f.ports[1]), &g.ports[0]},
+        f.ports[2]);
+
+    free_node(graph, f);
+}
+
+TYPE_CHECK_RULE(unbarrier);
 
 RULE_DEFINITION(do_expand, graph, f, g) {
     MY_ASSERT(graph);
@@ -2722,8 +2816,10 @@ RULE_DEFINITION(do_expand, graph, f, g) {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-    of_lambda_term(graph, USER_FUNCTION_OF_U64(f.ports[1])(), &g.ports[0], 0);
+    struct lambda_term *const term = USER_FUNCTION_OF_U64(f.ports[1])();
 #pragma GCC diagnostic pop
+
+    of_lambda_term(graph, term, &g.ports[0], 0);
 
     free_node(graph, f);
 }
@@ -3100,6 +3196,26 @@ TYPE_CHECK_RULE(commute_4_3);
 
 #define commute_3_4(graph, f, g) commute_4_3((graph), (g), (f))
 
+RULE_DEFINITION(commute_appl_delim, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    uint64_t *const h_port = DECODE_ADDRESS(g.ports[1]);
+    const struct node h = node_of_port(h_port);
+
+    if (SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1] &&
+        DECODE_ADDRESS(h.ports[0]) != &g.ports[1]) {
+        const struct node barrier = alloc_node(graph, SYMBOL_BARRIER);
+        barrier.ports[2] = g.ports[2];
+        connect_ports(&barrier.ports[0], h_port);
+        connect_ports(&barrier.ports[1], &f.ports[0]);
+        free_node(graph, g);
+    } else {
+        commute_3_2_core(graph, f, g);
+    }
+}
+
+TYPE_CHECK_RULE(commute_appl_delim);
+
 RULE_DEFINITION(commute_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
@@ -3115,7 +3231,7 @@ TYPE_CHECK_RULE(commute_dup_delim);
 RULE_DEFINITION(commute_delim_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
-    if (symbol_index(f.ports[-1]) > symbol_index(g.ports[-1])) {
+    if (f.ports[-1] > g.ports[-1]) {
         f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
     } else {
         g.ports[-1] = bump_index(g.ports[-1], f.ports[2]);
@@ -3230,6 +3346,7 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
             else if (SYMBOL_IF_THEN_ELSE == gsym)                              \
                 COMMUTE_ITE_DUP(graph, g, f);                                  \
             else if (SYMBOL_REFERENCE == gsym) COMMUTE_REF_DUP(graph, g, f);   \
+            else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);           \
             else if (IS_DELIMITER(gsym)) COMMUTE_DUP_DELIM(graph, f, g);       \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_DUP_DUP(graph, f, g);        \
             else COMMUTE(graph, f, g);                                         \
@@ -3256,11 +3373,16 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
             else if (SYMBOL_IF_THEN_ELSE == gsym)                              \
                 COMMUTE_ITE_DELIM(graph, g, f);                                \
             else if (SYMBOL_REFERENCE == gsym) COMMUTE_REF_DELIM(graph, g, f); \
+            else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);           \
             else if (IS_DELIMITER(gsym)) COMMUTE_DELIM_DELIM(graph, f, g);     \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_DUP_DELIM(graph, g, f);      \
             else                                                               \
                 COMMUTE(graph, g, f); /* delimiters must be the second,        \
                                          unlesse they commute with lambdas */  \
+            break;                                                             \
+        case SYMBOL_DELIMITER(UINT64_C(0)):                                    \
+            if (SYMBOL_BARRIER == gsym) BARRIER(graph, g, f);                  \
+            else goto delimiter;                                               \
             break;                                                             \
         case SYMBOL_ROOT:                                                      \
             if (IS_DELIMITER(gsym)) COMMUTE_ROOT_DELIM(graph, f, g);           \
@@ -3281,6 +3403,7 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
             break;                                                             \
         case SYMBOL_LAMBDA:                                                    \
             if (SYMBOL_APPLICATOR == gsym) BETA(graph, g, f);                  \
+            else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);           \
             else if (IS_DELIMITER(gsym)) COMMUTE_LAMBDA_DELIM(graph, f, g);    \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_LAMBDA_DUP(graph, f, g);     \
             else if (SYMBOL_ROOT == gsym) graph->time_to_stop = true;          \
@@ -3289,6 +3412,7 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
             break;                                                             \
         case SYMBOL_IDENTITY_LAMBDA:                                           \
             if (SYMBOL_APPLICATOR == gsym) IDENTITY_BETA(graph, g, f);         \
+            else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);           \
             else if (IS_DELIMITER(gsym))                                       \
                 COMMUTE_IDENTITY_LAMBDA_DELIM(graph, f, g);                    \
             else if (IS_DUPLICATOR(gsym))                                      \
@@ -3298,6 +3422,7 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
             break;                                                             \
         case SYMBOL_GC_LAMBDA:                                                 \
             if (SYMBOL_APPLICATOR == gsym) GC_BETA(graph, g, f);               \
+            else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);           \
             else if (IS_DELIMITER(gsym)) COMMUTE_GC_LAMBDA_DELIM(graph, f, g); \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_GC_LAMBDA_DUP(graph, f, g);  \
             else if (SYMBOL_ROOT == gsym) graph->time_to_stop = true;          \
@@ -3305,6 +3430,7 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
             break;                                                             \
         case SYMBOL_LAMBDA_C:                                                  \
             if (SYMBOL_APPLICATOR == gsym) BETA_C(graph, g, f);                \
+            else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);           \
             else if (IS_DELIMITER(gsym)) COMMUTE_LAMBDA_C_DELIM(graph, f, g);  \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_LAMBDA_C_DUP(graph, f, g);   \
             else if (SYMBOL_ROOT == gsym) graph->time_to_stop = true;          \
@@ -3323,6 +3449,7 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
             else if (SYMBOL_IF_THEN_ELSE == gsym)                              \
                 DO_IF_THEN_ELSE(graph, g, f);                                  \
             else if (SYMBOL_PERFORM == gsym) DO_PERFORM(graph, g, f);          \
+            else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);           \
             else if (IS_DELIMITER(gsym)) COMMUTE_CELL_DELIM(graph, f, g);      \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_CELL_DUP(graph, f, g);       \
             else if (SYMBOL_ROOT == gsym) graph->time_to_stop = true;          \
@@ -3363,9 +3490,14 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
             break;                                                             \
         case SYMBOL_REFERENCE:                                                 \
             if (is_operator_symbol(gsym)) EXPAND(graph, f, g);                 \
+            else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);           \
             else if (IS_DELIMITER(gsym)) COMMUTE_REF_DELIM(graph, f, g);       \
             else if (IS_DUPLICATOR(gsym)) COMMUTE_REF_DUP(graph, f, g);        \
             else COMMUTE(graph, f, g);                                         \
+            break;                                                             \
+        case SYMBOL_BARRIER:                                                   \
+            if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) BARRIER(graph, f, g);   \
+            else UNBARRIER(graph, f, g);                                       \
             break;                                                             \
         default:                                                               \
             if (fsym <= MAX_DUPLICATOR_INDEX) goto duplicator;                 \
@@ -3397,11 +3529,13 @@ fire_rule(
 #define DO_BINARY_CALL_AUX            do_binary_call_aux
 #define DO_IF_THEN_ELSE               do_if_then_else
 #define DO_PERFORM                    do_perform
+#define BARRIER                       barrier
+#define UNBARRIER                     unbarrier
 #define ANNIHILATE_DELIM_DELIM        annihilate_delim_delim
 #define ANNIHILATE_DUP_DUP            annihilate_dup_dup
 #define COMMUTE                       commute
 #define COMMUTE_ROOT_DELIM            commute_1_2
-#define COMMUTE_APPL_DELIM            commute_3_2
+#define COMMUTE_APPL_DELIM            commute_appl_delim
 #define COMMUTE_CELL_DELIM            commute_1_2
 #define COMMUTE_UCALL_DELIM           commute_2_2
 #define COMMUTE_BCALL_DELIM           commute_3_2
@@ -3458,6 +3592,8 @@ fire_rule(
 #undef COMMUTE
 #undef ANNIHILATE_DUP_DUP
 #undef ANNIHILATE_DELIM_DELIM
+#undef UNBARRIER
+#undef BARRIER
 #undef DO_PERFORM
 #undef DO_IF_THEN_ELSE
 #undef DO_BINARY_CALL_AUX
@@ -3493,6 +3629,8 @@ register_active_pair(
 #define DO_BINARY_CALL_AUX(graph, f, g)     focus_on(graph->binary_calls_aux, f)
 #define DO_IF_THEN_ELSE(graph, f, g)        focus_on(graph->if_then_elses, f)
 #define DO_PERFORM(graph, f, g)             focus_on(graph->performs, f)
+#define BARRIER(graph, f, g)                panic("Barriers work only during reduction!")
+#define UNBARRIER(graph, f, g)              panic("Barriers work only during reduction!")
 #define ANNIHILATE_DELIM_DELIM(graph, f, g) focus_on(graph->annihilations, f)
 #define ANNIHILATE_DUP_DUP(graph, f, g)     focus_on(graph->annihilations, f)
 #define COMMUTE(graph, f, g)                focus_on(graph->commutations, f)
@@ -3560,6 +3698,8 @@ register_active_pair(
 #undef COMMUTE
 #undef ANNIHILATE_DUP_DUP
 #undef ANNIHILATE_DELIM_DELIM
+#undef UNBARRIER
+#undef BARRIER
 #undef DO_PERFORM
 #undef DO_IF_THEN_ELSE
 #undef DO_BINARY_CALL_AUX
@@ -3577,32 +3717,6 @@ register_active_pair(
 
 // Higher-Order Control Structures
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
-static uint64_t *
-build_delimiter_sequence(
-    struct context *const restrict graph,
-    uint64_t *const restrict binder_port,
-    const uint64_t idx,
-    const uint64_t n) {
-    MY_ASSERT(graph);
-    MY_ASSERT(binder_port);
-    XASSERT(n > 0);
-
-    struct node current = alloc_node(graph, SYMBOL_DELIMITER(idx));
-    current.ports[2] = 1;
-    uint64_t *const result = &current.ports[1];
-    for (uint64_t i = 1; i < n; i++) {
-        const struct node delim = alloc_node(graph, SYMBOL_DELIMITER(idx));
-        delim.ports[2] = 1;
-        connect_ports(&current.ports[0], &delim.ports[1]);
-        current = delim;
-    }
-
-    connect_ports(&current.ports[0], binder_port);
-
-    return result;
-}
 
 COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
 static uint64_t **
@@ -3631,6 +3745,33 @@ build_duplicator_tree(
     connect_ports(&current.ports[0], binder_port);
 
     return ports;
+}
+
+COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
+static uint64_t *
+build_delimiter_chain(
+    struct context *const restrict graph,
+    uint64_t *const restrict binder_port,
+    const uint64_t idx,
+    const uint64_t n) {
+    MY_ASSERT(graph);
+    MY_ASSERT(binder_port);
+
+    if (0 == n) { return binder_port; }
+
+    struct node current = alloc_node(graph, SYMBOL_DELIMITER(idx));
+    current.ports[2] = 1;
+    uint64_t *const result = &current.ports[1];
+    for (uint64_t i = 1; i < n; i++) {
+        const struct node delim = alloc_node(graph, SYMBOL_DELIMITER(idx));
+        delim.ports[2] = 1;
+        connect_ports(&current.ports[0], &delim.ports[1]);
+        current = delim;
+    }
+
+    connect_ports(&current.ports[0], binder_port);
+
+    return result;
 }
 
 // Graph Traversal Procedure
@@ -3737,13 +3878,29 @@ normalize_delimiters_cb(struct context *const graph, const struct node node) {
 
     if (!IS_DELIMITER(node.ports[-1])) { return; }
 
-    uint64_t *const output_port = build_delimiter_sequence(
+    uint64_t *const output_port = build_delimiter_chain(
         graph,
         DECODE_ADDRESS(node.ports[0]),
         (uint64_t)symbol_index(node.ports[-1]),
         node.ports[2]);
 
     connect_ports(output_port, DECODE_ADDRESS(node.ports[1]));
+
+    free_node(graph, node);
+}
+
+COMPILER_NONNULL(1) //
+static void
+remove_barriers_cb(struct context *const graph, const struct node node) {
+    MY_ASSERT(graph);
+    XASSERT(node.ports);
+
+    if (SYMBOL_BARRIER != node.ports[-1]) { return; }
+
+    uint64_t *const output_port = build_delimiter_chain(
+        graph, DECODE_ADDRESS(node.ports[1]), 0, node.ports[2]);
+
+    connect_ports(output_port, DECODE_ADDRESS(node.ports[0]));
 
     free_node(graph, node);
 }
@@ -4077,8 +4234,8 @@ of_lambda_term(
         XASSERT(rator), XASSERT(rand);
 
         const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
-        connect_ports(&applicator.ports[1], output_port);
         of_lambda_term(graph, rator, &applicator.ports[0], lvl);
+        connect_ports(&applicator.ports[1], output_port);
         of_lambda_term(graph, rand, &applicator.ports[2], lvl);
 
         break;
@@ -4166,12 +4323,14 @@ of_lambda_term(
         XASSERT(rand);
 
         const struct node call = alloc_node(graph, SYMBOL_UNARY_CALL);
-        connect_ports(&call.ports[1], output_port);
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
         call.ports[2] = U64_OF_FUNCTION(function);
 #pragma GCC diagnostic pop
+
         of_lambda_term(graph, rand, &call.ports[0], lvl);
+        connect_ports(&call.ports[1], output_port);
 
         break;
     }
@@ -4184,12 +4343,14 @@ of_lambda_term(
         XASSERT(lhs), XASSERT(rhs);
 
         const struct node call = alloc_node(graph, SYMBOL_BINARY_CALL);
-        connect_ports(&call.ports[1], output_port);
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
         call.ports[3] = U64_OF_FUNCTION(function);
 #pragma GCC diagnostic pop
+
         of_lambda_term(graph, lhs, &call.ports[0], lvl);
+        connect_ports(&call.ports[1], output_port);
         of_lambda_term(graph, rhs, &call.ports[2], lvl);
 
         break;
@@ -4202,10 +4363,11 @@ of_lambda_term(
         XASSERT(if_then), XASSERT(if_else);
 
         const struct node ite = alloc_node(graph, SYMBOL_IF_THEN_ELSE);
-        connect_ports(&ite.ports[1], output_port);
+
         of_lambda_term(graph, condition, &ite.ports[0], lvl);
-        of_lambda_term(graph, if_then, &ite.ports[3], lvl);
+        connect_ports(&ite.ports[1], output_port);
         of_lambda_term(graph, if_else, &ite.ports[2], lvl);
+        of_lambda_term(graph, if_then, &ite.ports[3], lvl);
 
         break;
     }
@@ -4216,10 +4378,10 @@ of_lambda_term(
         const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(0));
         const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
 
+        of_lambda_term(graph, f, &applicator.ports[0], lvl);
         connect_ports(&dup.ports[0], &applicator.ports[1]);
         connect_ports(&dup.ports[1], output_port);
         connect_ports(&dup.ports[2], &applicator.ports[2]);
-        of_lambda_term(graph, f, &applicator.ports[0], lvl);
 
         break;
     }
@@ -4229,8 +4391,8 @@ of_lambda_term(
         XASSERT(action), XASSERT(k);
 
         const struct node perform = alloc_node(graph, SYMBOL_PERFORM);
-        connect_ports(&perform.ports[1], output_port);
         of_lambda_term(graph, action, &perform.ports[0], lvl);
+        connect_ports(&perform.ports[1], output_port);
         of_lambda_term(graph, k, &perform.ports[2], lvl);
 
         break;
@@ -4349,8 +4511,10 @@ optiscope_algorithm(
 
     // Phase #2: full reduction.
     {
-        graph->phase = PHASE_REDUCE_FULLY;
+        graph->phase = PHASE_NORMALIZE_DELIMITERS;
         walk_graph(graph, normalize_delimiters_cb);
+        graph->phase = PHASE_REMOVE_BARRIERS;
+        walk_graph(graph, remove_barriers_cb);
         normalize_x_rules(graph);
         graphviz(graph, "target/2-fully-reduced.dot");
     }
