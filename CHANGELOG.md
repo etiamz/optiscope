@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
- - Reduction semantics: implement barriers for delimiter compression prioritization.
+ - Reduction semantics: implement barrier nodes for delimiter compression prioritization.
 
 ### Removed
 
