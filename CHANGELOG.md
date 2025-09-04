@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Reduction semantics: implement barriers for delimiter compression prioritization.
 
+### Removed
+
+ - Miscellaneous: the Optiscope-inside-Optiscope example for pointlessnesse.
+
 ## 0.12.0 - 2025-08-26
 
 ### Fixed

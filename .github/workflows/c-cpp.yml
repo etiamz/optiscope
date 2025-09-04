@@ -31,7 +31,6 @@ jobs:
       - name: Run the examples
         run: |
           ./command/example.sh lamping-example
-          ./command/example.sh optiscope-inside-optiscope
           # The palindrome example is interactive.
 
   benchmark:
