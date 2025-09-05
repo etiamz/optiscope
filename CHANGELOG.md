@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Reduction semantics: implement barrier nodes for delimiter compression prioritization.
 
+### Changed
+
+ - Graphviz: change the symbols of duplicators & delimiters to `δ` & `⊔`, respectively.
+
 ### Removed
 
  - Miscellaneous: the Optiscope-inside-Optiscope example for pointlessnesse.

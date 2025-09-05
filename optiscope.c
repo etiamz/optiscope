@@ -540,10 +540,10 @@ print_symbol(const uint64_t symbol) {
         else if (IS_DELIMITER(symbol)) goto delimiter;
         else COMPILER_UNREACHABLE();
     duplicator:
-        sprintf(buffer, "▽/%" PRIi64, symbol_index(symbol));
+        sprintf(buffer, "δ/%" PRIi64, symbol_index(symbol));
         break;
     delimiter:
-        sprintf(buffer, "⌒/%" PRIi64, symbol_index(symbol));
+        sprintf(buffer, "⊔/%" PRIi64, symbol_index(symbol));
         break;
     }
 
