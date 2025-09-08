@@ -32,142 +32,7 @@ The shell commands are outlined in the following table:
 | `./command/graphviz-all.sh` | Visualize all the `.dot` files in `target/`. |
 | `./command/bench.sh` | Execute all the benchmarks in `benchmarks/`. |
 
-## A touch of optimality
-
-Following the classical example (here borrowed from [^lamping]):
-
-```
-((λg. (g (g (λx. x))))
- (λh. ((λf. (f (f (λz. z))))
-       (λw. (h (w (λy. y)))))))
-```
-
-This term conteyns two redexes: the outer redex `((λg. ...) (λh. ...))` & the inner redex `((λf. ...) (λw. ...))`. If the outer redex is to be reduced first, which follows the normal order reduction strategy, the term will reduce in a single step to:
-
-```
-G := (λh. ((λf. (f (f (λz. z))))
-          (λw. (h (w (λy. y))))))
-(G (G (λx. x)))
-```
-
-which will cause duplication of the inner redex `((λf. ...) (λw. ...))`, thereby entailing duplication of work.
-
-On the other hand, if we follow the applicative order strategy, then four instances of the redex `(h (w (λy. y)))` will need to be processed independently, againe entailing duplication of work:
-
-<details>
-<summary>Show the full reduction</summary>
-
-```
-((λg. (g (g (λx. x))))
- (λh. ((λf. (f (f (λz. z))))
-       (λw. <(h (w (λy. y)))>))))
-
-↓ [f/F]
-
-F := (λw. <(h (w (λy. y)))>)
-((λg. (g (g (λx. x))))
- (λh. (F (F (λz. z)))))
-
-↓ [(λz. z)/w]
-
-((λg. (g (g (λx. x))))
- (λh. (F <(h ((λz. z) (λy. y)))>)))
-
-↓ [(λy. y)/z]
-
-((λg. (g (g (λx. x))))
- (λh. (F <(h (λy. y))>)))
-
-↓ [<(h (λy. y))>/w]
-
-((λg. (g (g (λx. x))))
- (λh. <(h (<(h (λy. y))> (λy. y)))>))
-
-↓ [g/G]
-
-G := (λh. <(h (<(h (λy. y))> (λy. y)))>)
-(G (G (λx. x)))
-
-↓ [(λx. x)/h]
-
-(G <((λx. x) (<((λx. x) (λy. y))> (λy. y)))>)
-
-↓ [(λy. y)/x]
-
-(G <((λx. x) (<(λy. y)> (λy. y)))>)
-
-↓ [(λy. y)/y]
-
-(G <((λx. x) <(λy. y)>)>)
-
-↓ [(λy. y)/x]
-
-(G <<(λy. y)>>)
-
-↓ [<<(λy. y)>>/h]
-
-<(<<(λy. y)>> (<(<<(λy. y)>> (λy. y))> (λy. y)))>
-
-↓ [(λy. y)/y]
-
-<(<<(λy. y)>> (<<<(λy. y)>>> (λy. y)))>
-
-↓ [(λy. y)/y]
-
-<(<<(λy. y)>> <<<(λy. y)>>>)>
-
-↓ [<<<(λy. y)>>>/y]
-
-<<<<<<(λy. y)>>>>>>
-```
-
-</details>
-
-In this case, the cause of redundant work is the _virtual redex_ `(h (w (λy. y)))`: when `w` & `h` are instantiated with their respective values, we obtaine the same term `((λy. y) (λy. y))`, which applicative order reduction is not able to detect.
-
-A simpler example to illustrate the principle would be (taken from chapter 2 of [^optimal-implementation]):
-
-```
-once = (λv. v)
-twice = (λw. (w w))
-M = ((λx. x once) (λy. twice (y z)))
-```
-
-Proceeding with applicative order reduction:
-
-```
-((λx. x once) (λy. twice (y z)))
-
-↓ [(y z)/w]
-
-((λx. x once) (λy. (y z) (y z)))
-
-↓ [(λy. (y z) (y z))/x]
-
-((λy. (y z) (y z)) once)
-
-↓ [once/y]
-
-((once z) (once z))
-
-↓ [z/v]
-
-(z (once z))
-
-↓ [z/v]
-
-(z z)
-```
-
-Firstly, the (neutral) application `(y z)` is duplicated; however, later `y` is instantiated with `once`, which makes `(y z)` a redex. Thus, even if some application is not reducible at the moment, it may become reducible later on, so duplicating it would not be optimal. Ideally, both _explicit_ & _virtual_ redexes should be shared; applicative order shares onely explicit redexes, while normal order does not share any.
-
-As also discussed in [^lamping] & [^optimal-implementation], the technique of graph reduction, sometimes termed _lazy evaluation_, is also not optimal: while it postpones copying the redex argument initially, it must copy a term participating in a redex, whenever the former happens to be shared. Consider the following term (adapted from section 2.1.1 of [^optimal-implementation]):
-
-```
-((λx. (x y) (x z)) (λw. ((λv. v) w)))
-```
-
-After the outermost reduction `((λx. ...) (λw. ...))` is complete, the two occurrences of `(λw. ((λv. v) w))` are now shared through the same parameter `x`. However, as this shared part is participating in both `((λw. ((λv. v) w)) y)` & `((λw. ((λv. v) w)) z)` simultaneously, it must be copied for the both redexes, lest substitution in either redex should affect the other one. In doing so, graph reduction also copies the redex `((λv. v) w)`, thereby duplicating work.
+## Optimal evaluation
 
 _Optimal evaluation_ (in Lévy's sense [^levy-thesis] [^levy-optimal-reductions]) is a technique of reducing lambda terms to their normal forms, in practice done through so-called _interaction nets_, which are graphs of special symbols & unconditionally local rewriting rules. To reduce a lambda term, an optimal evaluator (1) translates the term to an interaction net, (2) applies a number of interactions (rewritings) in an implementation-defined order, & (3) when no more rules can be applied, translates the resulting net back to the syntactical universe of the lambda calculus. Unlike the other discussed techniques, it performes no copying whatsoever, thereby achieving _maximal sharing_ of redexes.
 
@@ -193,7 +58,7 @@ Optiscope operates in **five discrete phases**: (1) weak reduction, (2) full red
 
 Mathematically, our implementation follows the Lambdascope formalisme [^lambdascope], which is perhaps the simplest (among many others) proposal to optimality, involving onely six types of nodes & three rule schemes. As here we make no attempt at giving optimality a formal treatment, an interested reader is invited to read the paper for more details & aske any related questions in the issues.
 
-## Evaluation by interaction
+## Lamping's example
 
 Consider the following example from [`examples/lamping-example.c`]:
 
@@ -224,7 +89,7 @@ main(void) {
 }
 ```
 
-This is the exact encoding of the following example from the optimality section:
+This is the exact Optiscope encoding of the example discussed by Lamping in [^lamping]:
 
 ```
 ((λg. (g (g (λx. x))))
@@ -241,7 +106,7 @@ $ ./command/example.sh lamping-example
 
 The whole term evaluates to the identity lambda, as expected.
 
-In Optiscope, it is possible to observe _all the interaction steps_ involved in computing the finall result. However, since there are so many interactions involved in this example, we will onely focus on the first ten & the last ten ones. In order to aske Optiscope to draw an SVG file after each interaction, insert the following lines into `optiscope.h`:
+In Optiscope, it is possible to observe _all the interaction steps_ involved in computing the finall result. In order to draw an SVG file after each interaction, insert the following lines into `optiscope.h`:
 
 ```c
 #define OPTISCOPE_ENABLE_TRACING
