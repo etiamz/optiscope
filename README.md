@@ -89,9 +89,9 @@ The visualization will then be as follows:
   </a>
 </div>
 
-(Green nodes are "active" nodes, i.e., those that interact with each other.)
+(All interacting nodes are displayed in green; the current interaction is displayed in red.)
 
-Each edge has its own symbol: one of `@`, `λ`, `◉`, `▽/i`, `⌒/i`, or `S` (which appears later during read-back), where `i` is an unsigned "index" that can change during interaction. The first two symbols, `@` & `λ`, have the expected meaning; the other symbols are used for duplication, erasure, and bookkeeping work. Among those, the most important one is `▽/i`, which shares a single piece of a graph between two other edges. Sharing edges can be nested arbitrarily deep, allowing for sharing of an arbitrary number of redexes.
+Each edge has its own symbol: one of `@`, `λ`, `◉`, `▽/i`, `⌒/i`, or `S` (which appears later during read-back), where `i` is an unsigned "index" that can change during interaction. The first two symbols, `@` & `λ`, have the expected meaning; the other symbols are used for erasure, duplication, & bookkeeping work. Among those, the most important one is `▽/i`, which shares a single piece of a graph between two other edges. Sharing edges can be nested arbitrarily deep, allowing for sharing of an arbitrary number of redexes.
 
 For an evaluator to be optimal, it must satisfie the following properties:
  1. The normal form, if it exists, is alwaies reached.
