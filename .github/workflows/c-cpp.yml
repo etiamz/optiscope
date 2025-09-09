@@ -28,10 +28,10 @@ jobs:
       - name: Run the tests
         run: ./command/test.sh
 
-      - name: Run the examples
+      - name: Run the examples (non-interactive)
         run: |
+          ./command/example.sh 2-power-2
           ./command/example.sh lamping-example
-          # The palindrome example is interactive.
 
   benchmark:
     runs-on: ubuntu-latest

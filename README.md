@@ -34,9 +34,54 @@ The shell commands are outlined in the following table:
 
 ## Optimal evaluation
 
-_Optimal evaluation_ (in Lévy's sense [^levy-thesis] [^levy-optimal-reductions]) is a technique of reducing lambda terms to their normal forms, in practice done through so-called _interaction nets_, which are graphs of special symbols & unconditionally local rewriting rules. To reduce a lambda term, an optimal evaluator (1) translates the term to an interaction net, (2) applies a number of interactions (rewritings) in an implementation-defined order, & (3) when no more rules can be applied, translates the resulting net back to the syntactical universe of the lambda calculus. Unlike the other discussed techniques, it performes no copying whatsoever, thereby achieving _maximal sharing_ of redexes.
+_Optimal evaluation_ (in Lévy's sense [^levy-thesis] [^levy-optimal-reductions]) is a technique of reducing lambda terms to their normal forms, in practice done through so-called _interaction nets_, which are graphs of special symbols & unconditionally local rewriting rules. To reduce a lambda term, an optimal evaluator (1) translates the term to an interaction net, (2) applies a number of interactions (rewritings) in an implementation-defined order, & (3) when no more rules can be applied, translates the resulting net back to the syntactical universe of the lambda calculus. Unlike other evaluation techniques, it performes no copying whatsoever, thereby achieving _maximal sharing_ of redexes.
 
-In practice, this is how the complete reduction of Church numeral 2^2 looks like:
+Consider [`examples/2-power-2.c`], an encoding of the Church numeral 2^2 from the Lambdascope paper:
+
+[`examples/2-power-2.c`]: examples/2-power-2.c
+
+```c
+#include "../optiscope.h"
+
+static struct lambda_term *
+church_two(void) {
+    struct lambda_term *f, *x;
+
+    return lambda(f, lambda(x, apply(var(f), apply(var(f), var(x)))));
+}
+
+static struct lambda_term *
+church_two_two(void) {
+    return apply(church_two(), church_two());
+}
+
+int
+main(void) {
+    optiscope_open_pools();
+    optiscope_algorithm(stdout, church_two_two());
+    puts("");
+    optiscope_close_pools();
+}
+```
+
+By typing `./command/example 2-power-2` from the root directory, we can see the output:
+
+```
+$ ./command/example.sh 2-power-2
+(λ (λ (1 (1 (1 (1 0))))))
+```
+
+The whole term evaluates to the Church numeral 4, as expected.
+
+In Optiscope, it is possible to observe _all the interaction steps_ involved in computing the finall result. In order to draw an SVG file after each interaction, insert the following lines into `optiscope.h`:
+
+```c
+#define OPTISCOPE_ENABLE_TRACING
+#define OPTISCOPE_ENABLE_STEP_BY_STEP
+#define OPTISCOPE_ENABLE_GRAPHVIZ
+```
+
+The visualization will then be as follows:
 
 <div align="center">
   <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/2-power-2-animation.gif">
@@ -46,7 +91,7 @@ In practice, this is how the complete reduction of Church numeral 2^2 looks like
 
 (Green nodes are "active" nodes, i.e., those that interact with each other.)
 
-Each edge has its own symbol: one of `@`, `λ`, `◉`, `▽/i`, `⌒/i`, or `S` (which appears later during read-back), where `i` is an unsigned "index" that can change during interaction. The first two symbols, `@` & `λ`, have the expected meaning; the other symbols are used for bookkeeping work. Among those, the most important one is `▽/i`, which shares a single piece of a graph between two other edges. Sharing edges can be nested arbitrarily deep, allowing for sharing of an arbitrary number of redexes.
+Each edge has its own symbol: one of `@`, `λ`, `◉`, `▽/i`, `⌒/i`, or `S` (which appears later during read-back), where `i` is an unsigned "index" that can change during interaction. The first two symbols, `@` & `λ`, have the expected meaning; the other symbols are used for duplication, erasure, and bookkeeping work. Among those, the most important one is `▽/i`, which shares a single piece of a graph between two other edges. Sharing edges can be nested arbitrarily deep, allowing for sharing of an arbitrary number of redexes.
 
 For an evaluator to be optimal, it must satisfie the following properties:
  1. The normal form, if it exists, is alwaies reached.
@@ -56,11 +101,11 @@ For an evaluator to be optimal, it must satisfie the following properties:
 
 Optiscope operates in **five discrete phases**: (1) weak reduction, (2) full reduction, (3) unwinding, (4) scope removal, & (5) loop cutting. The first two phases performe interaction net reduction; the latter phases read back the reduced net into a net that can be directly interpreted as a lambda calculus expression. Weak reduction achieves true Lévy-optimality by reducing onely _needed_ redexes (i.e., neither duplicating work nor touching redexes whose result will be discarded); the latter phases are to be understood as "extensions" that are not formally Lévy-optimal. In particular, although full reduction is guaranteed to reach beta normal forms, it is allowed to fire redexes whose result will be eventually discarded by subsequent computation. This choice is made of practical concerns, since implementing full Lévy-optimal reduction is neither easy, nor necessary; all functional machines in practice are weak anywaies.
 
-Mathematically, our implementation follows the Lambdascope formalisme [^lambdascope], which is perhaps the simplest (among many others) proposal to optimality, involving onely six types of nodes & three rule schemes. As here we make no attempt at giving optimality a formal treatment, an interested reader is invited to read the paper for more details & aske any related questions in the issues.
+Mathematically, our implementation follows the Lambdascope formalisme [^lambdascope], which is currently the simplest approach to optimality, involving onely six types of nodes & three rule schemes. As here we make no attempt at giving optimality a formal treatment, an interested reader is invited to read the paper for more details & aske any related questions in the issues.
 
 ## Lamping's example
 
-Consider the following example from [`examples/lamping-example.c`]:
+The following example from [`examples/lamping-example.c`] evaluates to the identity lambda under weak reduction:
 
 [`examples/lamping-example.c`]: examples/lamping-example.c
 
@@ -89,29 +134,13 @@ main(void) {
 }
 ```
 
-This is the exact Optiscope encoding of the example discussed by Lamping in [^lamping]:
-
-```
-((λg. (g (g (λx. x))))
- (λh. ((λf. (f (f (λz. z))))
-       (λw. (h (w (λy. y)))))))
-```
+which is the exact Optiscope encoding of the example discussed by Lamping in [^lamping].
 
 By typing `./command/example lamping-example` from the root directory, we can see the output:
 
 ```
 $ ./command/example.sh lamping-example
 (λ 0)
-```
-
-The whole term evaluates to the identity lambda, as expected.
-
-In Optiscope, it is possible to observe _all the interaction steps_ involved in computing the finall result. In order to draw an SVG file after each interaction, insert the following lines into `optiscope.h`:
-
-```c
-#define OPTISCOPE_ENABLE_TRACING
-#define OPTISCOPE_ENABLE_STEP_BY_STEP
-#define OPTISCOPE_ENABLE_GRAPHVIZ
 ```
 
 The visualization will then be as follows:
@@ -121,6 +150,8 @@ The visualization will then be as follows:
     <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-preview.png" width="700px" alt="Lamping example" />
   </a>
 </div>
+
+[implementation details]: #implementation-details
 
 ## Side-effectfull evaluation
 
