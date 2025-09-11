@@ -30,162 +30,134 @@ To observe the performance characteristics of optimal reduction à la Lambdascop
 
 On GNU/Linux, you need to reserve huge pages as follows: `sudo sysctl vm.nr_hugepages=6000`.
 
-### [Fibonacci (native cells)](fibonacci-of-30.c)
+### [Scott list bubble sort](scott-bubble-sort.c)
 
-Description: Exponentially computes the 30th Fibonacci number using native cells & the built-in fixpoint operator.
-
-```
-Benchmark 1: ./fibonacci-of-30
-  Time (mean ± σ):      1.396 s ±  0.019 s    [User: 1.389 s, System: 0.006 s]
-  Range (min … max):    1.380 s …  1.428 s    5 runs
-```
-
-<details>
-<summary>Statistics profile</summary>
+Description: Performes a bubble sort on a Scott-encoded list of 150 cells, then sums all the cells up.
 
 ```
-  Family reductions: 2692537
-       Commutations: 8077611
-      Annihilations: 0
-         Expansions: 2692536
-    Cell operations: 17819298
- Barrier operations: 0
- Total interactions: 31281982
-Garbage collections: 20390451
- Delimiter mergings: 0
-     Total rewrites: 51672433
-   Bookkeeping work: 0.00%
-    Max duplicators: 3
-     Max delimiters: 0
-    Max total nodes: 198
-```
-
-</details>
-
-### [Fibonacci (Church numerals)](church-fix-fibonacci-of-20.c)
-
-Description: Exponentially computes the 20th Fibonacci number using Church numerals & the standard Y combinator.
-
-```
-Benchmark 1: ./church-fix-fibonacci-of-20
-  Time (mean ± σ):     850.4 ms ±   3.6 ms    [User: 827.2 ms, System: 22.3 ms]
-  Range (min … max):   846.7 ms … 856.3 ms    5 runs
+Benchmark 1: ./scott-bubble-sort
+  Time (mean ± σ):     900.1 ms ±   1.4 ms    [User: 836.3 ms, System: 63.4 ms]
+  Range (min … max):   898.5 ms … 902.1 ms    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-  Family reductions: 521515
-       Commutations: 36229956
-      Annihilations: 7048197
-         Expansions: 0
-    Cell operations: 0
- Barrier operations: 599808
- Total interactions: 44399476
-Garbage collections: 2067516
- Delimiter mergings: 624537
-     Total rewrites: 47091529
-   Bookkeeping work: 81.32%
-    Max duplicators: 607110
-     Max delimiters: 3465467
-    Max total nodes: 5741869
-```
-
-</details>
-
-### [Church lists](church-list-reverse-and-sum.c)
-
-Description: Reverses the Church-encoded list of 10000 cells & then sums all the cells up.
-
-```
-Benchmark 1: ./church-list-reverse-and-sum
-  Time (mean ± σ):      5.800 s ±  0.014 s    [User: 5.787 s, System: 0.012 s]
-  Range (min … max):    5.786 s …  5.818 s    5 runs
-```
-
-<details>
-<summary>Statistics profile</summary>
-
-```
-  Family reductions: 100006
-       Commutations: 400290015
-      Annihilations: 50124995
-         Expansions: 0
-    Cell operations: 20000
- Barrier operations: 20005
- Total interactions: 450555021
-Garbage collections: 10008
- Delimiter mergings: 59998
-     Total rewrites: 450625027
-   Bookkeeping work: 88.82%
-    Max duplicators: 70002
-     Max delimiters: 60006
-    Max total nodes: 160030
+   Family reductions: 158859
+        Commutations: 34235501
+       Annihilations: 3664080
+          Expansions: 11624
+     Cell operations: 68248
+  Barrier operations: 48585
+  Total interactions: 38186897
+ Garbage collections: 480329
+  Delimiter mergings: 14643540
+Delimiter extrusions: 381912
+      Total rewrites: 53692678
+    Bookkeeping work: 60.34%
+     Max duplicators: 67052
+      Max delimiters: 1720506
+     Max total nodes: 18573912
 ```
 
 </details>
 
 ### [Scott list insertion sort](scott-insertion-sort.c)
 
-Description: Performes an insertion sort on a Scott-encoded list of 500 cells, then sums all the cells up.
+Description: Performes an insertion sort on a Scott-encoded list of 1000 cells, then sums all the cells up.
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):      7.679 s ±  0.044 s    [User: 7.669 s, System: 0.007 s]
-  Range (min … max):    7.637 s …  7.749 s    5 runs
+  Time (mean ± σ):      1.604 s ±  0.012 s    [User: 1.597 s, System: 0.007 s]
+  Range (min … max):    1.591 s …  1.622 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-  Family reductions: 1007506
-       Commutations: 358796995
-      Annihilations: 84454257
-         Expansions: 125750
-    Cell operations: 375250
- Barrier operations: 256492
- Total interactions: 445016250
-Garbage collections: 67515332
- Delimiter mergings: 500501
-     Total rewrites: 513032083
-   Bookkeeping work: 86.18%
-    Max duplicators: 1506
-     Max delimiters: 129502
-    Max total nodes: 239812
+   Family reductions: 4015006
+        Commutations: 16515507
+       Annihilations: 1498500
+          Expansions: 501500
+     Cell operations: 1500500
+  Barrier operations: 4505503
+  Total interactions: 28536516
+ Garbage collections: 21529583
+  Delimiter mergings: 4500501
+Delimiter extrusions: 4998999
+      Total rewrites: 59565599
+    Bookkeeping work: 38.63%
+     Max duplicators: 3006
+      Max delimiters: 12022
+     Max total nodes: 502604
+```
+
+</details>
+
+### [Scott list merge sort](scott-merge-sort.c)
+
+Description: Performes a merge sort on a Scott-encoded list of 1000 cells, then sums all the cells up.
+
+```
+Benchmark 1: ./scott-merge-sort
+  Time (mean ± σ):      1.268 s ±  0.002 s    [User: 1.240 s, System: 0.028 s]
+  Range (min … max):    1.265 s …  1.270 s    5 runs
+```
+
+<details>
+<summary>Statistics profile</summary>
+
+```
+   Family reductions: 223404
+        Commutations: 49821002
+       Annihilations: 5521639
+          Expansions: 16907
+     Cell operations: 28931
+  Barrier operations: 228589
+  Total interactions: 55840472
+ Garbage collections: 814208
+  Delimiter mergings: 11131214
+Delimiter extrusions: 9893731
+      Total rewrites: 77679625
+    Bookkeeping work: 87.53%
+     Max duplicators: 18301
+      Max delimiters: 1688754
+     Max total nodes: 7565427
 ```
 
 </details>
 
 ### [Scott list quicksort](scott-quicksort.c)
 
-Description: Performes an (inefficient) quicksort on a Scott-encoded list of 300 cells, then sums all the cells up.
+Description: Performes a quicksort on a Scott-encoded list of 500 cells, then sums all the cells up.
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):      3.705 s ±  0.012 s    [User: 3.697 s, System: 0.007 s]
-  Range (min … max):    3.690 s …  3.718 s    5 runs
+  Time (mean ± σ):      8.876 s ±  0.017 s    [User: 8.867 s, System: 0.009 s]
+  Range (min … max):    8.852 s …  8.891 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-  Family reductions: 1085106
-       Commutations: 183825857
-      Annihilations: 41622888
-         Expansions: 135450
-    Cell operations: 269700
- Barrier operations: 721823
- Total interactions: 227660824
-Garbage collections: 28769535
- Delimiter mergings: 806709
-     Total rewrites: 257237068
-   Bookkeeping work: 84.06%
-    Max duplicators: 3015
-     Max delimiters: 150603
-    Max total nodes: 439804
+   Family reductions: 3008506
+        Commutations: 348433313
+       Annihilations: 87567521
+          Expansions: 375750
+     Cell operations: 749500
+  Barrier operations: 2632743
+  Total interactions: 442767333
+ Garbage collections: 5350134
+  Delimiter mergings: 3623249
+Delimiter extrusions: 173031257
+      Total rewrites: 624771973
+    Bookkeeping work: 84.10%
+     Max duplicators: 5015
+      Max delimiters: 292975
+     Max total nodes: 1071753
 ```
 
 </details>

@@ -290,11 +290,12 @@ Which approach is better is a topic of further discussion. However, the point of
 
 ## On performance
 
-_Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, including leveraging compiler- & platform-specific functionality, yet, [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than a traditional environment machine written [in Haskell]; for instance, whereas Optiscope needs some 8 seconds to sort & sum up a Scott-encoded list of onely 500 elements (in decreasing order), the Haskell implementation handles 5000 elements in just 4 seconds. On 1000 elements, Optiscope worked for ~1 minute 10 seconds. In general, the nature of performance penalty caused by optimal reduction is unclear; however, with increasing list sizes, the factor by which Optiscope runs slower is onely increasing.
+_Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, including leveraging compiler- & platform-specific functionality, yet, [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than [unoptimized Haskell] & [unoptimized OCaml]; for instance, whereas Optiscope needs about 6 seconds to execute an insertion sort on a Scott-encoded list of onely 2000 elements (in decreasing order), the Haskell implementation handles 10'000 elements in just two seconds. In general, the nature of performance penalty caused by bookkeeping work is unclear; however, with increasing list sizes, the factor by which Optiscope runs slower than more traditional lambda calculus implementations is onely increasing.
 
 [fairly non-trivial effort]: #implementation-details
 [our benchmarks]: benchmarks/
-[in Haskell]: benchmarks-haskell/
+[unoptimized Haskell]: benchmarks-haskell/
+[unoptimized OCaml]: benchmarks-ocaml/
 
 Similar stories can be told about the other benchmarks. At one moment, I wondered if I merely implemented Lambdascope incorrectly because of this excerpt from the paper:
 
@@ -391,7 +392,7 @@ computation -- this makes a crucial difference with the pure λ-calculus, where
 all data are eventually represented as functions.
 ```
 
-Well, in our benchmarks, we represent all data besides primitive integers as functions. Nonethelesse, BOHM was still much slower than our 50-line evaluators in Haskell & OCaml.
+Well, in our benchmarks, we represent all data besides primitive integers as functions. Nonethelesse, BOHM was still much slower than Haskell & OCaml with optimizations turned off.
 
 What conclusions should we draw from this? Have Haskell & OCaml so advanced in efficiency over the decades? Or does BOHM demonstrate superior performance on Churh numerals onely? Should we invest our time in making optimality efficient, given that simpler, unoptimized approaches prove to be more performant? I have no definite answer to these questions, but the point is: Optiscope is onely meant to incorporate native function calls into optimal reduction, & it is by no means to be understood as a reduction machine aimed at maximum efficiency. While it is true that Optiscope is a heavily optimized implementation of Lambdascope, this fact does not entail that it is immediately faster than more traditional approaches. For now, if you want to develop a high-performance call-by-need functional machine, it is presumably better to take the well-known Spinelesse Taglesse G-machine [^stg-machine] as a starting point.
 
@@ -431,6 +432,8 @@ Now, there are two possible avenues to mitigate the performance issue. The first
 
  - **Barriers.** It is now natural to prioritize delimiter compression, so that more delimiters get compressed. One way to accomplish this is to "freeze" certain interactions of delimiters with applicators: roughly, instead of repeatedly propagating uncompressed delimiters to the root, we can first compresse as many delimiters as we can, & onely then propagate this single compressed delimiter to the root. In order to realize this scheme, we employ so-called downwards-pointing _barriers_, which appear dynamically whenever a delimiter meets an applicator. In the graph, this situation is depicted as "🚧 _n_", where _n_ is the number of collected zero-indexed delimiters. Initially, _n_ is one, but when the barrier meets another zero-indexed delimiter, _n_ is incremented. Contrariwise, when the barrier meets some other node, it is transformed into an upwards-pointing delimiter that commutes with its applicator. According to our benchmarks, this kind of prioritization can reduce the total number of graph rewrites by almost a half.
    - Although barriers can be instantiated for other operator types as well, not just applicators, on our examples we found it advantageous to onely consider applicators.
+
+ - **Delimiter extrusion.** If a delimiter points to the output port of some operator, it appears profitable to _extrude_ it to the operands, causing its residuals to interact with other nodes earlier in the reduction. Keeping the delimiter inactive until the operator returns a value results in much lower performance, but the exact reason behind this behaviour is not yet clear to us.
 
  - **References.** Following HVM's terminology, a _reference_ is a special node that lazily expands to a lambda term, which is then translated to a corresponding net in a single interaction. Strictly speaking, references doe not contribute to the expressivenesse of the system, but they tend to be farre more efficient than our (optimal!) fixed-point operator. In addition to improved efficiency, references naturally support mutual recursion, because every Optiscope reference corresponds to a C function taking zero parameters & returning a lambda term. In the benchmarks, we prefer to implement recursion on the basis of references.
 

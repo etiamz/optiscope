@@ -1,85 +1,47 @@
-import Interpreter
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-scottNil :: Term
-scottNil = Lambda (Lambda (TVar 1))
+{-# HLINT ignore "Use const" #-}
+{-# HLINT ignore "Redundant bracket" #-}
 
-scottCons :: Term
-scottCons =
-  Lambda (Lambda (Lambda (Lambda (Apply (Apply (TVar 0) (TVar 3)) (TVar 2)))))
+newtype ScottList a = ScottList (forall r. r -> (a -> ScottList a -> r) -> r)
 
-scottSingleton :: Term
-scottSingleton = Lambda (Apply (Apply scottCons (TVar 0)) scottNil)
+unlist :: ScottList a -> forall r. r -> (a -> ScottList a -> r) -> r
+unlist (ScottList f) = f
 
-lessEqual :: Term
-lessEqual = BinaryOp (\x y -> if x <= y then 1 else 0)
+scottNil :: ScottList a
+scottNil = ScottList (\n c -> n)
 
-scottInsert :: Term
-scottInsert =
-  Fix
-    ( Lambda
-        ( Lambda
-            ( Lambda
-                ( Apply
-                    (Apply (TVar 0) (Apply scottSingleton (TVar 1)))
-                    ( Lambda
-                        ( Lambda
-                            ( IfThenElse
-                                (Apply (Apply lessEqual (TVar 3)) (TVar 1))
-                                ( Apply
-                                    (Apply scottCons (TVar 3))
-                                    (Apply (Apply scottCons (TVar 1)) (TVar 0))
-                                )
-                                ( Apply
-                                    (Apply scottCons (TVar 1))
-                                    (Apply (Apply (TVar 4) (TVar 3)) (TVar 0))
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
+scottCons :: a -> ScottList a -> ScottList a
+scottCons h t = ScottList (\n c -> c h t)
+
+scottSingleton :: a -> ScottList a
+scottSingleton x = scottCons x scottNil
+
+scottInsert :: Int -> ScottList Int -> ScottList Int
+scottInsert y list =
+  (unlist list)
+    (scottSingleton y)
+    ( \z zs ->
+        if y <= z
+          then scottCons y (scottCons z zs)
+          else scottCons z (scottInsert y zs)
     )
 
-scottInsertionSort :: Term
-scottInsertionSort =
-  Fix
-    ( Lambda
-        ( Lambda
-            ( Apply
-                (Apply (TVar 0) scottNil)
-                (Lambda (Lambda (Apply (Apply scottInsert (TVar 1)) (Apply (TVar 3) (TVar 0)))))
-            )
-        )
-    )
+scottInsertionSort :: ScottList Int -> ScottList Int
+scottInsertionSort list =
+  (unlist list) scottNil (\x xs -> scottInsert x (scottInsertionSort xs))
 
-sumInts :: Term
-sumInts = BinaryOp (+)
+scottSumList :: ScottList Int -> Int
+scottSumList list =
+  (unlist list) 0 (\x xs -> x + scottSumList xs)
 
-scottSumList :: Term
-scottSumList =
-  Fix
-    ( Lambda
-        ( Lambda
-            ( Apply
-                (Apply (TVar 0) (Const 0))
-                (Lambda (Lambda (Apply (Apply sumInts (TVar 1)) (Apply (TVar 3) (TVar 0)))))
-            )
-        )
-    )
-
-generateList :: Int -> Term
+generateList :: Int -> ScottList Int
 generateList n = go 0 scottNil
   where
     go i acc
-      | i < n = go (i + 1) (Apply (Apply scottCons (Const i)) acc)
+      | i < n = go (i + 1) (scottCons i acc)
       | otherwise = acc
 
-benchmarkTerm :: Term
-benchmarkTerm =
-  Apply scottSumList (Apply scottInsertionSort (generateList 5000))
-
 main :: IO ()
-main = case denote [] benchmarkTerm of
-  VConst n -> print n
-  _ -> error "Expected a constant result!"
+main =
+  print $ scottSumList $ scottInsertionSort $ generateList 1000

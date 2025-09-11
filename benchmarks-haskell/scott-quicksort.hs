@@ -1,134 +1,53 @@
-import Interpreter
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-scottNil :: Term
-scottNil = Lambda (Lambda (TVar 1))
+{-# HLINT ignore "Use const" #-}
+{-# HLINT ignore "Avoid lambda using `infix`" #-}
+{-# HLINT ignore "Redundant bracket" #-}
 
-scottCons :: Term
-scottCons =
-  Lambda (Lambda (Lambda (Lambda (Apply (Apply (TVar 0) (TVar 3)) (TVar 2)))))
+newtype ScottList a = ScottList (forall r. r -> (a -> ScottList a -> r) -> r)
 
-lessThan :: Term
-lessThan = BinaryOp (\x y -> if x < y then 1 else 0)
+unlist :: ScottList a -> forall r. r -> (a -> ScottList a -> r) -> r
+unlist (ScottList f) = f
 
-greaterEqual :: Term
-greaterEqual = BinaryOp (\x y -> if x >= y then 1 else 0)
+scottNil :: ScottList a
+scottNil = ScottList (\n c -> n)
 
-scottFilter :: Term
-scottFilter =
-  Fix
-    ( Lambda
-        ( Lambda
-            ( Lambda
-                ( Apply
-                    (Apply (TVar 0) scottNil)
-                    ( Lambda
-                        ( Lambda
-                            ( IfThenElse
-                                (Apply (TVar 3) (TVar 1))
-                                ( Apply
-                                    (Apply scottCons (TVar 1))
-                                    (Apply (Apply (TVar 4) (TVar 3)) (TVar 0))
-                                )
-                                (Apply (Apply (TVar 4) (TVar 3)) (TVar 0))
-                            )
-                        )
-                    )
-                )
-            )
-        )
+scottCons :: a -> ScottList a -> ScottList a
+scottCons h t = ScottList (\n c -> c h t)
+
+scottFilter :: (Int -> Bool) -> ScottList Int -> ScottList Int
+scottFilter f list =
+  (unlist list)
+    scottNil
+    ( \x xs ->
+        if f x
+          then scottCons x (scottFilter f xs)
+          else scottFilter f xs
     )
 
-scottAppend :: Term
-scottAppend =
-  Fix
-    ( Lambda
-        ( Lambda
-            ( Lambda
-                ( Apply
-                    (Apply (TVar 1) (TVar 0))
-                    ( Lambda
-                        ( Lambda
-                            ( Apply
-                                (Apply scottCons (TVar 1))
-                                (Apply (Apply (TVar 4) (TVar 0)) (TVar 2))
-                            )
-                        )
-                    )
-                )
-            )
-        )
+scottAppend :: ScottList Int -> ScottList Int -> ScottList Int
+scottAppend xs ys = (unlist xs) ys (\x xss -> scottCons x (scottAppend xss ys))
+
+scottQuicksort :: ScottList Int -> ScottList Int
+scottQuicksort list =
+  (unlist list)
+    scottNil
+    ( \x xs ->
+        scottAppend
+          (scottQuicksort (scottFilter (\y -> y < x) xs))
+          (scottCons x (scottQuicksort (scottFilter (\z -> z >= x) xs)))
     )
 
-scottQuicksort :: Term
-scottQuicksort =
-  Fix
-    ( Lambda
-        ( Lambda
-            ( Apply
-                (Apply (TVar 0) scottNil)
-                ( Lambda
-                    ( Lambda
-                        ( Apply
-                            ( Apply
-                                scottAppend
-                                ( Apply
-                                    (TVar 3)
-                                    ( Apply
-                                        ( Apply
-                                            scottFilter
-                                            (Lambda (Apply (Apply lessThan (TVar 0)) (TVar 2)))
-                                        )
-                                        (TVar 0)
-                                    )
-                                )
-                            )
-                            ( Apply
-                                (Apply scottCons (TVar 1))
-                                ( Apply
-                                    (TVar 3)
-                                    ( Apply
-                                        ( Apply
-                                            scottFilter
-                                            (Lambda (Apply (Apply greaterEqual (TVar 0)) (TVar 2)))
-                                        )
-                                        (TVar 0)
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
-    )
+scottSumList :: ScottList Int -> Int
+scottSumList list = (unlist list) 0 (\x xs -> x + scottSumList xs)
 
-sumInts :: Term
-sumInts = BinaryOp (+)
-
-scottSumList :: Term
-scottSumList =
-  Fix
-    ( Lambda
-        ( Lambda
-            ( Apply
-                (Apply (TVar 0) (Const 0))
-                (Lambda (Lambda (Apply (Apply sumInts (TVar 1)) (Apply (TVar 3) (TVar 0)))))
-            )
-        )
-    )
-
-generateList :: Int -> Term
+generateList :: Int -> ScottList Int
 generateList n = go 0 scottNil
   where
     go i acc
-      | i < n = go (i + 1) (Apply (Apply scottCons (Const i)) acc)
+      | i < n = go (i + 1) (scottCons i acc)
       | otherwise = acc
 
-benchmarkTerm :: Term
-benchmarkTerm =
-  Apply scottSumList (Apply scottQuicksort (generateList 3000))
-
 main :: IO ()
-main = case denote [] benchmarkTerm of
-  VConst n -> print n
-  _ -> error "Expected a constant result!"
+main =
+  print $ scottSumList $ scottQuicksort $ generateList 1000

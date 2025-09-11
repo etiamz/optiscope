@@ -1149,7 +1149,7 @@ struct context {
     // The number of bookkeeping ("oracle") interactions.
     uint64_t nbookkeeping_interactions;
     // The numbers of non-interaction graph rewrites.
-    uint64_t nmergings, ngc;
+    uint64_t nmergings, nextrusions, ngc;
     // The memory usage statistics.
     uint64_t nduplicators, ndelimiters, ntotal, //
         nmax_duplicators, nmax_delimiters, nmax_total;
@@ -1190,7 +1190,7 @@ alloc_context(void) {
 #undef X
     graph->nbarriers = graph->nunbarriers = 0;
     graph->nbookkeeping_interactions = 0;
-    graph->nmergings = graph->ngc = 0;
+    graph->nmergings = graph->nextrusions = graph->ngc = 0;
     graph->nduplicators = graph->ndelimiters = graph->ntotal = //
         graph->nmax_duplicators = graph->nmax_delimiters = graph->nmax_total =
             0;
@@ -1254,28 +1254,31 @@ print_stats(const struct context *const restrict graph) {
         graph->nexpansions + ncell_operations + nbarrier_operations;
 
     const uint64_t ntotal_rewrites = //
-        ntotal_interactions + graph->nmergings + graph->ngc;
+        ntotal_interactions + graph->nmergings + graph->nextrusions +
+        graph->ngc;
 
     const uint64_t nbookkeeping_rewrites = //
-        graph->nbookkeeping_interactions + graph->nmergings;
+        graph->nbookkeeping_interactions + graph->nmergings +
+        graph->nextrusions;
 
     const double bookkeeping_percentage = //
         ((double)nbookkeeping_rewrites / (double)ntotal_rewrites) * 100.0;
 
-    printf("  Family reductions: %" PRIu64 "\n", graph->nbetas);
-    printf("       Commutations: %" PRIu64 "\n", graph->ncommutations);
-    printf("      Annihilations: %" PRIu64 "\n", graph->nannihilations);
-    printf("         Expansions: %" PRIu64 "\n", graph->nexpansions);
-    printf("    Cell operations: %" PRIu64 "\n", ncell_operations);
-    printf(" Barrier operations: %" PRIu64 "\n", nbarrier_operations);
-    printf(" Total interactions: %" PRIu64 "\n", ntotal_interactions);
-    printf("Garbage collections: %" PRIu64 "\n", graph->ngc);
-    printf(" Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
-    printf("     Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
-    printf("   Bookkeeping work: %.2f%%\n", bookkeeping_percentage);
-    printf("    Max duplicators: %" PRIu64 "\n", graph->nmax_duplicators);
-    printf("     Max delimiters: %" PRIu64 "\n", graph->nmax_delimiters);
-    printf("    Max total nodes: %" PRIu64 "\n", graph->nmax_total);
+    printf("   Family reductions: %" PRIu64 "\n", graph->nbetas);
+    printf("        Commutations: %" PRIu64 "\n", graph->ncommutations);
+    printf("       Annihilations: %" PRIu64 "\n", graph->nannihilations);
+    printf("          Expansions: %" PRIu64 "\n", graph->nexpansions);
+    printf("     Cell operations: %" PRIu64 "\n", ncell_operations);
+    printf("  Barrier operations: %" PRIu64 "\n", nbarrier_operations);
+    printf("  Total interactions: %" PRIu64 "\n", ntotal_interactions);
+    printf(" Garbage collections: %" PRIu64 "\n", graph->ngc);
+    printf("  Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
+    printf("Delimiter extrusions: %" PRIu64 "\n", graph->nextrusions);
+    printf("      Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
+    printf("    Bookkeeping work: %.2f%%\n", bookkeeping_percentage);
+    printf("     Max duplicators: %" PRIu64 "\n", graph->nmax_duplicators);
+    printf("      Max delimiters: %" PRIu64 "\n", graph->nmax_delimiters);
+    printf("     Max total nodes: %" PRIu64 "\n", graph->nmax_total);
 }
 
 #else
@@ -3301,6 +3304,77 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
 
 #undef TYPE_CHECK_RULE
 
+// Specialized Extrusion Rules
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+// TODO: maybe print delimiter extrusions if tracing is enabled?
+
+#define EXTRUSION_PROLOGUE(graph, f, g)                                        \
+    do {                                                                       \
+        MY_ASSERT(graph);                                                      \
+        XASSERT(f.ports), XASSERT(g.ports);                                    \
+        MY_ASSERT(PHASE_REDUCE_WEAKLY == graph->phase);                        \
+        NEXTRUSIONS_PLUS_PLUS(graph);                                          \
+    } while (false)
+
+#ifdef OPTISCOPE_ENABLE_STATS
+#define NEXTRUSIONS_PLUS_PLUS(graph) ((graph)->nextrusions++)
+#else
+#define NEXTRUSIONS_PLUS_PLUS(graph) ((void)0)
+#endif
+
+RULE_DEFINITION(extrude_2_2, graph, f, g) {
+    EXTRUSION_PROLOGUE(graph, f, g);
+
+    connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0]));
+
+    connect_ports(&g.ports[0], &f.ports[1]);
+
+    try_merge_delimiter(graph, f);
+}
+
+RULE_DEFINITION(extrude_2_3, graph, f, g) {
+    EXTRUSION_PROLOGUE(graph, f, g);
+
+    const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
+
+    connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0]));
+    connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
+
+    connect_ports(&g.ports[0], &f.ports[1]);
+    connect_ports(&g.ports[2], &fx.ports[1]);
+
+    try_merge_delimiter(graph, f);
+    try_merge_delimiter(graph, fx);
+}
+
+RULE_DEFINITION(extrude_2_4, graph, f, g) {
+    EXTRUSION_PROLOGUE(graph, f, g);
+
+    const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
+    const struct node fxx = alloc_node_from(graph, f.ports[-1], &f);
+
+    connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0]));
+    connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
+    connect_ports(&fxx.ports[0], DECODE_ADDRESS(g.ports[3]));
+
+    connect_ports(&g.ports[0], &f.ports[1]);
+    connect_ports(&g.ports[2], &fx.ports[1]);
+    connect_ports(&g.ports[3], &fxx.ports[1]);
+
+    try_merge_delimiter(graph, f);
+    try_merge_delimiter(graph, fx);
+    try_merge_delimiter(graph, fxx);
+}
+
+#undef NEXTRUSIONS_PLUS_PLUS
+#undef EXTRUSION_PROLOGUE
+
+#undef TYPE_CHECK_RULE
+
 // Rule Dispatching
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -4420,6 +4494,32 @@ of_lambda_term(
 // Complete Algorithm
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 4) COMPILER_HOT //
+static bool
+try_extrude_if_delimiter(
+    struct context *const restrict graph,
+    const struct node f,
+    const struct node g,
+    uint64_t *const restrict points_to) {
+    MY_ASSERT(graph);
+    XASSERT(f.ports), XASSERT(g.ports);
+    MY_ASSERT(points_to);
+
+    if (!IS_DELIMITER(f.ports[-1])) { return false; }
+
+    if (1 != DECODE_OFFSET_METADATA(*points_to)) { return false; }
+
+    switch (g.ports[-1]) {
+    case SYMBOL_UNARY_CALL:
+    case SYMBOL_BINARY_CALL_AUX: extrude_2_2(graph, f, g); return true;
+    case SYMBOL_APPLICATOR:
+    case SYMBOL_BINARY_CALL:
+    case SYMBOL_PERFORM: extrude_2_3(graph, f, g); return true;
+    case SYMBOL_IF_THEN_ELSE: extrude_2_4(graph, f, g); return true;
+    default: return false;
+    }
+}
+
 COMPILER_NONNULL(1) //
 static void
 weak_reduction(struct context *const restrict graph) {
@@ -4432,12 +4532,17 @@ weak_reduction(struct context *const restrict graph) {
     struct node f = graph->root;
 
     while (!graph->time_to_stop) {
-        const struct node g = follow_port(&f.ports[0]);
+        uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
+
+        const struct node g = node_of_port(points_to);
         XASSERT(g.ports);
 
         if (is_interacting_with(f, g)) {
             fire_rule(graph, f, g);
             f = unfocus_or(stack, graph->root);
+            set_phase(&f.ports[0], PHASE_REDUCE_WEAKLY);
+        } else if (try_extrude_if_delimiter(graph, f, g, points_to)) {
+            f = unfocus(stack);
             set_phase(&f.ports[0], PHASE_REDUCE_WEAKLY);
         } else {
             set_phase(&f.ports[0], PHASE_STACK);

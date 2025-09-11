@@ -175,6 +175,10 @@ static uint64_t square(const uint64_t x) { return x * x; }
 static uint64_t cube(const uint64_t x) { return x * x * x; }
 
 static uint64_t halve(const uint64_t x) { return x / 2; }
+
+static uint64_t plus_one(const uint64_t x) { return x + 1; }
+
+static uint64_t minus_one(const uint64_t x) { return x - 1; }
 // clang-format on
 
 static struct lambda_term *
@@ -1010,19 +1014,6 @@ scott_insertion_sort(void) {
                         apply(expand(scott_insertion_sort), var(xs)))))));
 }
 
-static struct lambda_term *
-scott_list_3_1_4_1_5(void) {
-    return apply(
-        apply(scott_cons(), cell(3)),
-        apply(
-            apply(scott_cons(), cell(1)),
-            apply(
-                apply(scott_cons(), cell(4)),
-                apply(
-                    apply(scott_cons(), cell(1)),
-                    apply(apply(scott_cons(), cell(5)), scott_nil())))));
-}
-
 // clang-format off
 static uint64_t concatenate_ints(uint64_t x, const uint64_t y) {
     uint64_t z = y;
@@ -1050,10 +1041,29 @@ scott_concatenate_list(void) {
 }
 
 static struct lambda_term *
+scott_list_9_2_7_3_8_1_4(void) {
+    return apply(
+        apply(scott_cons(), cell(9)),
+        apply(
+            apply(scott_cons(), cell(2)),
+            apply(
+                apply(scott_cons(), cell(7)),
+                apply(
+                    apply(scott_cons(), cell(3)),
+                    apply(
+                        apply(scott_cons(), cell(8)),
+                        apply(
+                            apply(scott_cons(), cell(1)),
+                            apply(
+                                apply(scott_cons(), cell(4)),
+                                scott_nil())))))));
+}
+
+static struct lambda_term *
 scott_insertion_sort_test(void) {
     return apply(
         scott_concatenate_list(),
-        apply(scott_insertion_sort(), scott_list_3_1_4_1_5()));
+        apply(scott_insertion_sort(), scott_list_9_2_7_3_8_1_4()));
 }
 
 // Scott Quicksort
@@ -1138,29 +1148,232 @@ scott_quicksort(void) {
 }
 
 static struct lambda_term *
-scott_list_9_2_7_3_8_1_4(void) {
-    return apply(
-        apply(scott_cons(), cell(9)),
-        apply(
-            apply(scott_cons(), cell(2)),
-            apply(
-                apply(scott_cons(), cell(7)),
-                apply(
-                    apply(scott_cons(), cell(3)),
-                    apply(
-                        apply(scott_cons(), cell(8)),
-                        apply(
-                            apply(scott_cons(), cell(1)),
-                            apply(
-                                apply(scott_cons(), cell(4)),
-                                scott_nil())))))));
-}
-
-static struct lambda_term *
 scott_quicksort_test(void) {
     return apply(
         scott_concatenate_list(),
         apply(scott_quicksort(), scott_list_9_2_7_3_8_1_4()));
+}
+
+// Scott Merge Sort
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+static struct lambda_term *
+scott_split(void) {
+    struct lambda_term *list, *k, *x, *xs, *y, *ys, *left, *right;
+
+    return lambda(
+        list,
+        lambda(
+            k,
+            apply(
+                apply(
+                    var(list), apply(apply(var(k), scott_nil()), scott_nil())),
+                lambda(
+                    x,
+                    lambda(
+                        xs,
+                        apply(
+                            apply(
+                                var(xs),
+                                apply(
+                                    apply(
+                                        var(k),
+                                        apply(scott_singleton(), var(x))),
+                                    scott_nil())),
+                            lambda(
+                                y,
+                                lambda(
+                                    ys,
+                                    apply(
+                                        apply(expand(scott_split), var(ys)),
+                                        lambda(
+                                            left,
+                                            lambda(
+                                                right,
+                                                apply(
+                                                    apply(
+                                                        var(k),
+                                                        apply(
+                                                            apply(
+                                                                scott_cons(),
+                                                                var(x)),
+                                                            var(left))),
+                                                    apply(
+                                                        apply(
+                                                            scott_cons(),
+                                                            var(y)),
+                                                        var(right))))))))))))));
+}
+
+static struct lambda_term *
+scott_merge(void) {
+    struct lambda_term *xs, *ys, *x, *xss, *y, *yss;
+
+    return lambda(
+        xs,
+        lambda(
+            ys,
+            apply(
+                apply(var(ys), var(xs)),
+                lambda(
+                    y,
+                    lambda(
+                        yss,
+                        apply(
+                            apply(var(xs), var(ys)),
+                            lambda(
+                                x,
+                                lambda(
+                                    xss,
+                                    if_then_else(
+                                        binary_call(less_than, var(x), var(y)),
+                                        apply(
+                                            apply(scott_cons(), var(x)),
+                                            apply(
+                                                apply(
+                                                    expand(scott_merge),
+                                                    var(xss)),
+                                                var(ys))),
+                                        apply(
+                                            apply(scott_cons(), var(y)),
+                                            apply(
+                                                apply(
+                                                    expand(scott_merge),
+                                                    var(xs)),
+                                                var(yss))))))))))));
+}
+
+static struct lambda_term *
+scott_merge_sort(void) {
+    struct lambda_term *list, *x, *xs, *left, *right, *dummy, *dummyx;
+
+    return lambda(
+        list,
+        apply(
+            apply(var(list), scott_nil()),
+            lambda(
+                x,
+                lambda(
+                    xs,
+                    apply(
+                        apply(var(xs), apply(scott_singleton(), var(x))),
+                        lambda(
+                            dummy,
+                            lambda(
+                                dummyx,
+                                apply(
+                                    apply(scott_split(), var(list)),
+                                    lambda(
+                                        left,
+                                        lambda(
+                                            right,
+                                            apply(
+                                                apply(
+                                                    scott_merge(),
+                                                    apply(
+                                                        expand(
+                                                            scott_merge_sort),
+                                                        var(left))),
+                                                apply(
+                                                    expand(scott_merge_sort),
+                                                    var(right)))))))))))));
+}
+
+static struct lambda_term *
+scott_merge_sort_test(void) {
+    return apply(
+        scott_concatenate_list(),
+        apply(scott_merge_sort(), scott_list_9_2_7_3_8_1_4()));
+}
+
+// Scott Bubble Sort
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+static struct lambda_term *
+scott_bubble_swap(void) {
+    struct lambda_term *list, *n, *x, *xs, *y, *ys;
+
+    // clang-format off
+    return lambda(list, lambda(n, if_then_else(
+        unary_call(is_zero, var(n)),
+        var(list),
+        apply(apply(var(list), var(list)), lambda(x, lambda(xs,
+            apply(apply(var(xs), var(list)), lambda(y, lambda(ys, if_then_else(
+                binary_call(less_than, var(x), var(y)),
+                apply(
+                    apply(scott_cons(), var(x)),
+                    apply(
+                        apply(expand(scott_bubble_swap), var(xs)),
+                        unary_call(minus_one, var(n)))),
+                apply(
+                    apply(scott_cons(), var(y)),
+                    apply(
+                        apply(
+                            expand(scott_bubble_swap),
+                            apply(apply(scott_cons(), var(x)), var(ys))),
+                    unary_call(minus_one, var(n))))))))))))));
+    // clang-format on
+}
+
+static struct lambda_term *
+scott_bubble_go(void) {
+    struct lambda_term *list, *n;
+
+    return lambda(
+        list,
+        lambda(
+            n,
+            if_then_else(
+                unary_call(is_zero, var(n)),
+                var(list),
+                apply(
+                    apply(
+                        expand(scott_bubble_go),
+                        apply(apply(scott_bubble_swap(), var(list)), var(n))),
+                    unary_call(minus_one, var(n))))));
+}
+
+static struct lambda_term *
+scott_list_length(void) {
+    struct lambda_term *list, *x, *xs;
+
+    return lambda(
+        list,
+        apply(
+            apply(var(list), cell(0)),
+            lambda(
+                x,
+                lambda(
+                    xs,
+                    unary_call(
+                        plus_one,
+                        apply(expand(scott_list_length), var(xs)))))));
+}
+
+static struct lambda_term *
+scott_bubble_sort(void) {
+    struct lambda_term *list, *x, *xs;
+
+    return lambda(
+        list,
+        apply(
+            apply(var(list), scott_nil()),
+            lambda(
+                x,
+                lambda(
+                    xs,
+                    apply(
+                        apply(scott_bubble_go(), var(list)),
+                        unary_call(
+                            minus_one,
+                            apply(scott_list_length(), var(list))))))));
+}
+
+static struct lambda_term *
+scott_bubble_sort_test(void) {
+    return apply(
+        scott_concatenate_list(),
+        apply(scott_bubble_sort(), scott_list_9_2_7_3_8_1_4()));
 }
 
 // Scott Binary Trees
@@ -1257,12 +1470,6 @@ scott_tree_map_and_sum_test(void) {
 
 // Ackermann Function
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-// clang-format off
-static uint64_t plus_one(const uint64_t x) { return x + 1; }
-
-static uint64_t minus_one(const uint64_t x) { return x - 1; }
-// clang-format on
 
 static struct lambda_term *
 fix_ackermann(void) {
@@ -1412,8 +1619,10 @@ main(void) {
         scott_three_successor_predecessor2x_test,
         "(λ (λ (1 (λ (λ (1 (λ (λ 0))))))))");
     TEST_CASE(scott_sum_list_test, "cell[15]");
-    TEST_CASE(scott_insertion_sort_test, "cell[113450]");
+    TEST_CASE(scott_insertion_sort_test, "cell[12347890]");
     TEST_CASE(scott_quicksort_test, "cell[12347890]");
+    TEST_CASE(scott_merge_sort_test, "cell[12347890]");
+    TEST_CASE(scott_bubble_sort_test, "cell[12347890]");
     TEST_CASE(scott_tree_sum_test, "cell[10]");
     TEST_CASE(scott_tree_map_and_sum_test, "cell[20]");
     TEST_CASE(fix_ackermann_test, "cell[61]");
