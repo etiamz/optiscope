@@ -2142,7 +2142,7 @@ gc_step(
             const struct node gc_lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
             connect_ports(&gc_lambda.ports[0], DECODE_ADDRESS(g.ports[0]));
             connect_ports(&gc_lambda.ports[1], DECODE_ADDRESS(g.ports[2]));
-            free_node(graph, f);
+            free_node(graph, f), free_node(graph, g);
             break;
         } else {
             goto commute_1_3;
