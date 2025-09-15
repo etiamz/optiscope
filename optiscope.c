@@ -3199,26 +3199,6 @@ TYPE_CHECK_RULE(commute_4_3);
 
 #define commute_3_4(graph, f, g) commute_4_3((graph), (g), (f))
 
-RULE_DEFINITION(commute_appl_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    uint64_t *const h_port = DECODE_ADDRESS(g.ports[1]);
-    const struct node h = node_of_port(h_port);
-
-    if (SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1] &&
-        DECODE_ADDRESS(h.ports[0]) != &g.ports[1]) {
-        const struct node barrier = alloc_node(graph, SYMBOL_BARRIER);
-        barrier.ports[2] = g.ports[2];
-        connect_ports(&barrier.ports[0], h_port);
-        connect_ports(&barrier.ports[1], &f.ports[0]);
-        free_node(graph, g);
-    } else {
-        commute_3_2_core(graph, f, g);
-    }
-}
-
-TYPE_CHECK_RULE(commute_appl_delim);
-
 RULE_DEFINITION(commute_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
@@ -3593,6 +3573,20 @@ fire_rule(
     MY_ASSERT(is_interaction(f, g));
 #pragma GCC diagnostic pop
 
+    if (SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1]) {
+        uint64_t *const h_port = DECODE_ADDRESS(g.ports[1]);
+        const struct node h = node_of_port(h_port);
+
+        if (DECODE_ADDRESS(h.ports[0]) != &g.ports[1]) {
+            const struct node barrier = alloc_node(graph, SYMBOL_BARRIER);
+            barrier.ports[2] = g.ports[2];
+            connect_ports(&barrier.ports[0], h_port);
+            connect_ports(&barrier.ports[1], &f.ports[0]);
+            free_node(graph, g);
+            return;
+        }
+    }
+
 #define BETA                          beta
 #define BETA_C                        beta_c
 #define IDENTITY_BETA                 identity_beta
@@ -3609,7 +3603,7 @@ fire_rule(
 #define ANNIHILATE_DUP_DUP            annihilate_dup_dup
 #define COMMUTE                       commute
 #define COMMUTE_ROOT_DELIM            commute_1_2
-#define COMMUTE_APPL_DELIM            commute_appl_delim
+#define COMMUTE_APPL_DELIM            commute_3_2
 #define COMMUTE_CELL_DELIM            commute_1_2
 #define COMMUTE_UCALL_DELIM           commute_2_2
 #define COMMUTE_BCALL_DELIM           commute_3_2

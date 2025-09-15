@@ -32,33 +32,33 @@ On GNU/Linux, you need to reserve huge pages as follows: `sudo sysctl vm.nr_huge
 
 ### [Scott list bubble sort](scott-bubble-sort.c)
 
-Description: Performes a bubble sort on a Scott-encoded list of 150 cells, then sums all the cells up.
+Description: Performes a bubble sort on a Scott-encoded list of 300 cells, then sums all the cells up.
 
 ```
 Benchmark 1: ./scott-bubble-sort
-  Time (mean ± σ):     799.3 ms ±   3.2 ms    [User: 740.5 ms, System: 58.4 ms]
-  Range (min … max):   796.7 ms … 804.9 ms    5 runs
+  Time (mean ± σ):      4.584 s ±  0.013 s    [User: 4.073 s, System: 0.510 s]
+  Range (min … max):    4.568 s …  4.599 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-   Family reductions: 158859
-        Commutations: 34235502
-       Annihilations: 3664080
-          Expansions: 34127
-     Cell operations: 68248
-  Barrier operations: 48585
-  Total interactions: 38209401
- Garbage collections: 398900
-  Delimiter mergings: 14643540
-Delimiter extrusions: 381912
-      Total rewrites: 53633753
-    Bookkeeping work: 60.30%
-     Max duplicators: 67052
-      Max delimiters: 1720506
-     Max total nodes: 18573912
+   Family reductions: 632709
+        Commutations: 151742280
+       Annihilations: 27897016
+          Expansions: 135752
+     Cell operations: 271498
+  Barrier operations: 14763760
+  Total interactions: 195443015
+ Garbage collections: 1585325
+  Delimiter mergings: 362394
+Delimiter extrusions: 1528812
+      Total rewrites: 198919546
+    Bookkeeping work: 9.55%
+     Max duplicators: 269102
+      Max delimiters: 13633506
+     Max total nodes: 148546212
 ```
 
 </details>
@@ -69,8 +69,8 @@ Description: Performes an insertion sort on a Scott-encoded list of 1000 cells, 
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):     835.8 ms ±   8.8 ms    [User: 828.2 ms, System: 7.2 ms]
-  Range (min … max):   826.7 ms … 850.2 ms    5 runs
+  Time (mean ± σ):     987.2 ms ±   6.3 ms    [User: 978.7 ms, System: 8.3 ms]
+  Range (min … max):   979.8 ms … 997.1 ms    5 runs
 ```
 
 <details>
@@ -78,20 +78,20 @@ Benchmark 1: ./scott-insertion-sort
 
 ```
    Family reductions: 4015006
-        Commutations: 16516507
+        Commutations: 13513506
        Annihilations: 1498500
           Expansions: 1003003
      Cell operations: 1500500
-  Barrier operations: 4505502
-  Total interactions: 29039018
+  Barrier operations: 6514503
+  Total interactions: 28045018
  Garbage collections: 8019015
   Delimiter mergings: 4500500
 Delimiter extrusions: 4998999
-      Total rewrites: 46557532
-    Bookkeeping work: 48.35%
+      Total rewrites: 45563532
+    Bookkeeping work: 42.82%
      Max duplicators: 3003
       Max delimiters: 4009
-     Max total nodes: 500989
+     Max total nodes: 503902
 ```
 
 </details>
@@ -102,8 +102,8 @@ Description: Performes a merge sort on a Scott-encoded list of 1000 cells, then 
 
 ```
 Benchmark 1: ./scott-merge-sort
-  Time (mean ± σ):      1.138 s ±  0.003 s    [User: 1.110 s, System: 0.027 s]
-  Range (min … max):    1.134 s …  1.142 s    5 runs
+  Time (mean ± σ):     853.0 ms ±   6.5 ms    [User: 819.2 ms, System: 33.5 ms]
+  Range (min … max):   842.1 ms … 858.4 ms    5 runs
 ```
 
 <details>
@@ -111,20 +111,20 @@ Benchmark 1: ./scott-merge-sort
 
 ```
    Family reductions: 223404
-        Commutations: 49820339
-       Annihilations: 5519753
+        Commutations: 23740121
+       Annihilations: 5501217
           Expansions: 40746
      Cell operations: 28931
-  Barrier operations: 228589
-  Total interactions: 55861762
+  Barrier operations: 4207054
+  Total interactions: 33741473
  Garbage collections: 468952
-  Delimiter mergings: 11127218
+  Delimiter mergings: 180067
 Delimiter extrusions: 9893731
-      Total rewrites: 77351663
-    Bookkeeping work: 85.90%
+      Total rewrites: 44284223
+    Bookkeeping work: 66.80%
      Max duplicators: 18301
-      Max delimiters: 1686664
-     Max total nodes: 7561655
+      Max delimiters: 1686648
+     Max total nodes: 7564655
 ```
 
 </details>
@@ -135,8 +135,8 @@ Description: Performes a quicksort on a Scott-encoded list of 500 cells, then su
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):      7.943 s ±  0.052 s    [User: 7.932 s, System: 0.009 s]
-  Range (min … max):    7.905 s …  8.029 s    5 runs
+  Time (mean ± σ):     10.909 s ±  0.089 s    [User: 10.901 s, System: 0.007 s]
+  Range (min … max):   10.808 s … 10.994 s    5 runs
 ```
 
 <details>
@@ -144,20 +144,20 @@ Benchmark 1: ./scott-quicksort
 
 ```
    Family reductions: 3008506
-        Commutations: 348557066
-       Annihilations: 87567022
+        Commutations: 345693273
+       Annihilations: 86947260
           Expansions: 629252
      Cell operations: 749500
-  Barrier operations: 2632743
-  Total interactions: 443144089
+  Barrier operations: 88959265
+  Total interactions: 525987056
  Garbage collections: 3792034
-  Delimiter mergings: 3623249
+  Delimiter mergings: 2877244
 Delimiter extrusions: 173031257
-      Total rewrites: 623590629
-    Bookkeeping work: 84.08%
+      Total rewrites: 705687591
+    Bookkeeping work: 73.81%
      Max duplicators: 3006
       Max delimiters: 289503
-     Max total nodes: 1054486
+     Max total nodes: 1054987
 ```
 
 </details>

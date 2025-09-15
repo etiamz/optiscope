@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Reduction semantics: implement delimiter extrusion for better performance.
 
+### Changed
+
+ - Reduction semantics: spawne delimiter barriers for all node types, not onely for applicators.
+
 ## 0.13.0 - 2025-09-10
 
 ### Added
