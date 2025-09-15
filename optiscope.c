@@ -3573,7 +3573,12 @@ fire_rule(
     MY_ASSERT(is_interaction(f, g));
 #pragma GCC diagnostic pop
 
-    if (SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1]) {
+    if ((SYMBOL_APPLICATOR == f.ports[-1] || SYMBOL_UNARY_CALL == f.ports[-1] ||
+         SYMBOL_BINARY_CALL == f.ports[-1] ||
+         SYMBOL_BINARY_CALL_AUX == f.ports[-1] ||
+         SYMBOL_IF_THEN_ELSE == f.ports[-1] || SYMBOL_PERFORM == f.ports[-1] ||
+         IS_DUPLICATOR(f.ports[-1])) &&
+        SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1]) {
         uint64_t *const h_port = DECODE_ADDRESS(g.ports[1]);
         const struct node h = node_of_port(h_port);
 
