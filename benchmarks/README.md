@@ -194,3 +194,36 @@ Delimiter extrusions: 32325233
 ```
 
 </details>
+
+### [Ackermann function](ackermann.c)
+
+Description: Computes the Ackermann function on _(3, 8)_.
+
+```
+Benchmark 1: ./ackermann
+  Time (mean ± σ):      2.546 s ±  0.036 s    [User: 2.532 s, System: 0.013 s]
+  Range (min … max):    2.497 s …  2.588 s    5 runs
+```
+
+<details>
+<summary>Statistics profile</summary>
+
+```
+   Family reductions: 5571998
+        Commutations: 19510117
+       Annihilations: 2025
+          Expansions: 2785999
+     Cell operations: 12538012
+  Barrier operations: 4179998
+  Total interactions: 44588149
+ Garbage collections: 44575970
+  Delimiter mergings: 2788004
+Delimiter extrusions: 4182018
+      Total rewrites: 96134141
+    Bookkeeping work: 17.40%
+     Max duplicators: 1026
+      Max delimiters: 3071
+     Max total nodes: 4178041
+```
+
+</details>

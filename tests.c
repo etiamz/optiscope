@@ -257,7 +257,7 @@ static uint64_t is_one(const uint64_t x) { return 1 == x; }
 static struct lambda_term *
 fibonacci_function(
     struct lambda_term *const restrict rec,
-    struct lambda_term *const restrict rec_aux) {
+    struct lambda_term *const restrict recx) {
     struct lambda_term *n;
 
     return lambda(
@@ -271,7 +271,7 @@ fibonacci_function(
                 binary_call(
                     add,
                     apply(rec, binary_call(subtract, var(n), cell(1))),
-                    apply(rec_aux, binary_call(subtract, var(n), cell(2)))))));
+                    apply(recx, binary_call(subtract, var(n), cell(2)))))));
 }
 
 static struct lambda_term *
@@ -1554,33 +1554,50 @@ scott_tree_map_and_sum_test(void) {
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
-fix_ackermann(void) {
-    struct lambda_term *rec, *m, *n;
+ackermann_function(
+    struct lambda_term *const restrict rec,
+    struct lambda_term *const restrict recx,
+    struct lambda_term *const restrict recxx) {
+    struct lambda_term *m, *n;
 
-    return fix(lambda(
-        rec,
+    return lambda(
+        m,
         lambda(
-            m,
-            lambda(
-                n,
+            n,
+            if_then_else(
+                unary_call(is_zero, var(m)),
+                unary_call(plus_one, var(n)),
                 if_then_else(
-                    unary_call(is_zero, var(m)),
-                    unary_call(plus_one, var(n)),
-                    if_then_else(
-                        unary_call(is_zero, var(n)),
+                    unary_call(is_zero, var(n)),
+                    apply(apply(rec, unary_call(minus_one, var(m))), cell(1)),
+                    apply(
+                        apply(recx, unary_call(minus_one, var(m))),
                         apply(
-                            apply(var(rec), unary_call(minus_one, var(m))),
-                            cell(1)),
-                        apply(
-                            apply(var(rec), unary_call(minus_one, var(m))),
-                            apply(
-                                apply(var(rec), var(m)),
-                                unary_call(minus_one, var(n))))))))));
+                            apply(recxx, var(m)),
+                            unary_call(minus_one, var(n))))))));
+}
+
+static struct lambda_term *
+fix_ackermann_term(void) {
+    struct lambda_term *rec;
+
+    return fix(lambda(rec, ackermann_function(var(rec), var(rec), var(rec))));
+}
+
+static struct lambda_term *
+ackermann_term(void) {
+    return ackermann_function(
+        expand(ackermann_term), expand(ackermann_term), expand(ackermann_term));
 }
 
 static struct lambda_term *
 fix_ackermann_test(void) {
-    return apply(apply(fix_ackermann(), cell(3)), cell(3));
+    return apply(apply(fix_ackermann_term(), cell(3)), cell(3));
+}
+
+static struct lambda_term *
+ackermann_test(void) {
+    return apply(apply(ackermann_term(), cell(3)), cell(3));
 }
 
 // Examples From Literature
@@ -1709,6 +1726,7 @@ main(void) {
     TEST_CASE(scott_tree_sum_test, "cell[10]");
     TEST_CASE(scott_tree_map_and_sum_test, "cell[20]");
     TEST_CASE(fix_ackermann_test, "cell[61]");
+    TEST_CASE(ackermann_test, "cell[61]");
     TEST_CASE(lamping_example, "(λ 0)");
     TEST_CASE(lamping_example_2, "(λ 0)");
     TEST_CASE(asperti_guerrini_example, "(λ (0 0))");
