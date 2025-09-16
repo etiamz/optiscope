@@ -162,12 +162,12 @@ Delimiter extrusions: 173031257
 
 </details>
 
-### [N-queens](scott-nqueens.c)
+### [N-queens](nqueens.c)
 
 Description: Solves the 10-queens problem using Scott-encoded lists.
 
 ```
-Benchmark 1: ./scott-nqueens
+Benchmark 1: ./nqueens
   Time (mean ± σ):      6.840 s ±  0.062 s    [User: 6.821 s, System: 0.019 s]
   Range (min … max):    6.761 s …  6.902 s    5 runs
 ```

@@ -794,7 +794,7 @@ church_sum_list_test(void) {
 
 static struct lambda_term *
 church_reverse(void) {
-    struct lambda_term *xs, *x, *cont, *f, *n;
+    struct lambda_term *xs, *x, *k, *f, *n;
 
     return lambda(
         xs,
@@ -804,13 +804,13 @@ church_reverse(void) {
                 lambda(
                     x,
                     lambda(
-                        cont,
+                        k,
                         lambda(
                             f,
                             lambda(
                                 n,
                                 apply(
-                                    apply(var(cont), var(f)),
+                                    apply(var(k), var(f)),
                                     apply(apply(var(f), var(x)), var(n)))))))),
             church_nil()));
 }
