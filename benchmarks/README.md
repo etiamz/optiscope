@@ -30,6 +30,72 @@ To observe the performance characteristics of optimal reduction à la Lambdascop
 
 On GNU/Linux, you need to reserve huge pages as follows: `sudo sysctl vm.nr_hugepages=6000`.
 
+### [Ackermann function](ackermann.c)
+
+Description: Computes the Ackermann function with initial values _(3, 8)_.
+
+```
+Benchmark 1: ./ackermann
+  Time (mean ± σ):      2.546 s ±  0.036 s    [User: 2.532 s, System: 0.013 s]
+  Range (min … max):    2.497 s …  2.588 s    5 runs
+```
+
+<details>
+<summary>Statistics profile</summary>
+
+```
+   Family reductions: 5571998
+        Commutations: 19510117
+       Annihilations: 2025
+          Expansions: 2785999
+     Cell operations: 12538012
+  Barrier operations: 4179998
+  Total interactions: 44588149
+ Garbage collections: 44575970
+  Delimiter mergings: 2788004
+Delimiter extrusions: 4182018
+      Total rewrites: 96134141
+    Bookkeeping work: 17.40%
+     Max duplicators: 1026
+      Max delimiters: 3071
+     Max total nodes: 4178041
+```
+
+</details>
+
+### [Takeuchi function](tak.c)
+
+Description: Computes the Takeuchi function with initial values _(24, 9, 3)_.
+
+```
+Benchmark 1: ./tak
+  Time (mean ± σ):      2.032 s ±  0.032 s    [User: 2.017 s, System: 0.014 s]
+  Range (min … max):    1.997 s …  2.080 s    5 runs
+```
+
+<details>
+<summary>Statistics profile</summary>
+
+```
+   Family reductions: 4666911
+        Commutations: 23704533
+       Annihilations: 1780801
+          Expansions: 1555637
+     Cell operations: 5833638
+  Barrier operations: 4507471
+  Total interactions: 42048991
+ Garbage collections: 42634574
+  Delimiter mergings: 5954299
+Delimiter extrusions: 3792105
+      Total rewrites: 94429969
+    Bookkeeping work: 26.32%
+     Max duplicators: 179
+      Max delimiters: 355
+     Max total nodes: 3495842
+```
+
+</details>
+
 ### [Scott list bubble sort](scott-bubble-sort.c)
 
 Description: Performes a bubble sort on a Scott-encoded list of 300 cells, then sums all the cells up.
@@ -191,39 +257,6 @@ Delimiter extrusions: 32325233
      Max duplicators: 19135
       Max delimiters: 20164
      Max total nodes: 4050726
-```
-
-</details>
-
-### [Ackermann function](ackermann.c)
-
-Description: Computes the Ackermann function on _(3, 8)_.
-
-```
-Benchmark 1: ./ackermann
-  Time (mean ± σ):      2.546 s ±  0.036 s    [User: 2.532 s, System: 0.013 s]
-  Range (min … max):    2.497 s …  2.588 s    5 runs
-```
-
-<details>
-<summary>Statistics profile</summary>
-
-```
-   Family reductions: 5571998
-        Commutations: 19510117
-       Annihilations: 2025
-          Expansions: 2785999
-     Cell operations: 12538012
-  Barrier operations: 4179998
-  Total interactions: 44588149
- Garbage collections: 44575970
-  Delimiter mergings: 2788004
-Delimiter extrusions: 4182018
-      Total rewrites: 96134141
-    Bookkeeping work: 17.40%
-     Max duplicators: 1026
-      Max delimiters: 3071
-     Max total nodes: 4178041
 ```
 
 </details>

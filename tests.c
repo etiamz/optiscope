@@ -1600,6 +1600,68 @@ ackermann_test(void) {
     return apply(apply(ackermann_term(), cell(3)), cell(3));
 }
 
+// Takeuchi Function
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+static struct lambda_term *
+tak_function(
+    struct lambda_term *const restrict rec,
+    struct lambda_term *const restrict recx,
+    struct lambda_term *const restrict recxx,
+    struct lambda_term *const restrict recxxx) {
+    struct lambda_term *x, *y, *z;
+
+    // clang-format off
+    return lambda(x, lambda(y, lambda(z,
+        if_then_else(
+            binary_call(greater_than_or_equal, var(y), var(x)),
+            var(z),
+            apply(
+                apply(
+                    apply(
+                        rec,
+                        apply(
+                            apply(
+                                apply(recx, unary_call(minus_one, var(x))),
+                                var(y)),
+                            var(z))),
+                    apply(
+                        apply(
+                            apply(recxx, unary_call(minus_one, var(y))),
+                            var(z)),
+                        var(x))),
+                apply(
+                    apply(
+                        apply(recxxx, unary_call(minus_one, var(z))),
+                        var(x)),
+                    var(y)))))));
+    // clang-format on
+}
+
+static struct lambda_term *
+fix_tak_term(void) {
+    struct lambda_term *rec;
+
+    return fix(
+        lambda(rec, tak_function(var(rec), var(rec), var(rec), var(rec))));
+}
+
+static struct lambda_term *
+tak_term(void) {
+    return tak_function(
+        expand(tak_term), expand(tak_term), expand(tak_term), expand(tak_term));
+}
+
+static struct lambda_term *
+fix_tak_test(void) {
+    return apply(apply(apply(fix_tak_term(), cell(12)), cell(6)), cell(3));
+}
+
+static struct lambda_term *
+tak_test(void) {
+    return apply(apply(apply(tak_term(), cell(12)), cell(6)), cell(3));
+}
+
 // Examples From Literature
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -1727,6 +1789,8 @@ main(void) {
     TEST_CASE(scott_tree_map_and_sum_test, "cell[20]");
     TEST_CASE(fix_ackermann_test, "cell[61]");
     TEST_CASE(ackermann_test, "cell[61]");
+    TEST_CASE(fix_tak_test, "cell[4]");
+    TEST_CASE(tak_test, "cell[4]");
     TEST_CASE(lamping_example, "(λ 0)");
     TEST_CASE(lamping_example_2, "(λ 0)");
     TEST_CASE(asperti_guerrini_example, "(λ (0 0))");
