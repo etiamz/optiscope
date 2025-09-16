@@ -1329,6 +1329,135 @@ scott_bubble_sort_test(void) {
         apply(scott_bubble_sort(), scott_list_9_2_7_3_8_1_4()));
 }
 
+// N-Queens
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+static struct lambda_term *
+scott_member(void) {
+    struct lambda_term *x, *list, *y, *ys;
+
+    return lambda(
+        x,
+        lambda(
+            list,
+            apply(
+                apply(var(list), cell(0)),
+                lambda(
+                    y,
+                    lambda(
+                        ys,
+                        if_then_else(
+                            binary_call(equals, var(x), var(y)),
+                            cell(1),
+                            apply(
+                                apply(expand(scott_member), var(x)),
+                                var(ys))))))));
+}
+
+static struct lambda_term *
+scott_threat(void) {
+    struct lambda_term *k, *m, *list, *x, *xs;
+
+    return lambda(
+        k,
+        lambda(
+            m,
+            lambda(
+                list,
+                apply(
+                    apply(var(list), cell(0)),
+                    lambda(
+                        x,
+                        lambda(
+                            xs,
+                            if_then_else(
+                                binary_call(
+                                    equals,
+                                    var(k),
+                                    binary_call(subtract, var(x), var(m))),
+                                cell(1),
+                                if_then_else(
+                                    binary_call(
+                                        equals,
+                                        var(k),
+                                        binary_call(subtract, var(m), var(x))),
+                                    cell(1),
+                                    apply(
+                                        apply(
+                                            apply(
+                                                expand(scott_threat),
+                                                unary_call(plus_one, var(k))),
+                                            var(m)),
+                                        var(xs))))))))));
+}
+
+static struct lambda_term *
+scott_queen_aux(void) {
+    struct lambda_term *m, *b, *n;
+
+#define QUEEN_AUX_CALL                                                         \
+    apply(                                                                     \
+        apply(                                                                 \
+            apply(expand(scott_queen_aux), unary_call(minus_one, var(m))),     \
+            var(b)),                                                           \
+        var(n))
+
+    // clang-format off
+    return lambda(m, lambda(b, lambda(n, if_then_else(
+            binary_call(equals, var(m), cell(0)),
+            expand(scott_nil),
+            if_then_else(
+                apply(apply(expand(scott_member), var(m)), var(b)),
+                QUEEN_AUX_CALL,
+                if_then_else(
+                    apply(apply(apply(expand(scott_threat), cell(1)), var(m)), var(b)),
+                    QUEEN_AUX_CALL,
+                    if_then_else(
+                        binary_call(
+                            equals,
+                            apply(expand(scott_list_length), var(b)),
+                            unary_call(minus_one, var(n))),
+                        apply(
+                            apply(
+                                expand(scott_append),
+                                apply(
+                                    apply(
+                                        expand(scott_cons),
+                                        apply(apply(expand(scott_cons), var(m)), var(b))),
+                                    expand(scott_nil))),
+                            QUEEN_AUX_CALL),
+                        apply(
+                            apply(
+                                expand(scott_append),
+                                apply(
+                                    apply(
+                                        apply(expand(scott_queen_aux), var(n)),
+                                        apply(
+                                            apply(expand(scott_cons), var(m)),
+                                            var(b))),
+                                    var(n))),
+                            QUEEN_AUX_CALL))))))));
+    // clang-format on
+
+#undef QUEEN_AUX_CALL
+}
+
+static struct lambda_term *
+scott_queen(void) {
+    struct lambda_term *n;
+
+    return lambda(
+        n,
+        apply(
+            apply(apply(expand(scott_queen_aux), var(n)), expand(scott_nil)),
+            var(n)));
+}
+
+static struct lambda_term *
+scott_nqueens_test(void) {
+    return apply(scott_list_length(), apply(scott_queen(), cell(6)));
+}
+
 // Scott Binary Trees
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -1576,6 +1705,7 @@ main(void) {
     TEST_CASE(scott_quicksort_test, "cell[12347890]");
     TEST_CASE(scott_merge_sort_test, "cell[12347890]");
     TEST_CASE(scott_bubble_sort_test, "cell[12347890]");
+    TEST_CASE(scott_nqueens_test, "cell[4]");
     TEST_CASE(scott_tree_sum_test, "cell[10]");
     TEST_CASE(scott_tree_map_and_sum_test, "cell[20]");
     TEST_CASE(fix_ackermann_test, "cell[61]");

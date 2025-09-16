@@ -161,3 +161,36 @@ Delimiter extrusions: 173031257
 ```
 
 </details>
+
+### [N-queens](scott-nqueens.c)
+
+Description: Solves the 10-queens problem using Scott-encoded lists.
+
+```
+Benchmark 1: ./scott-nqueens
+  Time (mean ± σ):      6.840 s ±  0.062 s    [User: 6.821 s, System: 0.019 s]
+  Range (min … max):    6.761 s …  6.902 s    5 runs
+```
+
+<details>
+<summary>Statistics profile</summary>
+
+```
+   Family reductions: 16117939
+        Commutations: 148201543
+       Annihilations: 28099944
+          Expansions: 3158690
+     Cell operations: 11692140
+  Barrier operations: 18338107
+  Total interactions: 225608363
+ Garbage collections: 96541700
+  Delimiter mergings: 8846057
+Delimiter extrusions: 32325233
+      Total rewrites: 363321353
+    Bookkeeping work: 31.52%
+     Max duplicators: 19135
+      Max delimiters: 20164
+     Max total nodes: 4050726
+```
+
+</details>
