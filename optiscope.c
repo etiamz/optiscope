@@ -1146,6 +1146,11 @@ free_expansion_cache(struct expansion_cache *const restrict cache) {
     free(cache);
 }
 
+COMPILER_NONNULL(1) COMPILER_COLD //
+static void
+prepare_lambda_term(
+    struct lambda_term *const restrict term, const uint64_t lvl);
+
 #define PANIC_EXPANSION_NO_MEMORY()                                            \
     panic(                                                                     \
         "No memory to store the expansion; consider increasing `%s`!",         \
@@ -1173,6 +1178,7 @@ lookup_expansion(
         } else if (NULL == entry->function) {
             entry->function = function;
             entry->expansion = function();
+            prepare_lambda_term(entry->expansion, 0);
             return entry->expansion;
         } else if (OPTISCOPE_MAX_FUNCTIONS - 1 == i) {
             i = 0, limit = idx;
@@ -1591,7 +1597,7 @@ free_node(struct context *const restrict graph, const struct node node) {
 #endif
 }
 
-// Delimiter Compression
+// Delimiter Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 struct delimiter {
@@ -1636,7 +1642,11 @@ inst_delimiter(
     const uint64_t count) {
     MY_ASSERT(graph);
     assert_delimiter_template(template);
-    MY_ASSERT(count > 0);
+
+    if (0 == count) {
+        connect_ports(template.points_to, template.goes_from);
+        return;
+    }
 
     const struct node g = node_of_port(template.points_to);
     XASSERT(g.ports);
@@ -1700,6 +1710,35 @@ try_merge_if_delimiter(
     MY_ASSERT(PHASE_REDUCE_WEAKLY == graph->phase);
 
     if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(graph, f); }
+}
+
+COMPILER_NONNULL(1) COMPILER_COLD //
+static void
+inst_delimiter_chain(
+    struct context *const restrict graph,
+    const struct delimiter template,
+    const uint64_t count) {
+    MY_ASSERT(graph);
+    assert_delimiter_template(template);
+
+    if (0 == count) {
+        connect_ports(template.points_to, template.goes_from);
+        return;
+    }
+
+    struct node current = alloc_node(graph, SYMBOL_DELIMITER(template.idx));
+    current.ports[2] = 1;
+    uint64_t *const result = &current.ports[1];
+    for (uint64_t i = 1; i < count; i++) {
+        const struct node delim =
+            alloc_node(graph, SYMBOL_DELIMITER(template.idx));
+        delim.ports[2] = 1;
+        connect_ports(&current.ports[0], &delim.ports[1]);
+        current = delim;
+    }
+
+    connect_ports(&current.ports[0], template.points_to);
+    connect_ports(result, template.goes_from);
 }
 
 // Immediate Duplication
@@ -2348,11 +2387,10 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
 
 COMPILER_NONNULL(1, 2, 3) // forward declaration for expanding references
 static void
-of_lambda_term(
+compile_lambda_term(
     struct context *const restrict graph,
     struct lambda_term *const restrict term,
-    uint64_t *const restrict output_port,
-    const uint64_t lvl);
+    uint64_t *const restrict output_port);
 
 #ifndef NDEBUG
 
@@ -2832,7 +2870,7 @@ RULE_DEFINITION(do_expand, graph, f, g) {
         graph->expansion_cache, USER_FUNCTION_OF_U64(f.ports[1]));
 #pragma GCC diagnostic pop
 
-    of_lambda_term(graph, term, &g.ports[0], 0);
+    compile_lambda_term(graph, term, &g.ports[0]);
 
     free_node(graph, f);
 }
@@ -3794,65 +3832,6 @@ register_active_pair(
 #undef DISPATCH_ACTIVE_PAIR
 #undef COUNT_BOOKKEEPING
 
-// Higher-Order Control Structures
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
-static uint64_t **
-build_duplicator_tree(
-    struct context *const restrict graph,
-    uint64_t *const restrict binder_port,
-    const uint64_t idx,
-    const uint64_t n) {
-    MY_ASSERT(graph);
-    MY_ASSERT(binder_port);
-    XASSERT(n >= 2);
-
-    uint64_t **const ports = xmalloc(sizeof ports[0] * n);
-
-    struct node current = alloc_node(graph, SYMBOL_DUPLICATOR(idx));
-    ports[0] = &current.ports[1];
-    ports[1] = &current.ports[2];
-
-    for (uint64_t i = 2; i < n; i++) {
-        const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(idx));
-        ports[i] = &dup.ports[1];
-        connect_ports(&dup.ports[2], &current.ports[0]);
-        current = dup;
-    }
-
-    connect_ports(&current.ports[0], binder_port);
-
-    return ports;
-}
-
-COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
-static uint64_t *
-build_delimiter_chain(
-    struct context *const restrict graph,
-    uint64_t *const restrict binder_port,
-    const uint64_t idx,
-    const uint64_t n) {
-    MY_ASSERT(graph);
-    MY_ASSERT(binder_port);
-
-    if (0 == n) { return binder_port; }
-
-    struct node current = alloc_node(graph, SYMBOL_DELIMITER(idx));
-    current.ports[2] = 1;
-    uint64_t *const result = &current.ports[1];
-    for (uint64_t i = 1; i < n; i++) {
-        const struct node delim = alloc_node(graph, SYMBOL_DELIMITER(idx));
-        delim.ports[2] = 1;
-        connect_ports(&current.ports[0], &delim.ports[1]);
-        current = delim;
-    }
-
-    connect_ports(&current.ports[0], binder_port);
-
-    return result;
-}
-
 // Graph Traversal Procedure
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -3957,13 +3936,12 @@ normalize_delimiters_cb(struct context *const graph, const struct node node) {
 
     if (!IS_DELIMITER(node.ports[-1])) { return; }
 
-    uint64_t *const output_port = build_delimiter_chain(
+    inst_delimiter_chain(
         graph,
-        DECODE_ADDRESS(node.ports[0]),
-        (uint64_t)symbol_index(node.ports[-1]),
+        (struct delimiter){.idx = symbol_index(node.ports[-1]),
+                           DECODE_ADDRESS(node.ports[0]),
+                           DECODE_ADDRESS(node.ports[1])},
         node.ports[2]);
-
-    connect_ports(output_port, DECODE_ADDRESS(node.ports[1]));
 
     free_node(graph, node);
 }
@@ -3976,10 +3954,12 @@ remove_barriers_cb(struct context *const graph, const struct node node) {
 
     if (SYMBOL_BARRIER != node.ports[-1]) { return; }
 
-    uint64_t *const output_port = build_delimiter_chain(
-        graph, DECODE_ADDRESS(node.ports[1]), 0, node.ports[2]);
-
-    connect_ports(output_port, DECODE_ADDRESS(node.ports[0]));
+    inst_delimiter_chain(
+        graph,
+        (struct delimiter){.idx = 0,
+                           DECODE_ADDRESS(node.ports[1]),
+                           DECODE_ADDRESS(node.ports[0])},
+        node.ports[2]);
 
     free_node(graph, node);
 }
@@ -4085,9 +4065,14 @@ struct lambda_data {
                       // its binder
     struct lambda_term
         *usage; // the pointer to one arbitrary usage of the lambda binder
-    uint64_t **dup_ports; // the pointer to the next duplicator tree
-                          // port; dynamically assigned
-    uint64_t lvl;         // the de Bruijn level; dynamically assigned
+    uint64_t **binder_ports; // the pointer to the next binder port; dynamically
+                             // assigned
+    uint64_t lvl;            // the de Bruijn level; dynamically assigned
+};
+
+struct var_data {
+    struct lambda_data **binder;
+    uint64_t idx; // the de Bruijn index; dynamically assigned
 };
 
 struct unary_call_data {
@@ -4120,7 +4105,7 @@ struct reference_data {
 union lambda_term_data {
     struct apply_data apply;
     struct lambda_data *lambda;
-    struct lambda_data **var;
+    struct var_data var;
     uint64_t cell;
     struct unary_call_data u_call;
     struct binary_call_data b_call;
@@ -4178,7 +4163,8 @@ var(const restrict LambdaTerm binder) {
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_VAR;
-    term->data.var = &binder->data.lambda;
+    term->data.var.binder = &binder->data.lambda;
+    term->data.var.idx = 0; // to be filled in later
     term->fv_count = 1;
 
     binder->data.lambda->nusages++;
@@ -4289,43 +4275,108 @@ expand(struct lambda_term *(*const function)(void)) {
 // Operations on Lambda Terms
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+COMPILER_NONNULL(1, 2, 5) //
+static void
+build_duplicator_tree(
+    struct context *const restrict graph,
+    uint64_t *const restrict binder_port,
+    const uint64_t idx,
+    const uint64_t n,
+    uint64_t **const restrict ports) {
+    MY_ASSERT(graph);
+    MY_ASSERT(binder_port);
+    XASSERT(n >= 2);
+
+    struct node current = alloc_node(graph, SYMBOL_DUPLICATOR(idx));
+    ports[0] = &current.ports[1];
+    ports[1] = &current.ports[2];
+
+    for (uint64_t i = 2; i < n; i++) {
+        const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(idx));
+        ports[i] = &dup.ports[1];
+        connect_ports(&dup.ports[2], &current.ports[0]);
+        current = dup;
+    }
+
+    connect_ports(&current.ports[0], binder_port);
+}
+
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
 inline static uint64_t
 de_bruijn_level_to_index(const uint64_t lvl, const uint64_t var) {
     return lvl - var - 1;
 }
 
+COMPILER_NONNULL(1) COMPILER_COLD //
+static void
+prepare_lambda_term(
+    struct lambda_term *const restrict term, const uint64_t lvl) {
+    MY_ASSERT(term);
+
+    switch (term->ty) {
+    case LAMBDA_TERM_LAMBDA: {
+        struct lambda_data *const lambda = term->data.lambda;
+        XASSERT(lambda);
+        if (lambda->nusages > 0) {
+            lambda->binder_ports =
+                xmalloc(sizeof(uint64_t *) * lambda->nusages);
+        }
+        lambda->lvl = lvl;
+        prepare_lambda_term(lambda->body, lvl + 1);
+        break;
+    }
+    case LAMBDA_TERM_VAR: {
+        struct lambda_data *const binder = *term->data.var.binder;
+        XASSERT(binder);
+        term->data.var.idx = de_bruijn_level_to_index(lvl, binder->lvl);
+        break;
+    }
+    case LAMBDA_TERM_APPLY:
+        prepare_lambda_term(term->data.apply.rator, lvl);
+        prepare_lambda_term(term->data.apply.rand, lvl);
+        break;
+    case LAMBDA_TERM_UNARY_CALL:
+        prepare_lambda_term(term->data.u_call.rand, lvl);
+        break;
+    case LAMBDA_TERM_BINARY_CALL:
+        prepare_lambda_term(term->data.b_call.lhs, lvl);
+        prepare_lambda_term(term->data.b_call.rhs, lvl);
+        break;
+    case LAMBDA_TERM_IF_THEN_ELSE:
+        prepare_lambda_term(term->data.ite.condition, lvl);
+        prepare_lambda_term(term->data.ite.if_else, lvl);
+        prepare_lambda_term(term->data.ite.if_then, lvl);
+        break;
+    case LAMBDA_TERM_FIX: prepare_lambda_term(term->data.fix.f, lvl); break;
+    case LAMBDA_TERM_PERFORM:
+        prepare_lambda_term(term->data.perform.action, lvl);
+        prepare_lambda_term(term->data.perform.k, lvl);
+        break;
+    case LAMBDA_TERM_CELL:
+    case LAMBDA_TERM_REFERENCE: break;
+    default: COMPILER_UNREACHABLE();
+    }
+}
+
 COMPILER_NONNULL(1, 2, 3) //
 static void
-of_lambda_term(
+compile_lambda_term(
     struct context *const restrict graph,
     struct lambda_term *const restrict term,
-    uint64_t *const restrict output_port,
-    const uint64_t lvl) {
+    uint64_t *const restrict output_port) {
     MY_ASSERT(graph);
     MY_ASSERT(term);
     MY_ASSERT(output_port);
 
     switch (term->ty) {
-    case LAMBDA_TERM_APPLY: {
-        struct lambda_term *const rator = term->data.apply.rator, //
-            *const rand = term->data.apply.rand;
-
-        const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
-        of_lambda_term(graph, rator, &applicator.ports[0], lvl);
-        connect_ports(&applicator.ports[1], output_port);
-        of_lambda_term(graph, rand, &applicator.ports[2], lvl);
-
-        break;
-    }
     case LAMBDA_TERM_LAMBDA: {
-        struct lambda_data *const tlambda = term->data.lambda;
+        struct lambda_data *const binder = term->data.lambda;
         struct lambda_term *const body = term->data.lambda->body;
-        XASSERT(tlambda);
+        XASSERT(binder);
         XASSERT(body);
 
         const bool is_identity =
-            LAMBDA_TERM_VAR == body->ty && tlambda == *body->data.var;
+            LAMBDA_TERM_VAR == body->ty && binder == *body->data.var.binder;
         if (is_identity) {
             // clang-format off
             const struct node lambda = alloc_node(graph, SYMBOL_IDENTITY_LAMBDA);
@@ -4334,10 +4385,10 @@ of_lambda_term(
             break;
         }
 
-        if (0 == tlambda->nusages) {
+        if (0 == binder->nusages) {
             // This is lambda that "garbage-collects" its argument.
             const struct node lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
-            of_lambda_term(graph, body, &lambda.ports[1], lvl + 1);
+            compile_lambda_term(graph, body, &lambda.ports[1]);
             connect_ports(&lambda.ports[0], output_port);
             break;
         }
@@ -4347,38 +4398,45 @@ of_lambda_term(
 
         const struct node lambda = alloc_node(graph, symbol);
         connect_ports(&lambda.ports[0], output_port);
-        uint64_t **dup_ports = NULL;
-        if (1 == tlambda->nusages) {
+        if (1 == binder->nusages) {
             // This is a linear non-self-referential lambda.
-            dup_ports = xmalloc(sizeof dup_ports[0] * 1);
-            dup_ports[0] = &lambda.ports[1];
+            binder->binder_ports[0] = &lambda.ports[1];
         } else {
             // This is a non-linear lambda that needs a duplicator tree.
-            dup_ports = build_duplicator_tree(
-                graph, &lambda.ports[1], 0, tlambda->nusages /* >= 2 */);
+            build_duplicator_tree(
+                graph,
+                &lambda.ports[1],
+                0,
+                binder->nusages,
+                binder->binder_ports);
         }
-        tlambda->dup_ports = dup_ports;
-        tlambda->lvl = lvl;
-        of_lambda_term(graph, body, &lambda.ports[2], lvl + 1);
-        free(dup_ports);
+        uint64_t **ports = binder->binder_ports;
+        compile_lambda_term(graph, body, &lambda.ports[2]);
+        binder->binder_ports = ports;
 
         break;
     }
     case LAMBDA_TERM_VAR: {
-        struct lambda_data *const lambda = *term->data.var;
-        XASSERT(lambda), XASSERT(lambda->dup_ports);
+        struct lambda_data *const binder = *term->data.var.binder;
+        const uint64_t idx = term->data.var.idx;
+        XASSERT(binder), XASSERT(binder->binder_ports);
 
-        const uint64_t idx = de_bruijn_level_to_index(lvl, lambda->lvl);
-        if (0 == idx) {
-            connect_ports(lambda->dup_ports[0], output_port);
-        } else {
-            struct node delim =
-                alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
-            delim.ports[2] = idx;
-            connect_ports(&delim.ports[0], lambda->dup_ports[0]);
-            connect_ports(&delim.ports[1], output_port);
-        }
-        lambda->dup_ports++;
+        inst_delimiter(
+            graph,
+            (struct delimiter){.idx = 0, *binder->binder_ports, output_port},
+            idx);
+        binder->binder_ports++;
+
+        break;
+    }
+    case LAMBDA_TERM_APPLY: {
+        struct lambda_term *const rator = term->data.apply.rator, //
+            *const rand = term->data.apply.rand;
+
+        const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
+        compile_lambda_term(graph, rator, &applicator.ports[0]);
+        connect_ports(&applicator.ports[1], output_port);
+        compile_lambda_term(graph, rand, &applicator.ports[2]);
 
         break;
     }
@@ -4399,7 +4457,7 @@ of_lambda_term(
         call.ports[2] = U64_OF_FUNCTION(function);
 #pragma GCC diagnostic pop
 
-        of_lambda_term(graph, rand, &call.ports[0], lvl);
+        compile_lambda_term(graph, rand, &call.ports[0]);
         connect_ports(&call.ports[1], output_port);
 
         break;
@@ -4417,9 +4475,9 @@ of_lambda_term(
         call.ports[3] = U64_OF_FUNCTION(function);
 #pragma GCC diagnostic pop
 
-        of_lambda_term(graph, lhs, &call.ports[0], lvl);
+        compile_lambda_term(graph, lhs, &call.ports[0]);
         connect_ports(&call.ports[1], output_port);
-        of_lambda_term(graph, rhs, &call.ports[2], lvl);
+        compile_lambda_term(graph, rhs, &call.ports[2]);
 
         break;
     }
@@ -4430,10 +4488,10 @@ of_lambda_term(
 
         const struct node ite = alloc_node(graph, SYMBOL_IF_THEN_ELSE);
 
-        of_lambda_term(graph, condition, &ite.ports[0], lvl);
+        compile_lambda_term(graph, condition, &ite.ports[0]);
         connect_ports(&ite.ports[1], output_port);
-        of_lambda_term(graph, if_else, &ite.ports[2], lvl);
-        of_lambda_term(graph, if_then, &ite.ports[3], lvl);
+        compile_lambda_term(graph, if_else, &ite.ports[2]);
+        compile_lambda_term(graph, if_then, &ite.ports[3]);
 
         break;
     }
@@ -4443,7 +4501,7 @@ of_lambda_term(
         const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(0));
         const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
 
-        of_lambda_term(graph, f, &applicator.ports[0], lvl);
+        compile_lambda_term(graph, f, &applicator.ports[0]);
         connect_ports(&dup.ports[0], &applicator.ports[1]);
         connect_ports(&dup.ports[1], output_port);
         connect_ports(&dup.ports[2], &applicator.ports[2]);
@@ -4455,9 +4513,9 @@ of_lambda_term(
             *const k = term->data.perform.k;
 
         const struct node perform = alloc_node(graph, SYMBOL_PERFORM);
-        of_lambda_term(graph, action, &perform.ports[0], lvl);
+        compile_lambda_term(graph, action, &perform.ports[0]);
         connect_ports(&perform.ports[1], output_port);
-        of_lambda_term(graph, k, &perform.ports[2], lvl);
+        compile_lambda_term(graph, k, &perform.ports[2]);
 
         break;
     }
@@ -4489,6 +4547,7 @@ free_lambda_term(struct lambda_term *const restrict term) {
         break;
     case LAMBDA_TERM_LAMBDA:
         free_lambda_term(term->data.lambda->body);
+        free(term->data.lambda->binder_ports);
         free(term->data.lambda);
         break;
     case LAMBDA_TERM_UNARY_CALL:
@@ -4624,7 +4683,8 @@ optiscope_algorithm(
 
     struct context *const graph = alloc_context();
 
-    of_lambda_term(graph, term, &graph->root.ports[0], 0);
+    prepare_lambda_term(term, 0);
+    compile_lambda_term(graph, term, &graph->root.ports[0]);
     free_lambda_term(term);
 
     // Phase #1: weak reduction.
