@@ -4061,10 +4061,8 @@ struct apply_data {
 
 struct lambda_data {
     struct lambda_term *body;
-    uint64_t nusages; // the number of times the lambda body refers to
-                      // its binder
-    struct lambda_term
-        *usage; // the pointer to one arbitrary usage of the lambda binder
+    uint64_t nusages;        // the number of times the lambda body refers to
+                             // its binder
     uint64_t **binder_ports; // the pointer to the next binder port; dynamically
                              // assigned
     uint64_t lvl;            // the de Bruijn level; dynamically assigned
@@ -4168,7 +4166,6 @@ var(const restrict LambdaTerm binder) {
     term->fv_count = 1;
 
     binder->data.lambda->nusages++;
-    binder->data.lambda->usage = term;
 
     return term;
 }
