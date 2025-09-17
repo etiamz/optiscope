@@ -1,7 +1,7 @@
 #include "../optiscope.h"
 
 static struct lambda_term *
-lamping_example(void) { // Originally Lévy's
+lamping_example(void) { // originally Lévy's
     struct lambda_term *g, *x, *h, *f, *z, *w, *y;
 
     return apply(
