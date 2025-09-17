@@ -1399,39 +1399,39 @@ scott_queen_aux(void) {
 
     // clang-format off
     return lambda(m, lambda(b, lambda(n, if_then_else(
-            binary_call(equals, var(m), cell(0)),
-            scott_nil(),
+        binary_call(equals, var(m), cell(0)),
+        scott_nil(),
+        if_then_else(
+            apply(apply(expand(scott_member), var(m)), var(b)),
+            QUEEN_AUX_CALL,
             if_then_else(
-                apply(apply(expand(scott_member), var(m)), var(b)),
+                apply(apply(apply(expand(scott_threat), cell(1)), var(m)), var(b)),
                 QUEEN_AUX_CALL,
                 if_then_else(
-                    apply(apply(apply(expand(scott_threat), cell(1)), var(m)), var(b)),
-                    QUEEN_AUX_CALL,
-                    if_then_else(
-                        binary_call(
-                            equals,
-                            apply(expand(scott_list_length), var(b)),
-                            unary_call(minus_one, var(n))),
+                    binary_call(
+                        equals,
+                        apply(expand(scott_list_length), var(b)),
+                        unary_call(minus_one, var(n))),
+                    apply(
                         apply(
+                            expand(scott_append),
                             apply(
-                                expand(scott_append),
                                 apply(
-                                    apply(
-                                        scott_cons(),
-                                        apply(apply(scott_cons(), var(m)), var(b))),
-                                    scott_nil())),
-                            QUEEN_AUX_CALL),
+                                    scott_cons(),
+                                    apply(apply(scott_cons(), var(m)), var(b))),
+                                scott_nil())),
+                        QUEEN_AUX_CALL),
+                    apply(
                         apply(
+                            expand(scott_append),
                             apply(
-                                expand(scott_append),
                                 apply(
+                                    apply(expand(scott_queen_aux), var(n)),
                                     apply(
-                                        apply(expand(scott_queen_aux), var(n)),
-                                        apply(
-                                            apply(scott_cons(), var(m)),
-                                            var(b))),
-                                    var(n))),
-                            QUEEN_AUX_CALL))))))));
+                                        apply(scott_cons(), var(m)),
+                                        var(b))),
+                                var(n))),
+                        QUEEN_AUX_CALL))))))));
     // clang-format on
 
 #undef QUEEN_AUX_CALL
@@ -1661,7 +1661,7 @@ tak_test(void) {
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
-lamping_example(void) { // Originally Lévy's
+lamping_example(void) { // originally Lévy's
     struct lambda_term *g, *x, *h, *f, *z, *w, *y;
 
     return apply(
