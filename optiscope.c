@@ -4310,7 +4310,6 @@ of_lambda_term(
     case LAMBDA_TERM_APPLY: {
         struct lambda_term *const rator = term->data.apply.rator, //
             *const rand = term->data.apply.rand;
-        XASSERT(rator), XASSERT(rand);
 
         const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
         of_lambda_term(graph, rator, &applicator.ports[0], lvl);
@@ -4384,19 +4383,14 @@ of_lambda_term(
         break;
     }
     case LAMBDA_TERM_CELL: {
-        const uint64_t value = term->data.cell;
-
         const struct node cell = alloc_node(graph, SYMBOL_CELL);
         connect_ports(&cell.ports[0], output_port);
-        cell.ports[1] = value;
-
+        cell.ports[1] = term->data.cell;
         break;
     }
     case LAMBDA_TERM_UNARY_CALL: {
         uint64_t (*const function)(uint64_t) = term->data.u_call.function;
         struct lambda_term *const rand = term->data.u_call.rand;
-        XASSERT(function);
-        XASSERT(rand);
 
         const struct node call = alloc_node(graph, SYMBOL_UNARY_CALL);
 
@@ -4415,8 +4409,6 @@ of_lambda_term(
             term->data.b_call.function;
         struct lambda_term *const lhs = term->data.b_call.lhs, //
             *const rhs = term->data.b_call.rhs;
-        XASSERT(function);
-        XASSERT(lhs), XASSERT(rhs);
 
         const struct node call = alloc_node(graph, SYMBOL_BINARY_CALL);
 
@@ -4435,8 +4427,6 @@ of_lambda_term(
         struct lambda_term *const condition = term->data.ite.condition, //
             *const if_then = term->data.ite.if_then,                    //
                 *const if_else = term->data.ite.if_else;
-        XASSERT(condition);
-        XASSERT(if_then), XASSERT(if_else);
 
         const struct node ite = alloc_node(graph, SYMBOL_IF_THEN_ELSE);
 
@@ -4449,7 +4439,6 @@ of_lambda_term(
     }
     case LAMBDA_TERM_FIX: {
         struct lambda_term *const f = term->data.fix.f;
-        XASSERT(f);
 
         const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(0));
         const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
@@ -4464,7 +4453,6 @@ of_lambda_term(
     case LAMBDA_TERM_PERFORM: {
         struct lambda_term *const action = term->data.perform.action, //
             *const k = term->data.perform.k;
-        XASSERT(action), XASSERT(k);
 
         const struct node perform = alloc_node(graph, SYMBOL_PERFORM);
         of_lambda_term(graph, action, &perform.ports[0], lvl);
@@ -4475,7 +4463,6 @@ of_lambda_term(
     }
     case LAMBDA_TERM_REFERENCE: {
         struct lambda_term *(*const function)(void) = term->data.ref.function;
-        XASSERT(function);
 
         const struct node ref = alloc_node(graph, SYMBOL_REFERENCE);
         connect_ports(&ref.ports[0], output_port);
