@@ -1109,6 +1109,81 @@ unfocus_or(
          (focus)->count > 0 ? (f = unfocus((focus)), true) : false;            \
          (void)0)
 
+// Expansion Cache Functionality
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+#ifndef OPTISCOPE_MAX_FUNCTIONS
+#define OPTISCOPE_MAX_FUNCTIONS 1024
+#endif
+
+struct expansion_entry {
+    struct lambda_term *(*function)(void);
+    struct lambda_term *expansion;
+};
+
+// Allocated using `xcalloc` to ensure that all entries are zeroed out.
+struct expansion_cache {
+    struct expansion_entry array[OPTISCOPE_MAX_FUNCTIONS];
+};
+
+#define alloc_expansion_cache() xcalloc(1, sizeof(struct expansion_cache))
+
+COMPILER_NONNULL(1) COMPILER_COLD //
+static void
+free_lambda_term(struct lambda_term *const restrict term);
+
+COMPILER_NONNULL(1) COMPILER_COLD //
+static void
+free_expansion_cache(struct expansion_cache *const restrict cache) {
+    MY_ASSERT(cache);
+
+    for (size_t i = 0; i < OPTISCOPE_MAX_FUNCTIONS; i++) {
+        if (cache->array[i].expansion) {
+            free_lambda_term(cache->array[i].expansion);
+        }
+    }
+
+    free(cache);
+}
+
+#define PANIC_EXPANSION_NO_MEMORY()                                            \
+    panic(                                                                     \
+        "No memory to store the expansion; consider increasing `%s`!",         \
+        STRINGIFY_PRIMITIVE(OPTISCOPE_MAX_FUNCTIONS))
+
+COMPILER_RETURNS_NONNULL COMPILER_NONNULL(1, 2) COMPILER_HOT //
+static struct lambda_term *
+lookup_expansion(
+    struct expansion_cache *const restrict cache,
+    struct lambda_term *(*const function)(void)) {
+    MY_ASSERT(cache);
+    MY_ASSERT(function);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+    const size_t idx = U64_OF_FUNCTION(function) % OPTISCOPE_MAX_FUNCTIONS;
+#pragma GCC diagnostic pop
+
+    size_t i = idx, limit = OPTISCOPE_MAX_FUNCTIONS;
+    while (i < limit) {
+        struct expansion_entry *const entry = &cache->array[i];
+
+        if (function == entry->function) {
+            return entry->expansion;
+        } else if (NULL == entry->function) {
+            entry->function = function;
+            entry->expansion = function();
+            return entry->expansion;
+        } else if (OPTISCOPE_MAX_FUNCTIONS - 1 == i) {
+            i = 0, limit = idx;
+        } else {
+            i++;
+        }
+    }
+
+    PANIC_EXPANSION_NO_MEMORY();
+}
+
 // Main Context Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -1130,6 +1205,9 @@ struct context {
 
     // Indicates whether the interface normal form has been reached.
     bool time_to_stop;
+
+    // The cache that stores already performed expansions.
+    struct expansion_cache *expansion_cache;
 
     // The multifocuses for the respective procedures.
     struct multifocus *gc_focus, *unshare_focus;
@@ -1179,6 +1257,7 @@ alloc_context(void) {
     graph->root = root;
     graph->phase = PHASE_REDUCE_WEAKLY;
     graph->time_to_stop = false;
+    graph->expansion_cache = alloc_expansion_cache();
 
 #define X(focus_name) graph->focus_name = NULL;
     CONTEXT_MULTIFOCUSES
@@ -1215,6 +1294,8 @@ free_context(struct context *const restrict graph) {
     XASSERT(graph->root.ports);
 
     free(graph->root.ports - 1 /* back to the symbol */);
+
+    free_expansion_cache(graph->expansion_cache);
 
 #define X(focus_name) free_focus(graph->focus_name);
     CONTEXT_MULTIFOCUSES
@@ -2819,7 +2900,8 @@ RULE_DEFINITION(do_expand, graph, f, g) {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-    struct lambda_term *const term = USER_FUNCTION_OF_U64(f.ports[1])();
+    struct lambda_term *const term = lookup_expansion(
+        graph->expansion_cache, USER_FUNCTION_OF_U64(f.ports[1]));
 #pragma GCC diagnostic pop
 
     of_lambda_term(graph, term, &g.ports[0], 0);
@@ -4276,7 +4358,7 @@ expand(struct lambda_term *(*const function)(void)) {
     return term;
 }
 
-// Conversion From Lambda Terms
+// Operations on Lambda Terms
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
@@ -4322,8 +4404,7 @@ of_lambda_term(
             const struct node lambda = alloc_node(graph, SYMBOL_IDENTITY_LAMBDA);
             // clang-format on
             connect_ports(&lambda.ports[0], output_port);
-            free(body);
-            goto done_with_lambda;
+            break;
         }
 
         if (0 == tlambda->nusages) {
@@ -4331,7 +4412,7 @@ of_lambda_term(
             const struct node lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
             of_lambda_term(graph, body, &lambda.ports[1], lvl + 1);
             connect_ports(&lambda.ports[0], output_port);
-            goto done_with_lambda;
+            break;
         }
 
         const uint64_t symbol =
@@ -4354,8 +4435,6 @@ of_lambda_term(
         of_lambda_term(graph, body, &lambda.ports[2], lvl + 1);
         free(dup_ports);
 
-    done_with_lambda:
-        free(tlambda);
         break;
     }
     case LAMBDA_TERM_VAR: {
@@ -4481,8 +4560,45 @@ of_lambda_term(
     }
     default: COMPILER_UNREACHABLE();
     }
+}
 
-    // This function takes ownership of the whole `term` object.
+COMPILER_NONNULL(1) COMPILER_COLD //
+static void
+free_lambda_term(struct lambda_term *const restrict term) {
+    MY_ASSERT(term);
+
+    switch (term->ty) {
+    case LAMBDA_TERM_APPLY:
+        free_lambda_term(term->data.apply.rator);
+        free_lambda_term(term->data.apply.rand);
+        break;
+    case LAMBDA_TERM_LAMBDA:
+        free_lambda_term(term->data.lambda->body);
+        free(term->data.lambda);
+        break;
+    case LAMBDA_TERM_UNARY_CALL:
+        free_lambda_term(term->data.u_call.rand);
+        break;
+    case LAMBDA_TERM_BINARY_CALL:
+        free_lambda_term(term->data.b_call.lhs);
+        free_lambda_term(term->data.b_call.rhs);
+        break;
+    case LAMBDA_TERM_IF_THEN_ELSE:
+        free_lambda_term(term->data.ite.condition);
+        free_lambda_term(term->data.ite.if_then);
+        free_lambda_term(term->data.ite.if_else);
+        break;
+    case LAMBDA_TERM_FIX: free_lambda_term(term->data.fix.f); break;
+    case LAMBDA_TERM_PERFORM:
+        free_lambda_term(term->data.perform.action);
+        free_lambda_term(term->data.perform.k);
+        break;
+    case LAMBDA_TERM_VAR:
+    case LAMBDA_TERM_CELL:
+    case LAMBDA_TERM_REFERENCE: break;
+    default: COMPILER_UNREACHABLE();
+    }
+
     free(term);
 }
 
@@ -4594,6 +4710,7 @@ optiscope_algorithm(
     struct context *const graph = alloc_context();
 
     of_lambda_term(graph, term, &graph->root.ports[0], 0);
+    free_lambda_term(term);
 
     // Phase #1: weak reduction.
     {

@@ -50,6 +50,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // - `OPTISCOPE_ENABLE_HUGE_PAGES`
 //   Use 2 MB huge pages for the memory pools (improves performance; requires
 //   Linux).
+// - `OPTISCOPE_MAX_FUNCTIONS`
+//   The maximum number of different functions for reference expansion caching.
+//   Defaulting to 1024.
 
 #if defined(OPTISCOPE_ENABLE_GRAPHVIZ) && defined(NDEBUG)
 #error `OPTISCOPE_ENABLE_GRAPHVIZ` is not compatible with `NDEBUG`!
