@@ -1209,8 +1209,8 @@ struct context {
     // The cache that stores already performed expansions.
     struct expansion_cache *expansion_cache;
 
-    // The multifocuses for the respective procedures.
-    struct multifocus *gc_focus, *unshare_focus;
+    // The multifocus for garbage collection purposes.
+    struct multifocus *gc_focus;
 
 #define X(focus_name) struct multifocus *focus_name;
     // The multifocuses for full reduction.
@@ -1276,7 +1276,6 @@ alloc_context(void) {
 #endif
 
     graph->gc_focus = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
-    graph->unshare_focus = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
     CLEAR_MEMORY(graph->current_pair);
@@ -1300,7 +1299,6 @@ free_context(struct context *const restrict graph) {
 #define X(focus_name) free_focus(graph->focus_name);
     CONTEXT_MULTIFOCUSES
     X(gc_focus)
-    X(unshare_focus)
 #undef X
 
     free(graph);
@@ -2345,65 +2343,6 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
     }
 }
 
-// Eager Atomic Unsharing
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-// Eliminates a (higher-order) sharing structure, thus reducing the graph size.
-COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) //
-static bool
-try_unshare(
-    struct context *const restrict graph,
-    uint64_t *const restrict port,
-    const struct node atom) {
-    debug("%s(%p, %s)", __func__, (void *)port, print_node(atom));
-
-    MY_ASSERT(graph);
-    MY_ASSERT(port);
-    XASSERT(atom.ports);
-    XASSERT(graph->unshare_focus);
-
-    if (!is_atomic_symbol(atom.ports[-1])) { return false; }
-
-    connect_ports(&atom.ports[0], port);
-
-    focus_on(graph->unshare_focus, atom);
-
-    CONSUME_MULTIFOCUS (graph->unshare_focus, f) {
-        XASSERT(f.ports);
-
-        const struct node g = follow_port(&f.ports[0]);
-        XASSERT(g.ports);
-
-        if (!is_interacting_with(f, g)) { continue; }
-
-        if (IS_DUPLICATOR(g.ports[-1])) {
-            const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
-
-            connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-            connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
-
-            focus_on(graph->unshare_focus, f),
-                focus_on(graph->unshare_focus, fx);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-            graph->ncommutations++;
-#endif
-            free_node(graph, g);
-        } else if (IS_DELIMITER(g.ports[-1])) {
-            connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-
-            focus_on(graph->unshare_focus, f);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-            graph->ncommutations++;
-#endif
-            free_node(graph, g);
-        }
-    }
-
-    return true;
-}
-
 // Core Interaction Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -2768,16 +2707,11 @@ RULE_DEFINITION(beta, graph, f, g) {
         (struct delimiter){
             .idx = 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2])},
         1);
-
-    uint64_t *const binder_port = DECODE_ADDRESS(g.ports[1]), //
-        *const rand_port = DECODE_ADDRESS(f.ports[2]);
-    const struct node rand = node_of_port(rand_port);
-    if (SYMBOL_LAMBDA_C == rand.ports[-1]) {
-        connect_ports(binder_port, rand_port);
-    } else if (!try_unshare(graph, binder_port, rand)) {
-        inst_delimiter(
-            graph, (struct delimiter){.idx = 0, rand_port, binder_port}, 1);
-    }
+    inst_delimiter(
+        graph,
+        (struct delimiter){
+            .idx = 0, DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[1])},
+        1);
 
     free_node(graph, f), free_node(graph, g);
 }
@@ -2795,13 +2729,7 @@ RULE_DEFINITION(beta_c, graph, f, g) {
 #endif
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
-
-    uint64_t *const binder_port = DECODE_ADDRESS(g.ports[1]), //
-        *const rand_port = DECODE_ADDRESS(f.ports[2]);
-    const struct node rand = node_of_port(rand_port);
-    if (!try_unshare(graph, binder_port, rand)) {
-        connect_ports(rand_port, binder_port);
-    }
+    connect_ports(DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[1]));
 
     free_node(graph, f), free_node(graph, g);
 }

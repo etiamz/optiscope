@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Reduction semantics: spawne delimiter barriers for more node types, not onely for applicators.
  - Benchmarking: execute Haskell & OCaml directly, without an interpreter.
 
+### Removed
+
+ - Reduction semantics: eager atomic unsharing for little performance gain.
+
 ## 0.13.0 - 2025-09-10
 
 ### Added
