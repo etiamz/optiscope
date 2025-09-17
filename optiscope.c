@@ -4410,7 +4410,7 @@ compile_lambda_term(
                 binder->nusages,
                 binder->binder_ports);
         }
-        uint64_t **ports = binder->binder_ports;
+        uint64_t **const ports = binder->binder_ports;
         compile_lambda_term(graph, body, &lambda.ports[2]);
         binder->binder_ports = ports;
 
