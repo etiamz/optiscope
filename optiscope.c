@@ -1386,6 +1386,7 @@ alloc_node_from(
     case SYMBOL_APPLICATOR:
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
+    case SYMBOL_PERFORM:
         ports = ALLOC_POOL_OBJECT(u64x4_pool), SET_PORTS_2();
         break;
     case SYMBOL_ERASER:
@@ -1396,7 +1397,9 @@ alloc_node_from(
     case SYMBOL_GC_LAMBDA:
         ports = ALLOC_POOL_OBJECT(u64x3_pool), SET_PORTS_1();
         break;
-        // clang-format on
+    case SYMBOL_IF_THEN_ELSE:
+        ports = ALLOC_POOL_OBJECT(u64x5_pool), SET_PORTS_3();
+        break;
     case SYMBOL_CELL:
         ports = ALLOC_POOL_OBJECT(u64x3_pool);
         if (prototype) { ports[1] = prototype->ports[1]; }
@@ -1418,12 +1421,6 @@ alloc_node_from(
             ports[2] = prototype->ports[2], ports[3] = prototype->ports[3];
         }
         SET_PORTS_1();
-        break;
-    case SYMBOL_IF_THEN_ELSE:
-        ports = ALLOC_POOL_OBJECT(u64x5_pool), SET_PORTS_3();
-        break;
-    case SYMBOL_PERFORM:
-        ports = ALLOC_POOL_OBJECT(u64x4_pool), SET_PORTS_2();
         break;
     case SYMBOL_REFERENCE:
         ports = ALLOC_POOL_OBJECT(u64x3_pool), SET_PORTS_0();
