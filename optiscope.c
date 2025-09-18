@@ -804,46 +804,16 @@ free_chunk(void *const memory) {
         COMPILER_POISON_MEMORY(freed, chunk_size);                             \
     }
 
-POOL_ALLOCATOR(applicator, sizeof(uint64_t) * 4)
-POOL_ALLOCATOR(lambda, sizeof(uint64_t) * 4)
-POOL_ALLOCATOR(eraser, sizeof(uint64_t) * 2)
-POOL_ALLOCATOR(scope, sizeof(uint64_t) * 3)
-POOL_ALLOCATOR(duplicator, sizeof(uint64_t) * 4)
-POOL_ALLOCATOR(delimiter, sizeof(uint64_t) * 4)
-POOL_ALLOCATOR(cell, sizeof(uint64_t) * 3)
-POOL_ALLOCATOR(unary_call, sizeof(uint64_t) * 4)
-POOL_ALLOCATOR(binary_call, sizeof(uint64_t) * 5)
-POOL_ALLOCATOR(binary_call_aux, sizeof(uint64_t) * 5)
-POOL_ALLOCATOR(if_then_else, sizeof(uint64_t) * 5)
-POOL_ALLOCATOR(perform, sizeof(uint64_t) * 4)
-POOL_ALLOCATOR(identity_lambda, sizeof(uint64_t) * 2)
-POOL_ALLOCATOR(gc_lambda, sizeof(uint64_t) * 3)
-POOL_ALLOCATOR(lambda_c, sizeof(uint64_t) * 4)
-POOL_ALLOCATOR(reference, sizeof(uint64_t) * 3)
-POOL_ALLOCATOR(barrier, sizeof(uint64_t) * 4)
+POOL_ALLOCATOR(u64x2, sizeof(uint64_t) * 2)
+POOL_ALLOCATOR(u64x3, sizeof(uint64_t) * 3)
+POOL_ALLOCATOR(u64x4, sizeof(uint64_t) * 4)
+POOL_ALLOCATOR(u64x5, sizeof(uint64_t) * 5)
 
 #define ALLOC_POOL_OBJECT(pool_name) pool_name##_alloc(pool_name)
 #define FREE_POOL_OBJECT(pool_name, object)                                    \
     pool_name##_free(pool_name, (object))
 
-#define POOLS                                                                  \
-    X(applicator_pool)                                                         \
-    X(lambda_pool)                                                             \
-    X(eraser_pool)                                                             \
-    X(scope_pool)                                                              \
-    X(duplicator_pool)                                                         \
-    X(delimiter_pool)                                                          \
-    X(cell_pool)                                                               \
-    X(unary_call_pool)                                                         \
-    X(binary_call_pool)                                                        \
-    X(binary_call_aux_pool)                                                    \
-    X(if_then_else_pool)                                                       \
-    X(perform_pool)                                                            \
-    X(identity_lambda_pool)                                                    \
-    X(gc_lambda_pool)                                                          \
-    X(lambda_c_pool)                                                           \
-    X(reference_pool)                                                          \
-    X(barrier_pool)
+#define POOLS X(u64x2_pool) X(u64x3_pool) X(u64x4_pool) X(u64x5_pool)
 
 #define X(pool_name) static struct pool_name *pool_name = NULL;
 POOLS
@@ -1414,66 +1384,58 @@ alloc_node_from(
 
     switch (symbol) {
     case SYMBOL_APPLICATOR:
-        ports = ALLOC_POOL_OBJECT(applicator_pool), SET_PORTS_2();
-        break;
     case SYMBOL_LAMBDA:
-        ports = ALLOC_POOL_OBJECT(lambda_pool), SET_PORTS_2();
+    case SYMBOL_LAMBDA_C:
+        ports = ALLOC_POOL_OBJECT(u64x4_pool), SET_PORTS_2();
         break;
     case SYMBOL_ERASER:
-        ports = ALLOC_POOL_OBJECT(eraser_pool), SET_PORTS_0();
+    case SYMBOL_IDENTITY_LAMBDA:
+        ports = ALLOC_POOL_OBJECT(u64x2_pool), SET_PORTS_0();
         break;
     case SYMBOL_S:
-        ports = ALLOC_POOL_OBJECT(scope_pool), SET_PORTS_1();
+    case SYMBOL_GC_LAMBDA:
+        ports = ALLOC_POOL_OBJECT(u64x3_pool), SET_PORTS_1();
         break;
         // clang-format on
     case SYMBOL_CELL:
-        ports = ALLOC_POOL_OBJECT(cell_pool);
+        ports = ALLOC_POOL_OBJECT(u64x3_pool);
         if (prototype) { ports[1] = prototype->ports[1]; }
         SET_PORTS_0();
         break;
     case SYMBOL_UNARY_CALL:
-        ports = ALLOC_POOL_OBJECT(unary_call_pool);
+        ports = ALLOC_POOL_OBJECT(u64x4_pool);
         if (prototype) { ports[2] = prototype->ports[2]; }
         SET_PORTS_1();
         break;
     case SYMBOL_BINARY_CALL:
-        ports = ALLOC_POOL_OBJECT(binary_call_pool);
+        ports = ALLOC_POOL_OBJECT(u64x5_pool);
         if (prototype) { ports[3] = prototype->ports[3]; }
         SET_PORTS_2();
         break;
     case SYMBOL_BINARY_CALL_AUX:
-        ports = ALLOC_POOL_OBJECT(binary_call_aux_pool);
+        ports = ALLOC_POOL_OBJECT(u64x5_pool);
         if (prototype) {
             ports[2] = prototype->ports[2], ports[3] = prototype->ports[3];
         }
         SET_PORTS_1();
         break;
     case SYMBOL_IF_THEN_ELSE:
-        ports = ALLOC_POOL_OBJECT(if_then_else_pool), SET_PORTS_3();
+        ports = ALLOC_POOL_OBJECT(u64x5_pool), SET_PORTS_3();
         break;
     case SYMBOL_PERFORM:
-        ports = ALLOC_POOL_OBJECT(perform_pool), SET_PORTS_2();
-        break;
-    case SYMBOL_IDENTITY_LAMBDA:
-        ports = ALLOC_POOL_OBJECT(identity_lambda_pool), SET_PORTS_0();
-        break;
-    case SYMBOL_GC_LAMBDA:
-        ports = ALLOC_POOL_OBJECT(gc_lambda_pool), SET_PORTS_1();
-        break;
-    case SYMBOL_LAMBDA_C:
-        ports = ALLOC_POOL_OBJECT(lambda_c_pool), SET_PORTS_2();
+        ports = ALLOC_POOL_OBJECT(u64x4_pool), SET_PORTS_2();
         break;
     case SYMBOL_REFERENCE:
-        ports = ALLOC_POOL_OBJECT(reference_pool), SET_PORTS_0();
+        ports = ALLOC_POOL_OBJECT(u64x3_pool), SET_PORTS_0();
         if (prototype) { ports[1] = prototype->ports[1]; }
         break;
     case SYMBOL_BARRIER:
-        ports = ALLOC_POOL_OBJECT(barrier_pool);
+        ports = ALLOC_POOL_OBJECT(u64x4_pool);
         if (prototype) { ports[2] = prototype->ports[2]; }
         SET_PORTS_1();
         break;
     duplicator:
-        ports = ALLOC_POOL_OBJECT(duplicator_pool), SET_PORTS_2();
+        ports = ALLOC_POOL_OBJECT(u64x4_pool), SET_PORTS_2();
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nduplicators++;
         if (graph->nmax_duplicators < graph->nduplicators) {
@@ -1482,7 +1444,7 @@ alloc_node_from(
 #endif
         break;
     delimiter:
-        ports = ALLOC_POOL_OBJECT(delimiter_pool);
+        ports = ALLOC_POOL_OBJECT(u64x4_pool);
         if (prototype) { ports[2] = prototype->ports[2]; }
         SET_PORTS_1();
 #ifdef OPTISCOPE_ENABLE_STATS
@@ -1555,37 +1517,33 @@ free_node(struct context *const restrict graph, const struct node node) {
 #endif
 
     switch (symbol) {
-    case SYMBOL_APPLICATOR: FREE_POOL_OBJECT(applicator_pool, p); break;
-    case SYMBOL_LAMBDA: FREE_POOL_OBJECT(lambda_pool, p); break;
-    case SYMBOL_ERASER: FREE_POOL_OBJECT(eraser_pool, p); break;
-    case SYMBOL_S: FREE_POOL_OBJECT(scope_pool, p); break;
-    case SYMBOL_CELL: FREE_POOL_OBJECT(cell_pool, p); break;
-    case SYMBOL_UNARY_CALL: FREE_POOL_OBJECT(unary_call_pool, p); break;
-    case SYMBOL_BINARY_CALL: FREE_POOL_OBJECT(binary_call_pool, p); break;
+    case SYMBOL_ERASER:
+    case SYMBOL_IDENTITY_LAMBDA: FREE_POOL_OBJECT(u64x2_pool, p); break;
+    case SYMBOL_S:
+    case SYMBOL_GC_LAMBDA:
+    case SYMBOL_CELL:
+    case SYMBOL_REFERENCE: FREE_POOL_OBJECT(u64x3_pool, p); break;
+    case SYMBOL_APPLICATOR:
+    case SYMBOL_LAMBDA:
+    case SYMBOL_LAMBDA_C:
+    case SYMBOL_UNARY_CALL:
+    case SYMBOL_PERFORM:
+    case SYMBOL_BARRIER: FREE_POOL_OBJECT(u64x4_pool, p); break;
+    case SYMBOL_BINARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
-        FREE_POOL_OBJECT(binary_call_aux_pool, p);
-        break;
-    case SYMBOL_IF_THEN_ELSE: FREE_POOL_OBJECT(if_then_else_pool, p); break;
-    case SYMBOL_PERFORM: FREE_POOL_OBJECT(perform_pool, p); break;
-    case SYMBOL_IDENTITY_LAMBDA:
-        FREE_POOL_OBJECT(identity_lambda_pool, p);
-        break;
-    case SYMBOL_GC_LAMBDA: FREE_POOL_OBJECT(gc_lambda_pool, p); break;
-    case SYMBOL_LAMBDA_C: FREE_POOL_OBJECT(lambda_c_pool, p); break;
-    case SYMBOL_REFERENCE: FREE_POOL_OBJECT(reference_pool, p); break;
-    case SYMBOL_BARRIER: FREE_POOL_OBJECT(barrier_pool, p); break;
+    case SYMBOL_IF_THEN_ELSE: FREE_POOL_OBJECT(u64x5_pool, p); break;
     default:
         if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
         else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
         else COMPILER_UNREACHABLE();
     duplicator:
-        FREE_POOL_OBJECT(duplicator_pool, p);
+        FREE_POOL_OBJECT(u64x4_pool, p);
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nduplicators--;
 #endif
         break;
     delimiter:
-        FREE_POOL_OBJECT(delimiter_pool, p);
+        FREE_POOL_OBJECT(u64x4_pool, p);
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ndelimiters--;
 #endif

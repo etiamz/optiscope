@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Memory management: instead of many type-specific pools, use size-specific pools.
+
 ## 0.14.0 - 2025-09-17
 
 ### Added
