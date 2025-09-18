@@ -1621,6 +1621,35 @@ inst_delimiter(
     }
 }
 
+COMPILER_NONNULL(1) COMPILER_COLD //
+static void
+inst_delimiter_chain(
+    struct context *const restrict graph,
+    const struct delimiter template,
+    const uint64_t count) {
+    MY_ASSERT(graph);
+    assert_delimiter_template(template);
+
+    if (0 == count) {
+        connect_ports(template.points_to, template.goes_from);
+        return;
+    }
+
+    struct node current = alloc_node(graph, SYMBOL_DELIMITER(template.idx));
+    current.ports[2] = 1;
+    uint64_t *const result = &current.ports[1];
+    for (uint64_t i = 1; i < count; i++) {
+        const struct node delim =
+            alloc_node(graph, SYMBOL_DELIMITER(template.idx));
+        delim.ports[2] = 1;
+        connect_ports(&current.ports[0], &delim.ports[1]);
+        current = delim;
+    }
+
+    connect_ports(&current.ports[0], template.points_to);
+    connect_ports(result, template.goes_from);
+}
+
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 try_merge_delimiter(struct context *const restrict graph, const struct node f) {
@@ -1665,35 +1694,6 @@ try_merge_if_delimiter(
     MY_ASSERT(PHASE_REDUCE_WEAKLY == graph->phase);
 
     if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(graph, f); }
-}
-
-COMPILER_NONNULL(1) COMPILER_COLD //
-static void
-inst_delimiter_chain(
-    struct context *const restrict graph,
-    const struct delimiter template,
-    const uint64_t count) {
-    MY_ASSERT(graph);
-    assert_delimiter_template(template);
-
-    if (0 == count) {
-        connect_ports(template.points_to, template.goes_from);
-        return;
-    }
-
-    struct node current = alloc_node(graph, SYMBOL_DELIMITER(template.idx));
-    current.ports[2] = 1;
-    uint64_t *const result = &current.ports[1];
-    for (uint64_t i = 1; i < count; i++) {
-        const struct node delim =
-            alloc_node(graph, SYMBOL_DELIMITER(template.idx));
-        delim.ports[2] = 1;
-        connect_ports(&current.ports[0], &delim.ports[1]);
-        current = delim;
-    }
-
-    connect_ports(&current.ports[0], template.points_to);
-    connect_ports(result, template.goes_from);
 }
 
 // Immediate Duplication
