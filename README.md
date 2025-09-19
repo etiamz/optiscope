@@ -233,7 +233,7 @@ benchmarkTerm;;
 
 Then I typed `#load "scott-insertion-sort.bohm";;` and... it hanged my computer.
 
-For 150 elements, it executed almost instantly, but it was still of no rival to Haskell & OCaml.
+For a couple of hundred elements, it executed almost instantly, but it was still of no rival to Haskell & OCaml.
 
 Also read the following excerpt from [^optimal-implementation], section 12.4:
 
