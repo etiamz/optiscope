@@ -4014,7 +4014,7 @@ free_lambda_term(struct lambda_term *const restrict term) {
     free(term);
 }
 
-// Self-Interpretation
+// Metacircular Interpretation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
