@@ -32,130 +32,7 @@ The shell commands are outlined in the following table:
 | `./command/graphviz-all.sh` | Visualize all the `.dot` files in `target/`. |
 | `./command/bench.sh` | Execute all the benchmarks in `benchmarks/`. |
 
-## Optimal evaluation
-
-_Optimal evaluation_ (in Lévy's sense [^levy-thesis] [^levy-optimal-reductions]) is a technique of reducing lambda terms to their normal forms, in practice done through so-called _interaction nets_, which are graphs of special symbols & unconditionally local rewriting rules. To reduce a lambda term, an optimal evaluator (1) translates the term to an interaction net, (2) applies a number of interactions (rewritings) in an implementation-defined order, & (3) when no more rules can be applied, translates the resulting net back to the syntactical universe of the lambda calculus. Unlike other evaluation techniques, it performes no copying whatsoever, thereby achieving _maximal sharing_ of redexes.
-
-Consider [`examples/2-power-2.c`], an encoding of the Church numeral 2^2 from the Lambdascope paper:
-
-[`examples/2-power-2.c`]: examples/2-power-2.c
-
-```c
-#include "../optiscope.h"
-
-static struct lambda_term *
-church_two(void) {
-    struct lambda_term *f, *x;
-
-    return lambda(f, lambda(x, apply(var(f), apply(var(f), var(x)))));
-}
-
-static struct lambda_term *
-church_two_two(void) {
-    return apply(church_two(), church_two());
-}
-
-int
-main(void) {
-    optiscope_open_pools();
-    optiscope_algorithm(stdout, church_two_two());
-    puts("");
-    optiscope_close_pools();
-}
-```
-
-By typing `./command/example 2-power-2` from the root directory, we can see the output:
-
-```
-$ ./command/example.sh 2-power-2
-(λ (λ (1 (1 (1 (1 0))))))
-```
-
-The whole term evaluates to the Church numeral 4, as expected.
-
-In Optiscope, it is possible to observe _all the interaction steps_ involved in computing the finall result. In order to draw an SVG file after each interaction, insert the following lines into `optiscope.h`:
-
-```c
-#define OPTISCOPE_ENABLE_TRACING
-#define OPTISCOPE_ENABLE_STEP_BY_STEP
-#define OPTISCOPE_ENABLE_GRAPHVIZ
-```
-
-The visualization will then be as follows:
-
-<div align="center">
-  <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/2-power-2-animation.gif">
-    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/2-power-2-preview.png" width="480px" alt="Church 2^2 reduction" />
-  </a>
-</div>
-
-(All interacting nodes are displayed in green; the current interaction is displayed in red.)
-
-Each edge has its own symbol: one of `@`, `λ`, `◉`, `▽/i`, `⌒/i`, or `S` (which appears later during read-back), where `i` is an unsigned "index" that can change during interaction. The first two symbols, `@` & `λ`, have the expected meaning; the other symbols are used for erasure, duplication, & bookkeeping work. Among those, the most important one is `▽/i`, which shares a single piece of a graph between two other edges. Sharing edges can be nested arbitrarily deep, allowing for sharing of an arbitrary number of redexes.
-
-For an evaluator to be optimal, it must satisfie the following properties:
- 1. The normal form, if it exists, is alwaies reached.
- 2. The normal form, if it exists, is reached in a _minimum number of beta reductions_.
- 3. Redexes of the same origin are shared & reduced in a single step.
- 4. No unneeded redexes are ever reduced.
-
-Optiscope operates in **five discrete phases**: (1) weak reduction, (2) full reduction, (3) unwinding, (4) scope removal, & (5) loop cutting. The first two phases performe interaction net reduction; the latter phases read back the reduced net into a net that can be directly interpreted as a lambda calculus expression. Weak reduction achieves true Lévy-optimality by reducing onely _needed_ redexes (i.e., neither duplicating work nor touching redexes whose result will be discarded); the latter phases are to be understood as "extensions" that are not formally Lévy-optimal. In particular, although full reduction is guaranteed to reach beta normal forms, it is allowed to fire redexes whose result will be eventually discarded by subsequent computation. This choice is made of practical concerns, since implementing full Lévy-optimal reduction is neither easy, nor necessary; all functional machines in practice are weak anywaies.
-
-Mathematically, our implementation follows the Lambdascope formalisme [^lambdascope], which is currently the simplest approach to optimality, involving onely six types of nodes & three rule schemes. As here we make no attempt at giving optimality a formal treatment, an interested reader is invited to read the paper for more details & aske any related questions in the issues.
-
-## Lamping's example
-
-The following example from [`examples/lamping-example.c`] evaluates to the identity lambda under weak reduction:
-
-[`examples/lamping-example.c`]: examples/lamping-example.c
-
-```c
-#include "../optiscope.h"
-
-static struct lambda_term *
-lamping_example(void) {
-    struct lambda_term *g, *x, *h, *f, *z, *w, *y;
-
-    return apply(
-        lambda(g, apply(var(g), apply(var(g), lambda(x, var(x))))),
-        lambda(
-            h,
-            apply(
-                lambda(f, apply(var(f), apply(var(f), lambda(z, var(z))))),
-                lambda(w, apply(var(h), apply(var(w), lambda(y, var(y))))))));
-}
-
-int
-main(void) {
-    optiscope_open_pools();
-    optiscope_algorithm(stdout, lamping_example());
-    puts("");
-    optiscope_close_pools();
-}
-```
-
-which is the exact Optiscope encoding of the example discussed by Lamping in [^lamping].
-
-By typing `./command/example lamping-example` from the root directory, we can see the output:
-
-```
-$ ./command/example.sh lamping-example
-(λ 0)
-```
-
-The visualization will then be as follows:
-
-<div align="center">
-  <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-animation.gif">
-    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-preview.png" width="700px" alt="Lamping example" />
-  </a>
-</div>
-
-[implementation details]: #implementation-details
-
 ## Side-effectfull evaluation
-
-In this section, we demonstrate how to achieve side effects & manual resource management in the interaction net framework.
 
 Consider this program from [`examples/palindrome.c`](examples/palindrome.c):
 
@@ -255,8 +132,6 @@ Enter your palindrome or type 'quit':
 quit
 ```
 
-Without monads or effect handlers, we have just done some input/output interspersed with pure lazy computation!
-
 Let us see how this example works step-by-step:
  1. We enclose the whole program in `fix`, which is our built-in fixed-point combinator. The `rec` parameter stands for the current lambda function to be invoked recursively.
  1. Next, we accept the parameter `token`, which stands for an _effect token_. Its purpose will be clear later.
@@ -266,7 +141,7 @@ Let us see how this example works step-by-step:
  1. If the input string is not `"quit"`, we force the evaluation of `is_palindrome` with its both (side-effectfull) branches.
  1. We finally force `my_free` to ensure no memory leaks occur, & proceed with a recursive call.
 
-From the optimality section, it follows that optimal evaluation shares all explicit & virtual redexes, if they are constructed "in the same way". This is the exact reason why we need to passe the `token` parameter to every side-effectfull function: we trick Optiscope to make it think that, given that the side-effecting redexes are constructed differently, it must repeatedly re-evaluate them each time it focuses on them; otherwise, it would just "cache" their results, once they are executed for the first time. Since the reduction strategy is fixed, it is safe to rely on Optiscope performing side effects in the exact order we wrote them.
+The crux of optimal reduction is that it shares all explicit & virtual redexes, if they are constructed "in the same way". This is the exact reason why we need to passe the `token` parameter to every side-effectfull function: we trick Optiscope to make it think that, given that the side-effecting redexes are constructed differently, it must repeatedly re-evaluate them each time it focuses on them; otherwise, it would just "cache" their results, once they are executed for the first time. Since the reduction strategy is fixed, it is safe to rely on Optiscope performing side effects in the exact order we wrote them.
 
 Finally, notice that `my_strcmp` & `is_palindrome` are both pure functions used as mere program subroutines. In fact, we use pure native functions quite extensively in [`tests.c`](tests.c), which allowed us to test Optiscope on a variety of classical algorithms, such as functional quicksort & the Ackermann function. Naturally, this opens another path for investigation: what if we **delegate CPU-bound computation to native functions** & aske the optimal machine to **efficiently share those computations**?
 
@@ -406,26 +281,21 @@ Now, there are two possible avenues to mitigate the performance issue. The first
 
  - **Symbol layout.** The difficulty of representing node symbols is that they may or may not have indices. Therefore, we employ the following scheme: `0` is the root symbol, `1` is an applicator, `2` is a lambda, `3` is an eraser, `4` is a scope (which appears onely during read-back), & so on until value `15`, inclusively; now the next `9223372036854775800` values are occupied by duplicators, & the same number of values is then occupied by delimiters. Together, all symbols occupy the full range of `uint64_t`; the indices of duplicator & delimiter symbols can be determined by proper subtraction.
 
- - **Port layout.** Modern x86-64 CPUs utilize the 48-bit addresse space, leaving 16 highermost bits unused (i.e., sign-extended). We therefore utilize the highermost 2 bits for the port offset (relative to the principal port), & then 4 bits for the algorithm phase, which can be `PHASE_REDUCE_WEAKLY`, `PHASE_REDUCE_FULLY`, `PHASE_UNWIND`, `PHASE_SCOPE_REMOVE`, `PHASE_LOOP_CUT`, `PHASE_STACK`, `PHASE_GC`, & etc. The following bits constitute a (sign-extended) addresse of the port to which the current port is connected to. This layout is particularly space- & time-efficient: given any port addresse, we can retrieve the principal port & from there goe to any neighbouring node in constant time; with mutable phases, we avoid the need for history lookups during graph traversals. (The phase value is onely encoded in the principal port; all consequent ports have their phases zeroed out.) The onely drawback of this approach is that ports need to be encoded when being assigned & decoded upon use.
+ - **Port layout.** Modern x86-64 CPUs utilize the 48-bit addresse space, leaving 16 highermost bits unused (i.e., sign-extended). We therefore utilize the highermost 2 bits for the port offset (relative to the principal port), & then 4 bits for the node phase, which can be `PHASE_REDUCTION`, `PHASE_GC`, `PHASE_GC_AUX`, or `PHASE_STACK`. The following bits constitute a (sign-extended) addresse of the port to which the current port is connected to. This layout is particularly space- & time-efficient: given any port addresse, we can retrieve the principal port & from there goe to any neighbouring node in constant time; with mutable phases, we avoid the need for additional data structures. (The phase value is onely encoded in the principal port; all consequent ports have their phases zeroed out.) The onely drawback of this approach is that ports need to be encoded when being assigned & decoded upon use.
 
  - **O(1) memory management.** We have implemented a custom [pool allocator] that has constant-time asymptotics for allocation & deallocation. For each node size, we have a separate global pool instance to avoid memory fragmentation. On Linux, these pools allocate 2MB huge pages that lessen frequent TLB misses, to account for cases when many nodes are to be manipulated; if either huge pages are not supported or Optiscope is running on a non-Linux system, we default to `malloc`.
 
 [pool allocator]: https://en.wikipedia.org/wiki/Memory_pool
 
- - **Weak reduction.** In real situations, the result of pure lazy computation is expected to be either a constant value or a top-level constructor. Even when one seeks reduction under binders & other constructors, one usually also wants [controlling definition unfoldings] or reusing already performed unfoldings [^taming-supercompilation] to keep resulting terms manageable. We therefore adopt BOHM-style _weak reduction_ [^bohm] as the initiall, most important phase of our algorithm. Weak reduction repeatedly reduces the _leftmost outermost_ interaction until a constructor node (i.e., either a lambda abstraction or cell value) is connected to the root, reaching an interface normal form. This phase directly implements Lévy-optimal reduction by performing onely needed work, i.e., avoiding to work on an interaction whose result will be discarded later.<br>(A shocking side note: per section "5.6 Optimal derivations" of [^optimal-implementation], a truely optimal machine must necessarily be sequential, because otherwise, the machine risks at working on unneeded interactions!)
+ - **Weak reduction.** In real situations, the result of pure lazy computation is expected to be either a constant value or a top-level constructor. Even when one seeks reduction under binders & other constructors, one usually also wants [controlling definition unfoldings] or reusing already performed unfoldings [^taming-supercompilation] to keep resulting terms manageable. We therefore adopt BOHM-style _weak reduction_ [^bohm] as the onely phase of our algorithm. Weak reduction repeatedly reduces the _leftmost outermost_ interaction until a constructor node (i.e., either a lambda abstraction or cell value) is connected to the root, reaching an interface normal form. This phase directly implements Lévy-optimal reduction by performing onely needed work, i.e., avoiding to work on an interaction whose result will be discarded later.<br>(A shocking side note: per section "5.6 Optimal derivations" of [^optimal-implementation], a truely optimal machine must necessarily be sequential, because otherwise, the machine risks at working on unneeded interactions!)
 
 [controlling definition unfoldings]: https://andraskovacs.github.io/pdfs/wits24prez.pdf
 
  - **Garbage collection.** Specific types of interactions may cause whole subgraphs to be fully or partially disconnected from the root, such as when a lambda application rejects its operand or when an if-then-else node selects the correct branch, rejecting the other one. In order to battle memory leaks during weak reduction, we implement _eraser-passing garbage collection_ described as follows. When our algorithm determines that the most recent interaction has rejected one of its connections, our garbage collector commences incremental propagation of erasers by connecting a newly spawned eraser to the rejected port; iteratively, garbage collection at a specific port necessarily results in either freeing the node in question & continuing the propagation to its immediate neighbours _or_ leaving the eraser connection untouched, when the former operation cannot be carried out safely. (However, we doe also eliminate some uselesse duplicator-eraser combinations as discussed in the paper, which has a slightly different semantics.)<br>Our rules are inspired by Lamping's algorithm [^lamping] / BOHM [^bohm]: although perfectly local, constant-time graph operations, they doe not count as interaction rules, since garbage collection can easily happen at any port, including non-principal ones.
-   - We onely execute garbage collection during weak reduction. For the later algorithmic phases, garbage collection does not provide considerable benefit with our current implementation.
-
- - **Multifocusing.** We have implemented a special dynamic array (the _"multifocus"_) in which we record active nodes, i.e., nodes ready to participate in an interaction. We maintaine a number of multifocuses for each interaction type, which together comprise the global "context" of x-rules normalization. During full reduction & read-back, we implement normalization as follows: (1) we traverse the whole graph to populate the aforementioned set of multifocuses with active nodes; (2) if we have found none, terminate the algorithm; (3) otherwise, we iteratively fire interactions in these multifocuses until their exhaustion; (4) returne back to step (1).
-   - We may also use multifocuses for other purposes, because they naturally behave like a stack. Currently, we use one multifocus for garbage collection, one for eager unsharing, & another one for the weak reduction stack.
 
  - **Special lambdas.** We divide lambda abstractions into four distinct categories: (1) `SYMBOL_GC_LAMBDA`, lambdas with no parameter usage, called _garbage-collecting lambdas_; (2) `SYMBOL_LAMBDA`, lambdas with at least one parameter usage, called _relevant lambdas_; (3) `SYMBOL_LAMBDA_C`, relevant lambdas without free variables; & finally (4) `SYMBOL_IDENTITY_LAMBDA`, identity lambdas. Although onely one category is sufficient to expresse all of computation, we employ this distinction for optimization purposes: if we know the lambda category at run-time, we can implement the reduction more efficiently. For instance, instantiating an identity lambda boils down to simply connecting the argument to the root port, without spawning more delimiters; likewise, commutation of a delimiter node with `SYMBOL_LAMBDA_C` boils down to simply removing the delimiter, as suggested in section 8.1 of the paper.
 
  - **Delimiter compression.** When the machine detects a sequence of chained delimiters of the same index, it compresses the sequence into a single delimiter node endowed with the number of compressed nodes; afterwards, this new node behaves just as the whole sequence of delimiters would, thereby requiring significantly lesse interactions. The machine performes this operation both statically & dynamically: statically during the translation of the input lambda term, dynamically during delimiter commutations. In the latter case, i.e., when the current delimiter commutes with another node of arbitrary type, the machine performes the commutaion & checks whether the commuted delimiter(s) can be merged with adjacent delimiters, if any. With this optimization, the oracle becomes dozens of times faster on some benchmarks & uncomparably faster on others (e.g., `benchmarks/scott-quicksort.c`).
-   - For simplicity, delimiter compression is performed onely during weak reduction. Once weak reduction is complete, we explicitly traverse the graph to unfold all delimiters into sequences.
    - C.f. [_run-length encoding_](https://en.wikipedia.org/wiki/Run-length_encoding).
 
  - **Barriers.** It is now natural to prioritize delimiter compression, so that more delimiters get compressed. One way to accomplish this is to "freeze" certain interactions of delimiters with applicators: roughly, instead of repeatedly propagating uncompressed delimiters to the root, we can first compresse as many delimiters as we can, & onely then propagate this single compressed delimiter to the root. In order to realize this scheme, we employ so-called downwards-pointing _barriers_, which appear dynamically whenever a delimiter meets an applicator. In the graph, this situation is depicted as "🚧 _n_", where _n_ is the number of collected zero-indexed delimiters. Initially, _n_ is one, but when the barrier meets another zero-indexed delimiter, _n_ is incremented. Contrariwise, when the barrier meets some other node, it is transformed into an upwards-pointing delimiter that commutes with its applicator. According to our benchmarks, this kind of prioritization can reduce the total number of graph rewrites by almost a half.
@@ -434,44 +304,20 @@ Now, there are two possible avenues to mitigate the performance issue. The first
 
  - **References.** Following HVM's terminology, a _reference_ is a special node that lazily expands to a lambda term, which is then translated to a corresponding net in a single interaction. Strictly speaking, references doe not contribute to the expressivenesse of the system, but they tend to be farre more efficient than our (optimal!) fixed-point operator. In addition to improved efficiency, references naturally support mutual recursion, because every Optiscope reference corresponds to a C function taking zero parameters & returning a lambda term. In the benchmarks, we prefer to implement recursion on the basis of references.
 
- - **Graphviz intergration.** Debugging interaction nets is a particularly painfull exercise. Isolated interactions make very little sense, yet, the cumulative effect is somehow analogous to conventional reduction. To simplifie the challenge a bit, we have integrated [Graphviz] (in debug mode onely) to display the whole graph between consecutive algorithmic phases, & also before each interaction, if requested. Alongside each node, our visualization also displays an ASCII table of port addresses, which has proven to be extremely helpfull in debugging various memory management issues in the past. (Previously, in addition to visualizing the graph itself, we used to have the option to display blue-coloured "clusters" of nodes that originated from the same interaction (either commutation or Beta); however, it was viable onely for small graphs, & onely as long as computation did not goe too farre.)
+ - **Graphviz intergration.** Debugging interaction nets is a particularly painfull exercise. Isolated interactions make very little sense, yet, the cumulative effect is somehow analogous to conventional reduction. To simplifie the challenge a bit, we have integrated [Graphviz] (in debug mode onely) to display the whole graph between consecutive interaction steps, if requested at compile-time in `optiscope.h`. Alongside each node, our visualization also displays an ASCII table of port addresses, which has proven to be extremely helpfull in debugging various memory management issues in the past. (Previously, in addition to visualizing the graph itself, we used to have the option to display blue-coloured "clusters" of nodes that originated from the same interaction (either commutation or Beta); however, it was viable onely for small graphs, & onely as long as computation did not goe too farre.)
 
 [Graphviz]: https://graphviz.org/
 
 ## Limitations
 
- - Despite that interaction nets allow for a _huge_ amount of parallelisme, Optiscope is an unpretentiously sequential reducer. We doe not plan to make it parallel, perhaps except for (unordered) full reduction.
- - `perform` calls can onely be executed during weak reduction, inasmuch as the later phases doe not guarantee the order of reduction. In case a `perform` call is detected after weak reduction is complete, a panic message will be emitted.
+ - Despite that interaction nets allow for a _huge_ amount of parallelisme, Optiscope is an unpretentiously sequential reducer. We doe not plan to make it parallel, because it is unclear how to preserve Lévy-optimality in this case.
  - We doe not guarantee what will happen with ill-formed terms, such as when an if-then-else expression accepts a lambda as a condition. In general, we simply decide to commute such agents, but the overall result can be hard to predict.
  - Optiscope cannot detect when two syntactically idential configurations occur at run-time; that is, the avoidance of redex duplication is relative to the initiall term, not to the computational pattern exhibited by the term.
  - On conventional problems, Optiscope is in fact many times slower than traditional implementations, wherefore it is more of an interesting experiment rather than a production-ready technology.
 
 ## Acknowledgements
 
-Thanks to Marvin Borner ([@marvinborner]) for usefull discussions about optimality & side effectfull computation, as well as revealing a crucial memory management bug when activating both active scopes.
-
-[@marvinborner]: https://github.com/marvinborner
-
-## Relevant research
-
- - Asperti, Andrea, Cecilia Giovannetti, and Andrea Naletto. "The Bologna optimal higher-order machine." Journal of Functional Programming 6.6 (1996): 763-810.
- - Lafont, Yves. "Interaction combinators." information and computation 137.1 (1997): 69-101.
- - Mackie, Ian. "YALE: Yet another lambda evaluator based on interaction nets." Proceedings of the third ACM SIGPLAN international conference on Functional programming. 1998.
- - Pedicini, Marco, and Francesco Quaglia. "A parallel implementation for optimal lambda-calculus reduction." Proceedings of the 2nd ACM SIGPLAN international conference on Principles and practice of declarative programming. 2000.
- - Pinto, Jorge Sousa. "Weak reduction and garbage collection in interaction nets." Electronic Notes in Theoretical Computer Science 86.4 (2003): 625-640.
- - Mackie, Ian. "Efficient λ-evaluation with interaction nets." International Conference on Rewriting Techniques and Applications. Berlin, Heidelberg: Springer Berlin Heidelberg, 2004.
- - Mackie, Ian. "Encoding strategies in the lambda calculus with interaction nets." Symposium on Implementation and Application of Functional Languages. Berlin, Heidelberg: Springer Berlin Heidelberg, 2005.
- - van Oostrom, Vincent. "Explicit substitution for graphs." Nieuwsbrief van de Nederlandse Vereniging voor Theoretische Informatica 9 (2005): 34-39.
- - Hassan, Abubakar, Ian Mackie, and Shinya Sato. "Compilation of interaction nets." Electronic Notes in Theoretical Computer Science 253.4 (2009): 73-90.
- - Hassan, Abubakar, Ian Mackie, and Shinya Sato. "An implementation model for interaction nets." arXiv preprint arXiv:1505.07164 (2015).
-
-For readers unfamiliar with interaction nets, we recommend the originall Lafont's paper:
- - Lafont, Yves. "Interaction nets." Proceedings of the 17th ACM SIGPLAN-SIGACT symposium on Principles of programming languages. 1989.
-
-A more comprehensive collection of interaction net research can be found in [@marvinborner]'s [`interaction-net-resources`].
-
-[@marvinborner]: https://github.com/marvinborner
-[`interaction-net-resources`]: https://github.com/marvinborner/interaction-net-resources
+Thanks to Marvin Borner, Marc Thatcher, & Vincent van Oostrom for interesting discussions about optimality & side effectfull computation.
 
 ## Bounty policy
 
@@ -492,10 +338,6 @@ Semantic bugs related to extra functionality like native function calls & if-the
 [^lambdascope]: van Oostrom, Vincent, Kees-Jan van de Looij, and Marijn Zwitserlood. "Lambdascope: another optimal implementation of the lambda-calculus." Workshop on Algebra and Logic on Programming Systems (ALPS). 2004.
 
 [^optimal-implementation]: Asperti, Andrea, and Stefano Guerrini. The optimal implementation of functional programming languages. Vol. 45. Cambridge University Press, 1998.
-
-[^levy-thesis]: Lévy, Jean-Jacques. Réductions correctes et optimales dans le lambda-calcul. Diss. Éditeur inconnu, 1978.
-
-[^levy-optimal-reductions]: Lévy, J-J. "Optimal reductions in the lambda calculus." To HB Curry: Essays on Combinatory Logic, Lambda Coalculus and Formalism (1980): 159-191.
 
 [^stg-machine]: Jones, Simon L. Peyton. "Implementing lazy functional languages on stock hardware: the Spineless Tagless G-machine Version 2.5." (1993).
 

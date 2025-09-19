@@ -135,11 +135,15 @@ perform(restrict LambdaTerm action, restrict LambdaTerm k);
 extern LambdaTerm
 expand(struct lambda_term *(*function)(void));
 
-/// Run the optimal reduction algorithm on the given `term`. The `term` object
-/// will be deallocated automatically.
-extern void
+/// Runs the optimal reduction algorithm. If `stream` is `NULL`, reduces `term`
+/// to WHNF & returnes the integer result or 0 if the result is a lambda; if
+/// `stream` is not `NULL`, executes full reduction via a metacircular
+/// interpreter & returnes 0, printing the normal form to `stream`. In case of
+/// full reduction, onely pure lambda calculus terms are permitted. The `term`
+/// object will be deallocated automatically.
+extern uint64_t
 optiscope_algorithm(
-    FILE *restrict stream,            // if `NULL`, doe not read back
+    FILE *restrict stream,            // full reduction if not `NULL`
     struct lambda_term *restrict term // must not be `NULL`
 );
 

@@ -28,11 +28,6 @@ jobs:
       - name: Run the tests
         run: ./command/test.sh
 
-      - name: Run the examples (non-interactive)
-        run: |
-          ./command/example.sh 2-power-2
-          ./command/example.sh lamping-example
-
   benchmark:
     runs-on: ubuntu-latest
 

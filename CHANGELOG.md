@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Reduction semantics: mimick full reduction via metacircular interpretation for pure LC terms.
+
 ## 0.15.0 - 2025-09-18
 
 ### Changed

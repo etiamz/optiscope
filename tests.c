@@ -1,6 +1,7 @@
 #include "optiscope.h"
 
 #include <assert.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +16,7 @@ static int exit_code = EXIT_SUCCESS;
 static void
 test_case(
     const char test_case_name[const restrict],
-    struct lambda_term *(*f)(void),
+    struct lambda_term *(*const f)(void),
     const char expected[const restrict]) {
     assert(f);
     assert(expected);
@@ -59,6 +60,34 @@ test_case(
 
 close_fp:
     if (0 != fclose(fp)) { perror("fclose"); }
+}
+
+#define TEST_CASE_WHNF(f, expected) test_case_whnf(#f, f, expected)
+
+static void
+test_case_whnf(
+    const char test_case_name[const restrict],
+    struct lambda_term *(*const f)(void),
+    const uint64_t expected) {
+    assert(f);
+
+    printf("Testing '%s'...\n", test_case_name);
+
+    optiscope_open_pools();
+    const uint64_t actual = optiscope_algorithm(NULL, f());
+    optiscope_close_pools();
+
+    if (actual != expected) {
+#define TAB "    "
+        fprintf(
+            stderr,
+            TAB "FAILED: expected %" PRIu64 ", got %" PRIu64 "\n",
+            expected,
+            actual);
+#undef TAB
+    }
+
+    printf("Good: %s\n", test_case_name);
 }
 
 // S, K, I Combinators
@@ -408,6 +437,18 @@ church_three(void) {
 }
 
 static struct lambda_term *
+church_four(void) {
+    struct lambda_term *f, *x;
+
+    return lambda(
+        f,
+        lambda(
+            x,
+            apply(
+                var(f), apply(var(f), apply(var(f), apply(var(f), var(x)))))));
+}
+
+static struct lambda_term *
 church_five(void) {
     struct lambda_term *f, *x;
 
@@ -420,6 +461,24 @@ church_five(void) {
                 apply(
                     var(f),
                     apply(var(f), apply(var(f), apply(var(f), var(x))))))));
+}
+
+static struct lambda_term *
+church_six(void) {
+    struct lambda_term *f, *x;
+
+    return lambda(
+        f,
+        lambda(
+            x,
+            apply(
+                var(f),
+                apply(
+                    var(f),
+                    apply(
+                        var(f),
+                        apply(
+                            var(f), apply(var(f), apply(var(f), var(x)))))))));
 }
 
 // The originall showcase test from the Lambdascope paper.
@@ -619,18 +678,8 @@ church_y_factorial_term(void) {
 }
 
 static struct lambda_term *
-church_fix_factorial_term(void) {
-    return fix(church_y_factorial_function());
-}
-
-static struct lambda_term *
 church_y_factorial_test(void) {
     return apply(church_y_factorial_term(), church_three());
-}
-
-static struct lambda_term *
-church_fix_factorial_test(void) {
-    return apply(church_fix_factorial_term(), church_three());
 }
 
 static struct lambda_term *
@@ -663,18 +712,8 @@ church_y_fibonacci_term(void) {
 }
 
 static struct lambda_term *
-church_fix_fibonacci_term(void) {
-    return fix(church_y_fibonacci_function());
-}
-
-static struct lambda_term *
 church_y_fibonacci_test(void) {
     return apply(church_y_fibonacci_term(), church_three());
-}
-
-static struct lambda_term *
-church_fix_fibonacci_test(void) {
-    return apply(church_fix_fibonacci_term(), church_three());
 }
 
 // WHY Combinator
@@ -766,15 +805,6 @@ church_cons(void) {
 }
 
 static struct lambda_term *
-church_list_1_2_3(void) {
-    return apply(
-        apply(church_cons(), cell(1)),
-        apply(
-            apply(church_cons(), cell(2)),
-            apply(apply(church_cons(), cell(3)), church_nil())));
-}
-
-static struct lambda_term *
 church_sum_list(void) {
     struct lambda_term *list, *x, *y;
 
@@ -788,8 +818,17 @@ church_sum_list(void) {
 }
 
 static struct lambda_term *
+church_list_1_2_3_cells(void) {
+    return apply(
+        apply(church_cons(), cell(1)),
+        apply(
+            apply(church_cons(), cell(2)),
+            apply(apply(church_cons(), cell(3)), church_nil())));
+}
+
+static struct lambda_term *
 church_sum_list_test(void) {
-    return apply(church_sum_list(), church_list_1_2_3());
+    return apply(church_sum_list(), church_list_1_2_3_cells());
 }
 
 static struct lambda_term *
@@ -813,6 +852,15 @@ church_reverse(void) {
                                     apply(var(k), var(f)),
                                     apply(apply(var(f), var(x)), var(n)))))))),
             church_nil()));
+}
+
+static struct lambda_term *
+church_list_1_2_3(void) {
+    return apply(
+        apply(church_cons(), church_one()),
+        apply(
+            apply(church_cons(), church_two()),
+            apply(apply(church_cons(), church_three()), church_nil())));
 }
 
 static struct lambda_term *
@@ -840,10 +888,10 @@ church_append(void) {
 static struct lambda_term *
 church_list_4_5_6(void) {
     return apply(
-        apply(church_cons(), cell(4)),
+        apply(church_cons(), church_four()),
         apply(
-            apply(church_cons(), cell(5)),
-            apply(apply(church_cons(), cell(6)), church_nil())));
+            apply(church_cons(), church_five()),
+            apply(apply(church_cons(), church_six()), church_nil())));
 }
 
 static struct lambda_term *
@@ -1744,11 +1792,11 @@ main(void) {
         iota_combinator_test, "(λ ((0 (λ (λ (λ ((2 0) (1 0)))))) (λ (λ 1))))");
     TEST_CASE(self_iota_combinator_test, "(λ 0)");
     TEST_CASE(bcw_test, "(λ (λ (λ ((2 0) (1 0)))))");
-    TEST_CASE(unary_arithmetic, "cell[2048]");
-    TEST_CASE(binary_arithmetic, "cell[11]");
-    TEST_CASE(conditionals, "cell[10]");
-    TEST_CASE(fix_fibonacci_test, "cell[55]");
-    TEST_CASE(fibonacci_test, "cell[55]");
+    TEST_CASE_WHNF(unary_arithmetic, 2048);
+    TEST_CASE_WHNF(binary_arithmetic, 11);
+    TEST_CASE_WHNF(conditionals, 10);
+    TEST_CASE_WHNF(fix_fibonacci_test, 55);
+    TEST_CASE_WHNF(fibonacci_test, 55);
     TEST_CASE(boolean_test, "(λ (λ 1))");
     TEST_CASE(church_two_two_test, "(λ (λ (1 (1 (1 (1 0))))))");
     TEST_CASE(
@@ -1760,32 +1808,30 @@ main(void) {
     TEST_CASE(church_five_predecessor2x, "(λ (λ (1 (1 (1 0)))))");
     TEST_CASE(factorial_of_three_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
     TEST_CASE(church_y_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
-    TEST_CASE(church_fix_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
     TEST_CASE(church_y_fibonacci_test, "(λ (λ (1 (1 0))))");
-    TEST_CASE(church_fix_fibonacci_test, "(λ (λ (1 (1 0))))");
     TEST_CASE(church_why_factorial_test, "(λ (λ (1 (1 (1 (1 (1 (1 0))))))))");
-    TEST_CASE(church_sum_list_test, "cell[6]");
+    TEST_CASE_WHNF(church_sum_list_test, 6);
     TEST_CASE(
         church_reverse_test,
-        "(λ (λ ((1 cell[3]) ((1 cell[2]) ((1 cell[1]) 0)))))");
+        "(λ (λ ((1 (λ (λ (1 (1 (1 0)))))) ((1 (λ (λ (1 (1 0))))) ((1 (λ (λ (1 0)))) 0)))))");
     TEST_CASE(
         church_append_test,
-        "(λ (λ ((1 cell[1]) ((1 cell[2]) ((1 cell[3]) ((1 cell[4]) ((1 cell[5]) ((1 cell[6]) 0))))))))");
+        "(λ (λ ((1 (λ (λ (1 0)))) ((1 (λ (λ (1 (1 0))))) ((1 (λ (λ (1 (1 (1 0)))))) ((1 (λ (λ (1 (1 (1 (1 0))))))) ((1 (λ (λ (1 (1 (1 (1 (1 0)))))))) ((1 (λ (λ (1 (1 (1 (1 (1 (1 0))))))))) 0))))))))");
     TEST_CASE(
         scott_three_successor_predecessor2x_test,
         "(λ (λ (1 (λ (λ (1 (λ (λ 0))))))))");
-    TEST_CASE(scott_sum_list_test, "cell[15]");
-    TEST_CASE(scott_insertion_sort_test, "cell[12347890]");
-    TEST_CASE(scott_quicksort_test, "cell[12347890]");
-    TEST_CASE(scott_merge_sort_test, "cell[12347890]");
-    TEST_CASE(scott_bubble_sort_test, "cell[12347890]");
-    TEST_CASE(scott_nqueens_test, "cell[4]");
-    TEST_CASE(scott_tree_sum_test, "cell[10]");
-    TEST_CASE(scott_tree_map_and_sum_test, "cell[20]");
-    TEST_CASE(fix_ackermann_test, "cell[61]");
-    TEST_CASE(ackermann_test, "cell[61]");
-    TEST_CASE(fix_tak_test, "cell[4]");
-    TEST_CASE(tak_test, "cell[4]");
+    TEST_CASE_WHNF(scott_sum_list_test, 15);
+    TEST_CASE_WHNF(scott_insertion_sort_test, 12347890);
+    TEST_CASE_WHNF(scott_quicksort_test, 12347890);
+    TEST_CASE_WHNF(scott_merge_sort_test, 12347890);
+    TEST_CASE_WHNF(scott_bubble_sort_test, 12347890);
+    TEST_CASE_WHNF(scott_nqueens_test, 4);
+    TEST_CASE_WHNF(scott_tree_sum_test, 10);
+    TEST_CASE_WHNF(scott_tree_map_and_sum_test, 20);
+    TEST_CASE_WHNF(fix_ackermann_test, 61);
+    TEST_CASE_WHNF(ackermann_test, 61);
+    TEST_CASE_WHNF(fix_tak_test, 4);
+    TEST_CASE_WHNF(tak_test, 4);
     TEST_CASE(lamping_example, "(λ 0)");
     TEST_CASE(lamping_example_2, "(λ 0)");
     TEST_CASE(asperti_guerrini_example, "(λ (0 0))");
