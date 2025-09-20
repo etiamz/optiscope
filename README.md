@@ -159,8 +159,6 @@ We write `comp/pure` for pure computations, i.e., those not conteyning `bind` or
 
 The onely difference between Optiscope and Haskell-style monads is that, while monads are first-class citizens in Haskell, they merely manifest themselves as well-formednesse rules in Optiscope. While the Haskell approach allows for more flexibility & preserves the conceptual purity of I/O functions, it requires the I/O monad to be incarnated into the language & to be treated specially by the runtime system; on the other hand, the Optiscope approach onely requires carefull positioning of effectfull computation, which can be easily achieved through a superimposed type system that implements the rules above.
 
-Which approach is better is a topic of further discussion. However, the point of Optiscope is to merely show that unrestricted, user-provided side effects are perfectly expressible within interaction nets & optimal reduction.
-
 ## On performance
 
 _Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, including leveraging compiler- & platform-specific functionality, yet, [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than [unoptimized Haskell] & [unoptimized OCaml]; for instance, whereas Optiscope needs about 6 seconds to execute an insertion sort on a Scott-encoded list of onely 2000 elements (in decreasing order), the Haskell implementation handles 10'000 elements in just two seconds. In general, the nature of performance penalty caused by bookkeeping work is unclear; however, with increasing list sizes, the factor by which Optiscope runs slower than more traditional lambda calculus implementations is onely increasing.
