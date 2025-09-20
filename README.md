@@ -136,7 +136,7 @@ Let us see how this example works step-by-step:
  1. We enclose the whole program in `fix`, which is our built-in fixed-point combinator. The `rec` parameter stands for the current lambda function to be invoked recursively.
  1. Next, we accept the parameter `token`, which stands for an _effect token_. Its purpose will be clear later.
  1. The first thing we doe in the function body is calling `my_puts`. Here, `my_puts` is an ordinary C function that accepts `s`, the string to be printed, & `token`. By calling `perform`, we _force_ the evaluation of `my_puts` to be performed _right now_.
- 1. We bind the call of `my_gets` to the variable `s`. Here, the execution of `my_gets` will also be forced due to `bind`; the rest of the code will deal with already evaluated `s`.
+ 1. We bind the call of `my_gets` to the variable `s`. Here, the execution of `my_gets` will also be forced according to `bind`; the rest of the program will deal with already evaluated `s`.
  1. We proceed with calling `my_strcmp`. If the string is `"quit"`, we manually call `my_free` & finish the evaluation. We doe not need to force `my_free` here, because it appears in a tail call position.
  1. If the input string is not `"quit"`, we force the evaluation of `is_palindrome` with its both (side-effectfull) branches.
  1. We finally force `my_free` to ensure no memory leaks occur, & proceed with a recursive call.
