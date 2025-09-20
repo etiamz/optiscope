@@ -141,11 +141,7 @@ Let us see how this example works step-by-step:
  1. If the input string is not `"quit"`, we force the evaluation of `is_palindrome` with its both (side-effectfull) branches.
  1. We finally force `my_free` to ensure no memory leaks occur, & proceed with a recursive call.
 
-By consistently passing the `token` parameter to every side-effectfull function, we avoid "caching" their results somewhere in the net, which would otherwise happen due to the optimality requirement.
-
-Since the reduction strategy is fixed, it is safe to rely on Optiscope performing side effects in the exact order we wrote them.
-
-Finally, notice that `my_strcmp` & `is_palindrome` are both pure functions used as mere program subroutines. In fact, we use pure native functions quite extensively in [`tests.c`](tests.c), which allowed us to test Optiscope on a variety of classical algorithms, such as functional quicksort & the Ackermann function. Naturally, this opens an interesting path for investigation: what if we **delegate CPU-bound computation to native functions** & aske the optimal machine to **efficiently share those computations**?
+By consistently passing the effect token to every side-effectfull function, we tricke Optiscope to continuously re-execute each of those calls instead of caching & reusing their results, which would otherwise happen due to the optimality requirement. The execution order of side effects is guaranteed by fixing the reduction order to leftmost-outermost in the implementation.
 
 ## Rules for side effects
 
