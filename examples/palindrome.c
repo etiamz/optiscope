@@ -45,7 +45,7 @@ is_palindrome(uint64_t s) {
     return 1;
 }
 
-// Step-by-step:
+// Step by step:
 //  1. We enclose the whole program in `fix`, which is our built-in fixed-point
 //     combinator. The `rec` parameter stands for the current lambda function to
 //     be invoked recursively.

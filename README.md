@@ -51,7 +51,9 @@ main(void) {
 
 This is the exact Optiscope encoding of the example discussed by Lamping in [^lamping].
 
-By adding the following lines into `optiscope.h`:
+By adding the following lines into [`optiscope.h`]:
+
+[`optiscope.h`]: optiscope.h
 
 ```c
 #define OPTISCOPE_ENABLE_TRACING
