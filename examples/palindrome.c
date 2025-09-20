@@ -50,7 +50,8 @@ is_palindrome(uint64_t s) {
 //     combinator. The `rec` parameter stands for the current lambda function to
 //     be invoked recursively.
 //  2. Next, we accept the parameter `token`, which stands for an _effect
-//     token_. Its purpose will be clear later.
+//     token_. This token is threaded through all side-effectful operations to
+//     force re-evaluation of side effects.
 //  3. The first thing we doe in the function body is calling `my_puts`. Here,
 //     `my_puts` is an ordinary C function that accepts `s`, the string to be
 //     printed, & `token`. By calling `perform`, we _force_ the evaluation of
