@@ -32,6 +32,55 @@ The shell commands are outlined in the following table:
 | `./command/graphviz-all.sh` | Visualize all the `.dot` files in `target/`. |
 | `./command/bench.sh` | Execute all the benchmarks in `benchmarks/`. |
 
+## Lamping's example
+
+The following program from [`examples/lamping-example.c`] evaluates to the identity lambda under weak reduction:
+
+[`examples/lamping-example.c`]: examples/lamping-example.c
+
+```c
+#include "../optiscope.h"
+
+static struct lambda_term *
+lamping_example(void) {
+    struct lambda_term *g, *x, *h, *f, *z, *w, *y;
+
+    return apply(
+        lambda(g, apply(var(g), apply(var(g), lambda(x, var(x))))),
+        lambda(
+            h,
+            apply(
+                lambda(f, apply(var(f), apply(var(f), lambda(z, var(z))))),
+                lambda(w, apply(var(h), apply(var(w), lambda(y, var(y))))))));
+}
+
+int
+main(void) {
+    optiscope_open_pools();
+    optiscope_algorithm(NULL, lamping_example());
+    puts("");
+    optiscope_close_pools();
+}
+```
+
+which is the exact Optiscope encoding of the example discussed by Lamping in [^lamping].
+
+By adding the following lines into `optiscope.h`:
+
+```c
+#define OPTISCOPE_ENABLE_TRACING
+#define OPTISCOPE_ENABLE_STEP_BY_STEP
+#define OPTISCOPE_ENABLE_GRAPHVIZ
+```
+
+and typing `./command.example.sh lamping-example` in your shell, Optiscope will visualize each interaction step in `target/state.dot.svg` before you presse ENTER to fire the red interaction:
+
+<div align="center">
+  <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-animation.gif">
+    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-preview.png" width="700px" alt="Lamping's example" />
+  </a>
+</div>
+
 ## Side-effectfull evaluation
 
 See the example [`examples/palindrome.c`](examples/palindrome.c) with a detailed step-by-step explanation in comments.
