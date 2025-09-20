@@ -1274,14 +1274,12 @@ alloc_node_from(
     }
 #endif
 
-    // While it might seem that preallocation caches can increase performance,
-    // in fact, they introduced almost a 2x slowdown.
-    (void)0;
-
     uint64_t *ports = NULL;
 
+#define SET_SYMBOL() (ports[-1] = symbol)
 #define SET_PORTS_0()                                                          \
-    (ports[0] = PORT_VALUE(UINT64_C(0), PHASE_REDUCTION, UINT64_C(0)))
+    (SET_SYMBOL(),                                                             \
+     ports[0] = PORT_VALUE(UINT64_C(0), PHASE_REDUCTION, UINT64_C(0)))
 #define SET_PORTS_1()                                                          \
     (SET_PORTS_0(),                                                            \
      ports[1] = PORT_VALUE(UINT64_C(1), UINT64_C(0), UINT64_C(0)))
@@ -1366,14 +1364,18 @@ alloc_node_from(
         else COMPILER_UNREACHABLE();
     }
 
+#undef SET_PORTS_3
+#undef SET_PORTS_2
+#undef SET_PORTS_1
+#undef SET_PORTS_0
+#undef SET_SYMBOL
+
 #ifdef OPTISCOPE_ENABLE_STATS
     graph->ntotal++;
     if (graph->ntotal > graph->nmax_total) {
         graph->nmax_total = graph->ntotal;
     }
 #endif
-
-    ports[-1] = symbol;
 
     debug("🔨 %s", print_node((struct node){ports}));
 
