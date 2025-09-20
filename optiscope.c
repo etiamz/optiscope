@@ -4067,7 +4067,7 @@ self_denote(void) {
         apply(apply(apply(var(input),
             lambda(f,
                 apply(
-                    expand(self_lambda),
+                    self_lambda(),
                     lambda(argument,
                         apply(expand(self_denote), apply(var(f), var(argument))))))),
             lambda(rator, lambda(rand,
@@ -4078,11 +4078,11 @@ self_denote(void) {
                             lambda(fx, apply(var(fx), var(rand)))),
                             lambda(ratorxx, lambda(randx,
                                 apply(
-                                    apply(expand(self_apply), var(ratorx)),
+                                    apply(self_apply(), var(ratorx)),
                                     apply(expand(self_denote), var(rand)))))),
                             lambda(vx,
                                 apply(
-                                    apply(expand(self_apply), var(ratorx)),
+                                    apply(self_apply(), var(ratorx)),
                                     apply(expand(self_denote), var(rand)))))),
                     apply(expand(self_denote), var(rator)))))),
             lambda(v, var(input))));
@@ -4120,7 +4120,7 @@ self_pp(void) {
                     apply(
                         apply(
                             apply(expand(self_pp), var(stream)),
-                            apply(var(f), apply(expand(self_var), var(lvl)))),
+                            apply(var(f), apply(self_var(), var(lvl)))),
                         unary_call(plus_one, var(lvl))),
                     binary_call(print_string,
                         cell((uint64_t)")"), var(stream)))))),
