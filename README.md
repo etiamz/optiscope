@@ -69,6 +69,45 @@ By adding the following lines into [`optiscope.h`]:
   </a>
 </div>
 
+## Full Reduction
+
+We mimick full reduction in terms of weak reduction applied to a metacircular interpreter for pure lambda calculus terms. Consider another example [`examples/2-power-2.c`], which computes _2^2_ using Church numerals:
+
+[`examples/2-power-2.c`]: examples/2-power-2.c
+
+```c
+#include "../optiscope.h"
+
+static struct lambda_term *
+church_two(void) {
+    struct lambda_term *f, *x;
+
+    return lambda(f, lambda(x, apply(var(f), apply(var(f), var(x)))));
+}
+
+static struct lambda_term *
+church_two_two(void) {
+    return apply(church_two(), church_two());
+}
+
+int
+main(void) {
+    optiscope_open_pools();
+    optiscope_algorithm(stdout, church_two_two());
+    puts("");
+    optiscope_close_pools();
+}
+```
+
+By passing a file stream to `optiscope_algorithm`, in this case `stdout`, we can see the resulting normal form:
+
+```
+$ ./command/example.sh 2-power-2
+(λ (λ (1 (1 (1 (1 0))))))
+```
+
+Of course, such an implementation of full reduction is very inefficient -- we use it onely for testing purposes. (Implementing full reduction natively would require a more complex machinery, namely global graph traversing; also, Lévy-optimality requires following a specific order of reduction, but the leftmost-outermost order would enter a cycle when following backpointers.)
+
 ## Side-Effectfull Evaluation
 
 See the example [`examples/palindrome.c`](examples/palindrome.c) with a detailed step-by-step explanation in comments.
