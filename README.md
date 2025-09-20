@@ -77,7 +77,7 @@ and typing `./command.example.sh lamping-example` in your shell, Optiscope will 
 
 <div align="center">
   <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-animation.gif">
-    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-preview.png" width="700px" alt="Lamping's example" />
+    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-preview.png" width="750px" alt="Lamping's example" />
   </a>
 </div>
 
