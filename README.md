@@ -18,23 +18,9 @@ $ cd optiscope
 $ ./command/test.sh
 ```
 
-## Usage
+## Evaluation by Interaction
 
-See [`optiscope.h`](optiscope.h) for the user interface & [`tests.c`](tests.c) for the comprehensive usage examples with different data encodings.
-
-The shell commands are outlined in the following table:
-
-| Command | Description |
-|-----------|-------------|
-| `./command/test.sh` | Execute the test suite `tests.c`. |
-| `./command/example.sh <example-name>` | Execute the example `examples/<example-name>.c`. |
-| `./command/graphviz-state.sh` | Visualize `target/state.dot` as `target/state.dot.svg`. |
-| `./command/graphviz-all.sh` | Visualize all the `.dot` files in `target/`. |
-| `./command/bench.sh` | Execute all the benchmarks in `benchmarks/`. |
-
-## Lamping's example
-
-The following program from [`examples/lamping-example.c`] evaluates to the identity lambda under weak reduction:
+Optiscope offers a lightweight C API for writing programs in the extended lambda calculus; these programs are automatically translated to interaction nets under the hood. To see Optiscope in action, consider the example program [`examples/lamping-example.c`], which evaluates to the identity lambda under weak reduction to interface normal form [^interface-normal-form]:
 
 [`examples/lamping-example.c`]: examples/lamping-example.c
 
@@ -63,7 +49,7 @@ main(void) {
 }
 ```
 
-which is the exact Optiscope encoding of the example discussed by Lamping in [^lamping].
+This is the exact Optiscope encoding of the example discussed by Lamping in [^lamping].
 
 By adding the following lines into `optiscope.h`:
 
@@ -73,7 +59,7 @@ By adding the following lines into `optiscope.h`:
 #define OPTISCOPE_ENABLE_GRAPHVIZ
 ```
 
-and typing `./command.example.sh lamping-example` in your shell, Optiscope will visualize each interaction step in `target/state.dot.svg` before you presse ENTER to fire the red interaction:
+& typing `./command.example.sh lamping-example` in your shell, Optiscope will visualize each interaction step in `target/state.dot.svg` before you presse ENTER to fire the red interaction:
 
 <div align="center">
   <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-animation.gif">
@@ -81,11 +67,11 @@ and typing `./command.example.sh lamping-example` in your shell, Optiscope will 
   </a>
 </div>
 
-## Side-effectfull evaluation
+## Side-Effectfull Evaluation
 
 See the example [`examples/palindrome.c`](examples/palindrome.c) with a detailed step-by-step explanation in comments.
 
-## Rules for side effects
+## Rules for Side Effects
 
 In this section, we give well-formednesse rules for side-effectfull computations in Optiscope.
 
@@ -101,7 +87,7 @@ We write `comp/pure` for pure computations, i.e., those not conteyning `bind` or
 
 The onely difference between Optiscope and Haskell-style monads is that, while monads are first-class citizens in Haskell, they merely manifest themselves as well-formednesse rules in Optiscope. While the Haskell approach allows for more flexibility & preserves the conceptual purity of I/O functions, it requires the I/O monad to be incarnated into the language & to be treated specially by the runtime system; on the other hand, the Optiscope approach onely requires carefull positioning of effectfull computation, which can be easily achieved through a superimposed type system that implements the rules above.
 
-## On performance
+## On Performance
 
 _Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, including leveraging compiler- & platform-specific functionality, yet, [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than [unoptimized Haskell] & [unoptimized OCaml]; for instance, whereas Optiscope needs about 6 seconds to execute an insertion sort on a Scott-encoded list of onely 2000 elements (in decreasing order), the Haskell implementation handles 10'000 elements in just two seconds. In general, the nature of performance penalty caused by bookkeeping work is unclear; however, with increasing list sizes, the factor by which Optiscope runs slower than more traditional lambda calculus implementations is onely increasing.
 
@@ -213,7 +199,7 @@ Now, there are two possible avenues to mitigate the performance issue. The first
 
 [Mazeppa's README]: https://github.com/mazeppa-dev/mazeppa/blob/master/README.md
 
-## Implementation details
+## Implementation Details
 
  - **Node layout.** We interpret each graph node as an array `a` of `uint64_t` values. At position `a[-1]`, we store the _node symbol_; at `a[0]`, we store the principal port; at positions from `a[1]` to `a[3]` (inclusively), we store the auxiliary ports; at positions starting from `a[4]`, we store additional data elements, such as function pointers or computed cell values. The number of auxiliary ports & additional data elements determines the total size of the array: for erasers, the size in bytes is `2 * sizeof(uint64_t)`, as they need one position for the symbol & another one for the principal port; for applicators & lambdas having two auxiliary ports, the size is `3 * sizeof(uint64_t)`; for unary function calls, the size is `4 * sizeof(uint64_t)`, as they have one symbol, two auxiliary ports, & one function pointer. Similar calculation can be done for all the other node types.
 
@@ -257,7 +243,7 @@ Now, there are two possible avenues to mitigate the performance issue. The first
 
 Thanks to Marvin Borner, Marc Thatcher, & Vincent van Oostrom for interesting discussions about optimality & side effectfull computation.
 
-## Bounty policy
+## Bounty Policy
 
 Optiscope is aimed at being _as correct as possible_, with regards to the Lambdascope specification & the general understanding of the lambda calculus. To back up this endeavor financially, **any person to discover a semantic bug will get a $1000 bounty in Bitcoin**. A semantic bug constitutes a situation when some input lambda term is either reduced to an incorrect result, or the algorithm does not terminate. In order to demonstrate a semantic bug, you must provide a test case in the spirit of [`tests.c`] & show how your term would reduce normally. (Non-termination bugs are the trickiest, because it might be unclear if the machine is just inefficient or it is falling in a cycle. In order to prove your case, it might be necessary to pinpoint the _cause_ of non-termination, instead of merely the _fact_ of it.)
 
@@ -276,6 +262,8 @@ Semantic bugs related to extra functionality like native function calls & if-the
 [^lambdascope]: van Oostrom, Vincent, Kees-Jan van de Looij, and Marijn Zwitserlood. "Lambdascope: another optimal implementation of the lambda-calculus." Workshop on Algebra and Logic on Programming Systems (ALPS). 2004.
 
 [^optimal-implementation]: Asperti, Andrea, and Stefano Guerrini. The optimal implementation of functional programming languages. Vol. 45. Cambridge University Press, 1998.
+
+[^interface-normal-form]: Pinto, Jorge Sousa. "Weak reduction and garbage collection in interaction nets." Electronic Notes in Theoretical Computer Science 86.4 (2003): 625-640.
 
 [^stg-machine]: Jones, Simon L. Peyton. "Implementing lazy functional languages on stock hardware: the Spineless Tagless G-machine Version 2.5." (1993).
 
