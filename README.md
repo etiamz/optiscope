@@ -141,9 +141,11 @@ Let us see how this example works step-by-step:
  1. If the input string is not `"quit"`, we force the evaluation of `is_palindrome` with its both (side-effectfull) branches.
  1. We finally force `my_free` to ensure no memory leaks occur, & proceed with a recursive call.
 
-The crux of optimal reduction is that it shares all explicit & virtual redexes, if they are constructed "in the same way". This is the exact reason why we need to passe the `token` parameter to every side-effectfull function: we trick Optiscope to make it think that, given that the side-effecting redexes are constructed differently, it must repeatedly re-evaluate them each time it focuses on them; otherwise, it would just "cache" their results, once they are executed for the first time. Since the reduction strategy is fixed, it is safe to rely on Optiscope performing side effects in the exact order we wrote them.
+By consistently passing the `token` parameter to every side-effectfull function, we avoid "caching" their results somewhere in the net, which would otherwise happen due to the optimality requirement.
 
-Finally, notice that `my_strcmp` & `is_palindrome` are both pure functions used as mere program subroutines. In fact, we use pure native functions quite extensively in [`tests.c`](tests.c), which allowed us to test Optiscope on a variety of classical algorithms, such as functional quicksort & the Ackermann function. Naturally, this opens another path for investigation: what if we **delegate CPU-bound computation to native functions** & aske the optimal machine to **efficiently share those computations**?
+Since the reduction strategy is fixed, it is safe to rely on Optiscope performing side effects in the exact order we wrote them.
+
+Finally, notice that `my_strcmp` & `is_palindrome` are both pure functions used as mere program subroutines. In fact, we use pure native functions quite extensively in [`tests.c`](tests.c), which allowed us to test Optiscope on a variety of classical algorithms, such as functional quicksort & the Ackermann function. Naturally, this opens an interesting path for investigation: what if we **delegate CPU-bound computation to native functions** & aske the optimal machine to **efficiently share those computations**?
 
 ## Rules for side effects
 
