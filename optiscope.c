@@ -4078,27 +4078,28 @@ self_pp(void) {
     // The stream is passed as an effect token here.
     struct lambda_term *stream, *input, *lvl, *f, *rator, *rand, *v;
 
+#define STRING(s) cell((uint64_t)(s))
+
     // clang-format off
     return lambda(stream, lambda(input, lambda(lvl,
         apply(apply(apply(var(input),
             lambda(f, perform(
-                binary_call(print_string, cell((uint64_t)"(λ "), var(stream)),
+                binary_call(print_string, STRING("(λ "), var(stream)),
                 perform(
                     apply(
                         apply(
                             apply(expand(self_pp), var(stream)),
                             apply(var(f), apply(self_var(), var(lvl)))),
                         unary_call(plus_one, var(lvl))),
-                    binary_call(print_string,
-                        cell((uint64_t)")"), var(stream)))))),
+                    binary_call(print_string, STRING(")"), var(stream)))))),
             lambda(rator, lambda(rand, perform(
-                binary_call(print_string, cell((uint64_t)"("), var(stream)),
+                binary_call(print_string, STRING("("), var(stream)),
                 perform(
                     apply(
                         apply(apply(expand(self_pp), var(stream)), var(rator)),
                         var(lvl)),
                     perform(
-                        binary_call(print_string, cell((uint64_t)" "), var(stream)),
+                        binary_call(print_string, STRING(" "), var(stream)),
                         perform(
                             apply(
                                 apply(
@@ -4106,11 +4107,13 @@ self_pp(void) {
                                     var(rand)),
                                 var(lvl)),
                             binary_call(print_string,
-                                cell((uint64_t)")"), var(stream))))))))),
+                                STRING(")"), var(stream))))))))),
             lambda(v, binary_call(print_int,
                 binary_call(de_bruijn_level_to_index, var(lvl), var(v)),
                 var(stream)))))));
     // clang-format on
+
+#undef STRING
 }
 
 COMPILER_NONNULL(1) //
