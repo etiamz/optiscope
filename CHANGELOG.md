@@ -9,14 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Reduction semantics: mimick full reduction via metacircular interpretation for pure LC terms.
- - Miscellaneous: build nets through bytecode execution rather than term traversal.
+ - Miscellaneous:
+   - Mimick full reduction via metacircular interpretation for pure lambda calculus terms.
+   - Translate terms through bytecode execution instead of recursive traversal.
 
 ## 0.15.0 - 2025-09-18
 
 ### Changed
 
- - Memory management: instead of many type-specific pools, use size-specific pools.
+ - Memory management: implement pool allocation by object size, not by type.
 
 ## 0.14.0 - 2025-09-17
 
