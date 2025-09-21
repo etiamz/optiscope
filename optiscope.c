@@ -1274,34 +1274,22 @@ struct bytecode {
     struct bc_instruction *instructions;
 };
 
-COMPILER_RETURNS_NONNULL //
-static struct bytecode *
-alloc_bytecode(const size_t initial_capacity) {
-    XASSERT(initial_capacity > 0);
+#define alloc_bytecode(initial_capacity)                                       \
+    ((struct bytecode){                                                        \
+        .count = 0,                                                            \
+        .capacity = (initial_capacity),                                        \
+        .instructions =                                                        \
+            xmalloc(sizeof(struct bc_instruction) * (initial_capacity)),       \
+    })
 
-    struct bytecode *const bc = xmalloc(sizeof *bc);
-    bc->count = 0;
-    bc->capacity = initial_capacity;
-    bc->instructions = xmalloc(sizeof bc->instructions[0] * initial_capacity);
-
-    return bc;
-}
-
-COMPILER_COLD //
-static void
-free_bytecode(struct bytecode *const restrict bc) {
-    if (bc) {
-        XASSERT(bc->count <= bc->capacity);
-        free(bc->instructions);
-        free(bc);
-    }
-}
+#define free_bytecode(bc) free((bc).instructions)
 
 COMPILER_NONNULL(1) //
 static void
 expand_bytecode(struct bytecode *const restrict bc) {
     MY_ASSERT(bc);
     XASSERT(bc->count == bc->capacity);
+    XASSERT(bc->instructions);
 
     bc->instructions = realloc(
         bc->instructions, sizeof bc->instructions[0] * (bc->capacity *= 2));
@@ -1317,6 +1305,7 @@ emit_instruction(
     const struct bc_instruction instruction) {
     MY_ASSERT(bc);
     XASSERT(bc->count <= bc->capacity);
+    XASSERT(bc->instructions);
 
     if (bc->count == bc->capacity) { expand_bytecode(bc); }
 
@@ -1454,7 +1443,7 @@ unfocus_or(
 struct expansion {
     struct lambda_term *(*function)(void);
     struct lambda_term *expansion;
-    struct bytecode *bc;
+    struct bytecode bc;
 };
 
 struct book {
@@ -1476,7 +1465,6 @@ free_book(const struct book book) {
 
         if (entry.expansion) {
             MY_ASSERT(entry.function);
-            MY_ASSERT(entry.bc);
             free_lambda_term(entry.expansion);
             free_bytecode(entry.bc);
         }
@@ -2557,17 +2545,17 @@ build_duplicator_tree(
     connect_ports(&current.ports[0], binder_port);
 }
 
-COMPILER_NONNULL(1, 2) COMPILER_HOT //
+COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 execute_bytecode(
-    struct context *const restrict graph, struct bytecode *const restrict bc) {
+    struct context *const restrict graph, const struct bytecode bc) {
     MY_ASSERT(graph);
-    MY_ASSERT(bc);
+    XASSERT(bc.instructions);
 
     struct node current = {NULL};
 
-    for (size_t i = 0; i < bc->count; i++) {
-        const struct bc_instruction instr = bc->instructions[i];
+    for (size_t i = 0; i < bc.count; i++) {
+        const struct bc_instruction instr = bc.instructions[i];
 
         switch (instr.ty) {
         case INSTRUCTION_ATTACH_NODE: {
@@ -3302,10 +3290,11 @@ RULE_DEFINITION(do_expand, graph, f, g) {
             result = entry;
             goto execute;
         } else if (NULL == entry->function) {
+            struct lambda_term *const term = function();
             entry->function = function;
-            entry->expansion = function();
+            entry->expansion = term;
             entry->bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
-            emit_bytecode(graph, entry->bc, entry->expansion, 0);
+            emit_bytecode(graph, &entry->bc, term, 0);
             result = entry;
             goto execute;
         } else if (OPTISCOPE_MAX_FUNCTIONS - 1 == i) {
@@ -3315,9 +3304,7 @@ RULE_DEFINITION(do_expand, graph, f, g) {
         }
     }
 
-    panic(
-        "No memory left in the book; consider increasing `%s`!",
-        STRINGIFY_PRIMITIVE(OPTISCOPE_MAX_FUNCTIONS));
+    panic("No memory for expansion; increase `OPTISCOPE_MAX_FUNCTIONS`!");
 
 execute:
     result->expansion->connect_to = &g.ports[0];
@@ -4344,8 +4331,8 @@ optiscope_algorithm(
                 apply(expand(self_denote), metacode(term))),
             cell(0));
     }
-    struct bytecode *const bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
-    emit_bytecode(graph, bc, term, 0);
+    struct bytecode bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
+    emit_bytecode(graph, &bc, term, 0);
     term->connect_to = &graph->root.ports[0];
     execute_bytecode(graph, bc);
     free_bytecode(bc);
