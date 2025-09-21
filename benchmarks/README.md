@@ -36,8 +36,8 @@ Description: Computes the Ackermann function with initial values _(3, 8)_.
 
 ```
 Benchmark 1: ./ackermann
-  Time (mean ± σ):      1.334 s ±  0.017 s    [User: 1.326 s, System: 0.007 s]
-  Range (min … max):    1.316 s …  1.355 s    5 runs
+  Time (mean ± σ):      1.399 s ±  0.009 s    [User: 1.390 s, System: 0.010 s]
+  Range (min … max):    1.386 s …  1.411 s    5 runs
 ```
 
 <details>
@@ -69,8 +69,8 @@ Description: Computes the Takeuchi function with initial values _(24, 9, 3)_.
 
 ```
 Benchmark 1: ./tak
-  Time (mean ± σ):      1.327 s ±  0.026 s    [User: 1.318 s, System: 0.009 s]
-  Range (min … max):    1.295 s …  1.364 s    5 runs
+  Time (mean ± σ):      1.298 s ±  0.020 s    [User: 1.289 s, System: 0.009 s]
+  Range (min … max):    1.265 s …  1.318 s    5 runs
 ```
 
 <details>
@@ -102,8 +102,8 @@ Description: Performes a bubble sort on a Scott-encoded list of 300 cells, then 
 
 ```
 Benchmark 1: ./scott-bubble-sort
-  Time (mean ± σ):      4.621 s ±  0.046 s    [User: 4.139 s, System: 0.481 s]
-  Range (min … max):    4.566 s …  4.682 s    5 runs
+  Time (mean ± σ):      4.621 s ±  0.024 s    [User: 4.139 s, System: 0.482 s]
+  Range (min … max):    4.591 s …  4.650 s    5 runs
 ```
 
 <details>
@@ -135,8 +135,8 @@ Description: Performes an insertion sort on a Scott-encoded list of 1000 cells, 
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):     924.9 ms ±  16.0 ms    [User: 921.5 ms, System: 3.1 ms]
-  Range (min … max):   910.4 ms … 949.6 ms    5 runs
+  Time (mean ± σ):     916.3 ms ±   4.8 ms    [User: 911.4 ms, System: 4.6 ms]
+  Range (min … max):   908.8 ms … 921.0 ms    5 runs
 ```
 
 <details>
@@ -168,8 +168,8 @@ Description: Performes a merge sort on a Scott-encoded list of 1000 cells, then 
 
 ```
 Benchmark 1: ./scott-merge-sort
-  Time (mean ± σ):     728.9 ms ±   6.5 ms    [User: 703.9 ms, System: 24.9 ms]
-  Range (min … max):   717.6 ms … 733.7 ms    5 runs
+  Time (mean ± σ):     701.6 ms ±  14.0 ms    [User: 673.5 ms, System: 27.8 ms]
+  Range (min … max):   686.0 ms … 718.2 ms    5 runs
 ```
 
 <details>
@@ -201,8 +201,8 @@ Description: Performes a quicksort on a Scott-encoded list of 500 cells, then su
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):      8.161 s ±  0.073 s    [User: 8.156 s, System: 0.004 s]
-  Range (min … max):    8.090 s …  8.282 s    5 runs
+  Time (mean ± σ):      7.949 s ±  0.044 s    [User: 7.943 s, System: 0.005 s]
+  Range (min … max):    7.900 s …  8.002 s    5 runs
 ```
 
 <details>
@@ -234,8 +234,8 @@ Description: Solves the 10-queens problem using Scott-encoded lists.
 
 ```
 Benchmark 1: ./nqueens
-  Time (mean ± σ):      5.338 s ±  0.082 s    [User: 5.318 s, System: 0.019 s]
-  Range (min … max):    5.217 s …  5.438 s    5 runs
+  Time (mean ± σ):      5.208 s ±  0.078 s    [User: 5.188 s, System: 0.020 s]
+  Range (min … max):    5.089 s …  5.278 s    5 runs
 ```
 
 <details>

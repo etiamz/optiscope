@@ -315,6 +315,299 @@ PRINTER(panic, stderr, abort())
 
 #undef PRINTER
 
+// Checked Memory Allocation
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
+static void *
+xmalloc(const size_t size) {
+    XASSERT(size > 0);
+
+    void *const object = malloc(size);
+    if (NULL == object) { panic("Failed allocation!"); }
+
+    return object;
+}
+
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
+static void *
+xcalloc(const size_t n, const size_t size) {
+    XASSERT(size > 0);
+
+    void *const object = calloc(n, size);
+    if (NULL == object) { panic("Failed allocation!"); }
+
+    return object;
+}
+
+// Lambda Term Interface
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+enum lambda_term_type {
+    LAMBDA_TERM_APPLY,
+    LAMBDA_TERM_LAMBDA,
+    LAMBDA_TERM_VAR,
+    LAMBDA_TERM_CELL,
+    LAMBDA_TERM_UNARY_CALL,
+    LAMBDA_TERM_BINARY_CALL,
+    LAMBDA_TERM_IF_THEN_ELSE,
+    LAMBDA_TERM_FIX,
+    LAMBDA_TERM_PERFORM,
+    LAMBDA_TERM_REFERENCE,
+};
+
+struct apply_data {
+    struct lambda_term *rator, *rand;
+};
+
+struct lambda_data {
+    struct lambda_term *body;
+    uint64_t nusages;        // the number of times the lambda body refers to
+                             // its binder
+    uint64_t **binder_ports; // the pointer to the next binder port; dynamically
+                             // mutated
+    uint64_t lvl;            // the de Bruijn level; dynamically mutated
+};
+
+struct unary_call_data {
+    uint64_t (*function)(uint64_t);
+    struct lambda_term *rand;
+};
+
+struct binary_call_data {
+    uint64_t (*function)(uint64_t, uint64_t);
+    struct lambda_term *lhs, *rhs;
+};
+
+struct if_then_else_data {
+    struct lambda_term *condition;
+    struct lambda_term *if_then, *if_else;
+};
+
+struct fix_data {
+    struct lambda_term *f;
+};
+
+struct perform_data {
+    struct lambda_term *action, *k;
+};
+
+struct reference_data {
+    struct lambda_term *(*function)(void);
+};
+
+union lambda_term_data {
+    struct apply_data apply;
+    struct lambda_data *lambda;
+    struct lambda_data **var;
+    uint64_t cell;
+    struct unary_call_data u_call;
+    struct binary_call_data b_call;
+    struct if_then_else_data ite;
+    struct fix_data fix;
+    struct perform_data perform;
+    struct reference_data ref;
+};
+
+struct lambda_term {
+    enum lambda_term_type ty;
+    union lambda_term_data data;
+    uint64_t fv_count;    // the number of free variables in the term; assigned
+                          // during construction
+    uint64_t *connect_to; // the port addresse to be connected with the
+                          // interface; dynamically mutated
+};
+
+extern LambdaTerm
+apply(const restrict LambdaTerm rator, const restrict LambdaTerm rand) {
+    MY_ASSERT(rator), MY_ASSERT(rand);
+
+    struct lambda_term *const term = xmalloc(sizeof *term);
+    term->ty = LAMBDA_TERM_APPLY;
+    term->data.apply.rator = rator;
+    term->data.apply.rand = rand;
+    term->fv_count = rator->fv_count + rand->fv_count;
+
+    return term;
+}
+
+extern LambdaTerm
+prelambda(void) {
+    struct lambda_term *const term = xmalloc(sizeof *term);
+    term->ty = LAMBDA_TERM_LAMBDA;
+    term->data.lambda = xcalloc(1, sizeof *term->data.lambda);
+    // All the data fields are zeroed out.
+
+    return term;
+}
+
+extern LambdaTerm
+link_lambda_body(
+    const restrict LambdaTerm binder, const restrict LambdaTerm body) {
+    MY_ASSERT(binder), MY_ASSERT(body);
+    MY_ASSERT(LAMBDA_TERM_LAMBDA == binder->ty);
+
+    binder->data.lambda->body = body;
+    binder->fv_count = body->fv_count - binder->data.lambda->nusages;
+
+    return binder;
+}
+
+extern LambdaTerm
+var(const restrict LambdaTerm binder) {
+    MY_ASSERT(binder);
+    MY_ASSERT(LAMBDA_TERM_LAMBDA == binder->ty);
+
+    struct lambda_term *const term = xmalloc(sizeof *term);
+    term->ty = LAMBDA_TERM_VAR;
+    term->data.var = &binder->data.lambda;
+    term->fv_count = 1;
+
+    binder->data.lambda->nusages++;
+
+    return term;
+}
+
+extern LambdaTerm
+cell(const uint64_t value) {
+    struct lambda_term *const term = xmalloc(sizeof *term);
+    term->ty = LAMBDA_TERM_CELL;
+    term->data.cell = value;
+    term->fv_count = 0;
+
+    return term;
+}
+
+extern LambdaTerm
+unary_call(
+    uint64_t (*const function)(uint64_t), const restrict LambdaTerm rand) {
+    MY_ASSERT(function);
+    MY_ASSERT(rand);
+
+    struct lambda_term *const term = xmalloc(sizeof *term);
+    term->ty = LAMBDA_TERM_UNARY_CALL;
+    term->data.u_call.function = function;
+    term->data.u_call.rand = rand;
+    term->fv_count = rand->fv_count;
+
+    return term;
+}
+
+extern LambdaTerm
+binary_call(
+    uint64_t (*const function)(uint64_t, uint64_t),
+    const restrict LambdaTerm lhs,
+    const restrict LambdaTerm rhs) {
+    MY_ASSERT(function);
+    MY_ASSERT(lhs), MY_ASSERT(rhs);
+
+    struct lambda_term *const term = xmalloc(sizeof *term);
+    term->ty = LAMBDA_TERM_BINARY_CALL;
+    term->data.b_call.function = function;
+    term->data.b_call.lhs = lhs;
+    term->data.b_call.rhs = rhs;
+    term->fv_count = lhs->fv_count + rhs->fv_count;
+
+    return term;
+}
+
+extern LambdaTerm
+if_then_else(
+    const restrict LambdaTerm condition,
+    const restrict LambdaTerm if_then,
+    const restrict LambdaTerm if_else) {
+    MY_ASSERT(condition);
+    MY_ASSERT(if_then), MY_ASSERT(if_else);
+
+    struct lambda_term *const term = xmalloc(sizeof *term);
+    term->ty = LAMBDA_TERM_IF_THEN_ELSE;
+    term->data.ite.condition = condition;
+    term->data.ite.if_then = if_then;
+    term->data.ite.if_else = if_else;
+    term->fv_count =
+        condition->fv_count + if_then->fv_count + if_else->fv_count;
+
+    return term;
+}
+
+extern LambdaTerm
+fix(const restrict LambdaTerm f) {
+    MY_ASSERT(f);
+
+    struct lambda_term *const term = xmalloc(sizeof *term);
+    term->ty = LAMBDA_TERM_FIX;
+    term->data.fix.f = f;
+    term->fv_count = f->fv_count;
+
+    return term;
+}
+
+extern LambdaTerm
+perform(const restrict LambdaTerm action, const restrict LambdaTerm k) {
+    MY_ASSERT(action), MY_ASSERT(k);
+
+    struct lambda_term *const term = xmalloc(sizeof *term);
+    term->ty = LAMBDA_TERM_PERFORM;
+    term->data.perform.action = action;
+    term->data.perform.k = k;
+    term->fv_count = action->fv_count + k->fv_count;
+
+    return term;
+}
+
+extern LambdaTerm
+expand(struct lambda_term *(*const function)(void)) {
+    MY_ASSERT(function);
+
+    struct lambda_term *const term = xmalloc(sizeof *term);
+    term->ty = LAMBDA_TERM_REFERENCE;
+    term->data.ref.function = function;
+    term->fv_count = 0;
+
+    return term;
+}
+
+COMPILER_NONNULL(1) COMPILER_COLD //
+static void
+free_lambda_term(struct lambda_term *const restrict term) {
+    MY_ASSERT(term);
+
+    switch (term->ty) {
+    case LAMBDA_TERM_APPLY:
+        free_lambda_term(term->data.apply.rator);
+        free_lambda_term(term->data.apply.rand);
+        break;
+    case LAMBDA_TERM_LAMBDA:
+        free_lambda_term(term->data.lambda->body);
+        free(term->data.lambda->binder_ports);
+        free(term->data.lambda);
+        break;
+    case LAMBDA_TERM_UNARY_CALL:
+        free_lambda_term(term->data.u_call.rand);
+        break;
+    case LAMBDA_TERM_BINARY_CALL:
+        free_lambda_term(term->data.b_call.lhs);
+        free_lambda_term(term->data.b_call.rhs);
+        break;
+    case LAMBDA_TERM_IF_THEN_ELSE:
+        free_lambda_term(term->data.ite.condition);
+        free_lambda_term(term->data.ite.if_then);
+        free_lambda_term(term->data.ite.if_else);
+        break;
+    case LAMBDA_TERM_FIX: free_lambda_term(term->data.fix.f); break;
+    case LAMBDA_TERM_PERFORM:
+        free_lambda_term(term->data.perform.action);
+        free_lambda_term(term->data.perform.k);
+        break;
+    case LAMBDA_TERM_VAR:
+    case LAMBDA_TERM_CELL:
+    case LAMBDA_TERM_REFERENCE: break;
+    default: COMPILER_UNREACHABLE();
+    }
+
+    free(term);
+}
+
 // Ports & Symbols Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -603,28 +896,6 @@ set_phase(uint64_t *const restrict port, const uint64_t phase) {
 
 // O(1) Pool Allocation & Deallocation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
-static void *
-xmalloc(const size_t size) {
-    XASSERT(size > 0);
-
-    void *const object = malloc(size);
-    if (NULL == object) { panic("Failed allocation!"); }
-
-    return object;
-}
-
-COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
-static void *
-xcalloc(const size_t n, const size_t size) {
-    XASSERT(size > 0);
-
-    void *const object = calloc(n, size);
-    if (NULL == object) { panic("Failed allocation!"); }
-
-    return object;
-}
 
 #if defined(OPTISCOPE_ENABLE_HUGE_PAGES) && defined(__linux__)
 
@@ -947,6 +1218,141 @@ is_active(const struct node node) {
 
 #endif // OPTISCOPE_ENABLE_GRAPHVIZ
 
+// Bytecode Definitions
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+enum bc_instruction_type {
+    INSTRUCTION_ATTACH_NODE,
+    INSTRUCTION_SAVE_PORT,
+    INSTRUCTION_DELIMIT,
+    INSTRUCTION_TREE,
+    INSTRUCTION_FIX,
+};
+
+struct bc_attach_node_data {
+    struct node template;
+    uint64_t interface_port_idx;
+    uint64_t **connect_to;
+};
+
+struct bc_save_port_data {
+    uint64_t **location;
+    uint64_t port_idx;
+};
+
+struct bc_delimit_data {
+    uint64_t **points_to, **goes_from;
+    uint64_t n;
+};
+
+struct bc_tree_data {
+    uint64_t n;
+    uint64_t **locations;
+};
+
+struct bc_fix_data {
+    uint64_t **connect_to;
+};
+
+union bc_instruction_data {
+    struct bc_attach_node_data attach_node;
+    struct bc_save_port_data save_port;
+    struct bc_delimit_data delimit;
+    struct bc_tree_data tree;
+    struct bc_fix_data fix;
+};
+
+struct bc_instruction {
+    enum bc_instruction_type ty;
+    union bc_instruction_data data;
+};
+
+#define INITIAL_BYTECODE_CAPACITY 1024
+
+struct bytecode {
+    size_t count, capacity;
+    struct bc_instruction *instructions;
+};
+
+COMPILER_RETURNS_NONNULL //
+static struct bytecode *
+alloc_bytecode(const size_t initial_capacity) {
+    XASSERT(initial_capacity > 0);
+
+    struct bytecode *const bc = xmalloc(sizeof *bc);
+    bc->count = 0;
+    bc->capacity = initial_capacity;
+    bc->instructions = xmalloc(sizeof bc->instructions[0] * initial_capacity);
+
+    return bc;
+}
+
+COMPILER_COLD //
+static void
+free_bytecode(struct bytecode *const restrict bc) {
+    if (bc) {
+        XASSERT(bc->count <= bc->capacity);
+        free(bc->instructions);
+        free(bc);
+    }
+}
+
+COMPILER_NONNULL(1) //
+static void
+expand_bytecode(struct bytecode *const restrict bc) {
+    MY_ASSERT(bc);
+    XASSERT(bc->count == bc->capacity);
+
+    bc->instructions = realloc(
+        bc->instructions, sizeof bc->instructions[0] * (bc->capacity *= 2));
+    if (NULL == bc->instructions) { //
+        panic("Failed to reallocate the bytecode!");
+    }
+}
+
+COMPILER_NONNULL(1) //
+inline static void
+emit_instruction(
+    struct bytecode *const restrict bc,
+    const struct bc_instruction instruction) {
+    MY_ASSERT(bc);
+    XASSERT(bc->count <= bc->capacity);
+
+    if (bc->count == bc->capacity) { expand_bytecode(bc); }
+
+    bc->instructions[bc->count++] = instruction;
+}
+
+#define BC_ATTACH_NODE(bc, ...)                                                \
+    emit_instruction(                                                          \
+        (bc),                                                                  \
+        (struct bc_instruction){.ty = INSTRUCTION_ATTACH_NODE,                 \
+                                .data.attach_node = {__VA_ARGS__}})
+
+#define BC_SAVE_PORT(bc, ...)                                                  \
+    emit_instruction(                                                          \
+        (bc),                                                                  \
+        (struct bc_instruction){.ty = INSTRUCTION_SAVE_PORT,                   \
+                                .data.save_port = {__VA_ARGS__}})
+
+#define BC_DELIMIT(bc, ...)                                                    \
+    emit_instruction(                                                          \
+        (bc),                                                                  \
+        (struct bc_instruction){.ty = INSTRUCTION_DELIMIT,                     \
+                                .data.delimit = {__VA_ARGS__}})
+
+#define BC_TREE(bc, ...)                                                       \
+    emit_instruction(                                                          \
+        (bc),                                                                  \
+        (struct bc_instruction){.ty = INSTRUCTION_TREE,                        \
+                                .data.tree = {__VA_ARGS__}})
+
+#define BC_FIX(bc, ...)                                                        \
+    emit_instruction(                                                          \
+        (bc),                                                                  \
+        (struct bc_instruction){.ty = INSTRUCTION_FIX,                         \
+                                .data.fix = {__VA_ARGS__}})
+
 // Multifocuses Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -957,34 +1363,21 @@ struct multifocus {
     struct node *array;
 };
 
-COMPILER_RETURNS_NONNULL COMPILER_COLD //
-static struct multifocus *
-alloc_focus(const size_t initial_capacity) {
-    XASSERT(initial_capacity > 0);
+#define alloc_focus(initial_capacity)                                          \
+    ((struct multifocus){                                                      \
+        .count = 0,                                                            \
+        .capacity = (initial_capacity),                                        \
+        .array = xmalloc(sizeof(struct node) * (initial_capacity)),            \
+    })
 
-    struct multifocus *const focus = xmalloc(sizeof *focus);
-    focus->count = 0;
-    focus->capacity = initial_capacity;
-    focus->array = xmalloc(sizeof focus->array[0] * initial_capacity);
-
-    return focus;
-}
-
-COMPILER_COLD //
-static void
-free_focus(struct multifocus *const restrict focus) {
-    if (focus) {
-        XASSERT(focus->count <= focus->capacity);
-        free(focus->array);
-        free(focus);
-    }
-}
+#define free_focus(focus) free((focus).array)
 
 COMPILER_NONNULL(1) COMPILER_COLD //
 static void
 expand_focus(struct multifocus *const restrict focus) {
     MY_ASSERT(focus);
     XASSERT(focus->count == focus->capacity);
+    XASSERT(focus->array);
 
     focus->array =
         realloc(focus->array, sizeof focus->array[0] * (focus->capacity *= 2));
@@ -999,6 +1392,7 @@ focus_on(struct multifocus *const restrict focus, const struct node node) {
     MY_ASSERT(focus);
     XASSERT(node.ports);
     XASSERT(focus->count <= focus->capacity);
+    XASSERT(focus->array);
 
     if (focus->count == focus->capacity) { expand_focus(focus); }
 
@@ -1009,12 +1403,12 @@ focus_on(struct multifocus *const restrict focus, const struct node node) {
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
 static bool
-is_focused_on(struct multifocus *const restrict focus, const struct node node) {
-    MY_ASSERT(focus);
+is_focused_on(const struct multifocus focus, const struct node node) {
     XASSERT(node.ports);
+    XASSERT(focus.array);
 
-    for (size_t i = 0; i < focus->count; i++) {
-        if (focus->array[i].ports == node.ports) { return true; }
+    for (size_t i = 0; i < focus.count; i++) {
+        if (focus.array[i].ports == node.ports) { return true; }
     }
 
     return false;
@@ -1028,6 +1422,7 @@ unfocus(struct multifocus *const restrict focus) {
     MY_ASSERT(focus);
     XASSERT(focus->count > 0);
     XASSERT(focus->count <= focus->capacity);
+    XASSERT(focus->array);
 
     return focus->array[--focus->count];
 }
@@ -1039,6 +1434,7 @@ unfocus_or(
     const struct node fallback) {
     MY_ASSERT(focus);
     XASSERT(focus->count <= focus->capacity);
+    XASSERT(focus->array);
 
     return focus->count > 0 ? unfocus(focus) : fallback;
 }
@@ -1048,85 +1444,45 @@ unfocus_or(
          (focus)->count > 0 ? (f = unfocus((focus)), true) : false;            \
          (void)0)
 
-// Expansion Cache Functionality
+// Dynamic Book of Expansions
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #ifndef OPTISCOPE_MAX_FUNCTIONS
 #define OPTISCOPE_MAX_FUNCTIONS 1024
 #endif
 
-struct expansion_entry {
+struct expansion {
     struct lambda_term *(*function)(void);
     struct lambda_term *expansion;
+    struct bytecode *bc;
 };
 
-// Allocated using `xcalloc` to ensure that all entries are zeroed out.
-struct expansion_cache {
-    struct expansion_entry array[OPTISCOPE_MAX_FUNCTIONS];
+struct book {
+    struct expansion *array;
 };
 
-#define alloc_expansion_cache() xcalloc(1, sizeof(struct expansion_cache))
+#define alloc_book()                                                           \
+    ((struct book){                                                            \
+        .array = xcalloc(OPTISCOPE_MAX_FUNCTIONS, sizeof(struct expansion)),   \
+    })
 
-COMPILER_NONNULL(1) COMPILER_COLD //
+COMPILER_COLD //
 static void
-free_lambda_term(struct lambda_term *const restrict term);
-
-COMPILER_NONNULL(1) COMPILER_COLD //
-static void
-free_expansion_cache(struct expansion_cache *const restrict cache) {
-    MY_ASSERT(cache);
+free_book(const struct book book) {
+    XASSERT(book.array);
 
     for (size_t i = 0; i < OPTISCOPE_MAX_FUNCTIONS; i++) {
-        if (cache->array[i].expansion) {
-            free_lambda_term(cache->array[i].expansion);
+        const struct expansion entry = book.array[i];
+
+        if (entry.expansion) {
+            MY_ASSERT(entry.function);
+            MY_ASSERT(entry.bc);
+            free_lambda_term(entry.expansion);
+            free_bytecode(entry.bc);
         }
     }
 
-    free(cache);
-}
-
-COMPILER_NONNULL(1) COMPILER_COLD //
-static void
-prepare_lambda_term(
-    struct lambda_term *const restrict term, const uint64_t lvl);
-
-#define PANIC_EXPANSION_NO_MEMORY()                                            \
-    panic(                                                                     \
-        "No memory to store the expansion; consider increasing `%s`!",         \
-        STRINGIFY_PRIMITIVE(OPTISCOPE_MAX_FUNCTIONS))
-
-COMPILER_RETURNS_NONNULL COMPILER_NONNULL(1, 2) COMPILER_HOT //
-static struct lambda_term *
-lookup_expansion(
-    struct expansion_cache *const restrict cache,
-    struct lambda_term *(*const function)(void)) {
-    MY_ASSERT(cache);
-    MY_ASSERT(function);
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-    const size_t idx = U64_OF_FUNCTION(function) % OPTISCOPE_MAX_FUNCTIONS;
-#pragma GCC diagnostic pop
-
-    size_t i = idx, limit = OPTISCOPE_MAX_FUNCTIONS;
-    while (i < limit) {
-        struct expansion_entry *const entry = &cache->array[i];
-
-        if (function == entry->function) {
-            return entry->expansion;
-        } else if (NULL == entry->function) {
-            entry->function = function;
-            entry->expansion = function();
-            prepare_lambda_term(entry->expansion, 0);
-            return entry->expansion;
-        } else if (OPTISCOPE_MAX_FUNCTIONS - 1 == i) {
-            i = 0, limit = idx;
-        } else {
-            i++;
-        }
-    }
-
-    PANIC_EXPANSION_NO_MEMORY();
+    free(book.array);
 }
 
 // Main Context Functionality
@@ -1140,10 +1496,10 @@ struct context {
     bool time_to_stop;
 
     // The cache that stores already performed expansions.
-    struct expansion_cache *expansion_cache;
+    struct book book;
 
     // The multifocus for garbage collection purposes.
-    struct multifocus *gc_focus;
+    struct multifocus gc_focus;
 
 #ifdef OPTISCOPE_ENABLE_STATS
     // The numbers of proper interactions.
@@ -1181,7 +1537,7 @@ alloc_context(void) {
     struct context *const graph = xcalloc(1, sizeof *graph);
     graph->root = root;
     graph->time_to_stop = false;
-    graph->expansion_cache = alloc_expansion_cache();
+    graph->book = alloc_book();
     graph->gc_focus = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
     // The statistics counters are zeroed out by `xcalloc`.
 
@@ -1201,7 +1557,7 @@ free_context(struct context *const restrict graph) {
     XASSERT(graph->root.ports);
 
     free(graph->root.ports - 1 /* back to the symbol */);
-    free_expansion_cache(graph->expansion_cache);
+    free_book(graph->book);
     free_focus(graph->gc_focus);
     free(graph);
 }
@@ -1795,7 +2151,7 @@ graphviz_print_symbol(const struct node node) {
 
 struct graphviz_context {
     struct context *graph;
-    struct multifocus *history;
+    struct multifocus history;
     FILE *stream;
 };
 
@@ -1905,7 +2261,7 @@ go_graphviz(
 
     if (is_focused_on(ctx->history, node)) { return; }
 
-    focus_on(ctx->history, node);
+    focus_on(&ctx->history, node);
 
     graphviz_draw_node(ctx, node);
 
@@ -1982,6 +2338,294 @@ wait_for_user(struct context *const restrict graph) {
 
 #endif // !defined(NDEBUG) && defined(OPTISCOPE_ENABLE_STEP_BY_STEP)
 
+// Bytecode Emission
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
+inline static uint64_t
+de_bruijn_level_to_index(const uint64_t lvl, const uint64_t var) {
+    return lvl - var - 1;
+}
+
+COMPILER_NONNULL(1, 2, 3) COMPILER_COLD //
+static void
+emit_bytecode(
+    struct context *const restrict graph,
+    struct bytecode *const restrict bc,
+    struct lambda_term *const restrict term,
+    const uint64_t lvl) {
+    MY_ASSERT(graph);
+    MY_ASSERT(term);
+
+    switch (term->ty) {
+    case LAMBDA_TERM_LAMBDA: {
+        struct lambda_data *const binder = term->data.lambda;
+        struct lambda_term *const body = term->data.lambda->body;
+        XASSERT(binder);
+        XASSERT(body);
+
+        const bool is_identity =
+            LAMBDA_TERM_VAR == body->ty && binder == *body->data.var;
+        if (is_identity) {
+            // clang-format off
+            const struct node lambda = alloc_node(graph, SYMBOL_IDENTITY_LAMBDA);
+            // clang-format on
+            BC_ATTACH_NODE(bc, lambda, 0, &term->connect_to);
+            break;
+        }
+
+        if (0 == binder->nusages) {
+            // This is lambda that "garbage-collects" its argument.
+            const struct node lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
+            BC_ATTACH_NODE(bc, lambda, 0, &term->connect_to);
+            BC_SAVE_PORT(bc, &body->connect_to, 1);
+            emit_bytecode(graph, bc, body, lvl + 1);
+            break;
+        }
+
+        const struct node lambda = alloc_node(
+            graph, term->fv_count > 0 ? SYMBOL_LAMBDA : SYMBOL_LAMBDA_C);
+
+        binder->binder_ports = xmalloc(sizeof(uint64_t *) * binder->nusages);
+        binder->lvl = lvl;
+        BC_ATTACH_NODE(bc, lambda, 0, &term->connect_to);
+        if (1 == binder->nusages) {
+            // This is a linear non-self-referential lambda.
+            BC_SAVE_PORT(bc, &binder->binder_ports[0], 1);
+        } else {
+            // This is a non-linear lambda that needs a duplicator tree.
+            BC_TREE(bc, binder->nusages, binder->binder_ports);
+        }
+        uint64_t **const binder_ports = binder->binder_ports;
+        BC_SAVE_PORT(bc, &body->connect_to, 2);
+        emit_bytecode(graph, bc, body, lvl + 1);
+        binder->binder_ports = binder_ports;
+
+        break;
+    }
+    case LAMBDA_TERM_VAR: {
+        struct lambda_data *const binder = *term->data.var;
+        XASSERT(binder);
+        XASSERT(binder->binder_ports);
+
+        const uint64_t idx = de_bruijn_level_to_index(lvl, binder->lvl);
+        BC_DELIMIT(bc, binder->binder_ports++, &term->connect_to, idx);
+
+        break;
+    }
+    case LAMBDA_TERM_APPLY: {
+        struct lambda_term *const rator = term->data.apply.rator, //
+            *const rand = term->data.apply.rand;
+
+        const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
+
+        BC_ATTACH_NODE(bc, applicator, 1, &term->connect_to);
+        BC_SAVE_PORT(bc, &rator->connect_to, 0);
+        BC_SAVE_PORT(bc, &rand->connect_to, 2);
+        emit_bytecode(graph, bc, rator, lvl);
+        emit_bytecode(graph, bc, rand, lvl);
+
+        break;
+    }
+    case LAMBDA_TERM_CELL: {
+        const struct node cell = alloc_node(graph, SYMBOL_CELL);
+        cell.ports[1] = term->data.cell;
+
+        BC_ATTACH_NODE(bc, cell, 0, &term->connect_to);
+
+        break;
+    }
+    case LAMBDA_TERM_UNARY_CALL: {
+        uint64_t (*const function)(uint64_t) = term->data.u_call.function;
+        struct lambda_term *const rand = term->data.u_call.rand;
+
+        const struct node call = alloc_node(graph, SYMBOL_UNARY_CALL);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+        call.ports[2] = U64_OF_FUNCTION(function);
+#pragma GCC diagnostic pop
+
+        BC_ATTACH_NODE(bc, call, 1, &term->connect_to);
+        BC_SAVE_PORT(bc, &rand->connect_to, 0);
+        emit_bytecode(graph, bc, rand, lvl);
+
+        break;
+    }
+    case LAMBDA_TERM_BINARY_CALL: {
+        uint64_t (*const function)(uint64_t, uint64_t) = //
+            term->data.b_call.function;
+        struct lambda_term *const lhs = term->data.b_call.lhs, //
+            *const rhs = term->data.b_call.rhs;
+
+        const struct node call = alloc_node(graph, SYMBOL_BINARY_CALL);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+        call.ports[3] = U64_OF_FUNCTION(function);
+#pragma GCC diagnostic pop
+
+        BC_ATTACH_NODE(bc, call, 1, &term->connect_to);
+        BC_SAVE_PORT(bc, &lhs->connect_to, 0);
+        BC_SAVE_PORT(bc, &rhs->connect_to, 2);
+        emit_bytecode(graph, bc, lhs, lvl);
+        emit_bytecode(graph, bc, rhs, lvl);
+
+        break;
+    }
+    case LAMBDA_TERM_IF_THEN_ELSE: {
+        struct lambda_term *const condition = term->data.ite.condition, //
+            *const if_then = term->data.ite.if_then,                    //
+                *const if_else = term->data.ite.if_else;
+
+        const struct node ite = alloc_node(graph, SYMBOL_IF_THEN_ELSE);
+
+        BC_ATTACH_NODE(bc, ite, 1, &term->connect_to);
+        BC_SAVE_PORT(bc, &condition->connect_to, 0);
+        BC_SAVE_PORT(bc, &if_else->connect_to, 2);
+        BC_SAVE_PORT(bc, &if_then->connect_to, 3);
+        emit_bytecode(graph, bc, condition, lvl);
+        emit_bytecode(graph, bc, if_else, lvl);
+        emit_bytecode(graph, bc, if_then, lvl);
+
+        break;
+    }
+    case LAMBDA_TERM_FIX: {
+        struct lambda_term *const f = term->data.fix.f;
+
+        BC_FIX(bc, &term->connect_to);
+        BC_SAVE_PORT(bc, &f->connect_to, 0);
+        emit_bytecode(graph, bc, f, lvl);
+
+        break;
+    }
+    case LAMBDA_TERM_PERFORM: {
+        struct lambda_term *const action = term->data.perform.action, //
+            *const k = term->data.perform.k;
+
+        const struct node perform = alloc_node(graph, SYMBOL_PERFORM);
+
+        BC_ATTACH_NODE(bc, perform, 1, &term->connect_to);
+        BC_SAVE_PORT(bc, &action->connect_to, 0);
+        BC_SAVE_PORT(bc, &k->connect_to, 2);
+        emit_bytecode(graph, bc, action, lvl);
+        emit_bytecode(graph, bc, k, lvl);
+
+        break;
+    }
+    case LAMBDA_TERM_REFERENCE: {
+        struct lambda_term *(*const function)(void) = term->data.ref.function;
+
+        const struct node ref = alloc_node(graph, SYMBOL_REFERENCE);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+        ref.ports[1] = U64_OF_FUNCTION(function);
+#pragma GCC diagnostic pop
+
+        BC_ATTACH_NODE(bc, ref, 0, &term->connect_to);
+
+        break;
+    }
+    default: COMPILER_UNREACHABLE();
+    }
+}
+
+// Bytecode Execution
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+COMPILER_NONNULL(1, 2, 4) //
+static void
+build_duplicator_tree(
+    struct context *const restrict graph,
+    uint64_t *const restrict binder_port,
+    const uint64_t n,
+    uint64_t **const restrict ports) {
+    MY_ASSERT(graph);
+    MY_ASSERT(binder_port);
+    MY_ASSERT(ports);
+    XASSERT(n >= 2);
+
+    struct node current = alloc_node(graph, SYMBOL_DUPLICATOR(0));
+    ports[0] = &current.ports[1];
+    ports[1] = &current.ports[2];
+
+    for (uint64_t i = 2; i < n; i++) {
+        const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(0));
+        ports[i] = &dup.ports[1];
+        connect_ports(&dup.ports[2], &current.ports[0]);
+        current = dup;
+    }
+
+    connect_ports(&current.ports[0], binder_port);
+}
+
+COMPILER_NONNULL(1, 2) COMPILER_HOT //
+static void
+execute_bytecode(
+    struct context *const restrict graph, struct bytecode *const restrict bc) {
+    MY_ASSERT(graph);
+    MY_ASSERT(bc);
+
+    struct node current = {NULL};
+
+    for (size_t i = 0; i < bc->count; i++) {
+        const struct bc_instruction instr = bc->instructions[i];
+
+        switch (instr.ty) {
+        case INSTRUCTION_ATTACH_NODE: {
+            // clang-format off
+            const struct node template = instr.data.attach_node.template;
+            const uint64_t interface_port_idx = instr.data.attach_node.interface_port_idx;
+            uint64_t **const connect_to = instr.data.attach_node.connect_to;
+            // clang-format on
+
+            current = alloc_node_from(graph, template.ports[-1], &template);
+            connect_ports(&current.ports[interface_port_idx], *connect_to);
+
+            break;
+        }
+        case INSTRUCTION_SAVE_PORT: {
+            uint64_t **const location = instr.data.save_port.location;
+            const uint64_t port_idx = instr.data.save_port.port_idx;
+
+            *location = &current.ports[port_idx];
+
+            break;
+        }
+        case INSTRUCTION_DELIMIT: {
+            uint64_t **const points_to = instr.data.delimit.points_to, //
+                **goes_from = instr.data.delimit.goes_from;
+            const uint64_t n = instr.data.delimit.n;
+
+            inst_delimiter(
+                graph, (struct delimiter){.idx = 0, *points_to, *goes_from}, n);
+
+            break;
+        }
+        case INSTRUCTION_TREE:
+            build_duplicator_tree(
+                graph,
+                &current.ports[1],
+                instr.data.tree.n,
+                instr.data.tree.locations);
+            break;
+        case INSTRUCTION_FIX: {
+            uint64_t **const connect_to = instr.data.fix.connect_to;
+
+            const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(0));
+            const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
+
+            connect_ports(&dup.ports[0], &applicator.ports[1]);
+            connect_ports(&dup.ports[1], *connect_to);
+            connect_ports(&dup.ports[2], &applicator.ports[2]);
+
+            current = applicator;
+
+            break;
+        }
+        default: COMPILER_UNREACHABLE();
+        }
+    }
+}
+
 // Eraser-Passing Garbage Collection
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -1995,14 +2639,13 @@ gc_step(
     MY_ASSERT(graph);
     XASSERT(f.ports), XASSERT(g.ports);
     XASSERT(i >= 0 && (uint64_t)i < MAX_PORTS);
-    XASSERT(graph->gc_focus);
     XASSERT(SYMBOL_ERASER == f.ports[-1]);
 
     switch (g.ports[-1]) {
     commute_1_2: {
         connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0 == i ? 1 : 0]));
 
-        focus_on(graph->gc_focus, f);
+        focus_on(&graph->gc_focus, f);
 
         free_node(graph, g);
 
@@ -2021,8 +2664,8 @@ gc_step(
         connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[j]));
         const struct node fx = alloc_gc_node(graph, DECODE_ADDRESS(g.ports[k]));
 
-        focus_on(graph->gc_focus, f);
-        focus_on(graph->gc_focus, fx);
+        focus_on(&graph->gc_focus, f);
+        focus_on(&graph->gc_focus, fx);
 
         free_node(graph, g);
 
@@ -2044,9 +2687,9 @@ gc_step(
         const struct node fxx =
             alloc_gc_node(graph, DECODE_ADDRESS(g.ports[l]));
 
-        focus_on(graph->gc_focus, f);
-        focus_on(graph->gc_focus, fx);
-        focus_on(graph->gc_focus, fxx);
+        focus_on(&graph->gc_focus, f);
+        focus_on(&graph->gc_focus, fx);
+        focus_on(&graph->gc_focus, fxx);
 
         free_node(graph, g);
 
@@ -2085,7 +2728,7 @@ gc_step(
 
             if (SYMBOL_ERASER == h.ports[-1]) {
                 connect_ports(&f.ports[0], points_to);
-                focus_on(graph->gc_focus, f);
+                focus_on(&graph->gc_focus, f);
                 free_node(graph, g);
                 if (PHASE_GC == DECODE_PHASE_METADATA(h.ports[0])) {
                     set_phase(&h.ports[0], PHASE_GC_AUX);
@@ -2145,12 +2788,11 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
 
     MY_ASSERT(graph);
     MY_ASSERT(port);
-    XASSERT(graph->gc_focus);
 
     const struct node launch = alloc_gc_node(graph, port);
-    focus_on(graph->gc_focus, launch);
+    focus_on(&graph->gc_focus, launch);
 
-    CONSUME_MULTIFOCUS (graph->gc_focus, f) {
+    CONSUME_MULTIFOCUS (&graph->gc_focus, f) {
         XASSERT(f.ports);
 
         if (PHASE_GC_AUX == DECODE_PHASE_METADATA(f.ports[0])) {
@@ -2178,13 +2820,6 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
 
 // Core Interaction Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-COMPILER_NONNULL(1, 2, 3) // forward declaration for expanding references
-static void
-compile_lambda_term(
-    struct context *const restrict graph,
-    struct lambda_term *const restrict term,
-    uint64_t *const restrict output_port);
 
 #ifndef NDEBUG
 
@@ -2650,13 +3285,43 @@ RULE_DEFINITION(do_expand, graph, f, g) {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-    struct lambda_term *const term = lookup_expansion(
-        graph->expansion_cache, USER_FUNCTION_OF_U64(f.ports[1]));
+    // clang-format off
+    struct lambda_term *(*const function)(void) = USER_FUNCTION_OF_U64(f.ports[1]);
+    const size_t idx = U64_OF_FUNCTION(function) % OPTISCOPE_MAX_FUNCTIONS;
+    // clang-format on
 #pragma GCC diagnostic pop
 
-    compile_lambda_term(graph, term, &g.ports[0]);
-
     free_node(graph, f);
+
+    struct expansion *result = NULL;
+    size_t i = idx, limit = OPTISCOPE_MAX_FUNCTIONS;
+    while (i < limit) {
+        struct expansion *const entry = &graph->book.array[i];
+
+        if (function == entry->function) {
+            result = entry;
+            goto execute;
+        } else if (NULL == entry->function) {
+            entry->function = function;
+            entry->expansion = function();
+            entry->bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
+            emit_bytecode(graph, entry->bc, entry->expansion, 0);
+            result = entry;
+            goto execute;
+        } else if (OPTISCOPE_MAX_FUNCTIONS - 1 == i) {
+            i = 0, limit = idx;
+        } else {
+            i++;
+        }
+    }
+
+    panic(
+        "No memory left in the book; consider increasing `%s`!",
+        STRINGIFY_PRIMITIVE(OPTISCOPE_MAX_FUNCTIONS));
+
+execute:
+    result->expansion->connect_to = &g.ports[0];
+    execute_bytecode(graph, result->bc);
 }
 
 TYPE_CHECK_RULE(do_expand);
@@ -3447,540 +4112,6 @@ fire_rule(
 #undef BETA
 }
 
-// Lambda Term Interface
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-enum lambda_term_type {
-    LAMBDA_TERM_APPLY,
-    LAMBDA_TERM_LAMBDA,
-    LAMBDA_TERM_VAR,
-    LAMBDA_TERM_CELL,
-    LAMBDA_TERM_UNARY_CALL,
-    LAMBDA_TERM_BINARY_CALL,
-    LAMBDA_TERM_IF_THEN_ELSE,
-    LAMBDA_TERM_FIX,
-    LAMBDA_TERM_PERFORM,
-    LAMBDA_TERM_REFERENCE,
-};
-
-struct apply_data {
-    struct lambda_term *rator, *rand;
-};
-
-struct lambda_data {
-    struct lambda_term *body;
-    uint64_t nusages;        // the number of times the lambda body refers to
-                             // its binder
-    uint64_t **binder_ports; // the pointer to the next binder port; dynamically
-                             // assigned
-    uint64_t lvl;            // the de Bruijn level; dynamically assigned
-};
-
-struct var_data {
-    struct lambda_data **binder;
-    uint64_t idx; // the de Bruijn index; dynamically assigned
-};
-
-struct unary_call_data {
-    uint64_t (*function)(uint64_t);
-    struct lambda_term *rand;
-};
-
-struct binary_call_data {
-    uint64_t (*function)(uint64_t, uint64_t);
-    struct lambda_term *lhs, *rhs;
-};
-
-struct if_then_else_data {
-    struct lambda_term *condition;
-    struct lambda_term *if_then, *if_else;
-};
-
-struct fix_data {
-    struct lambda_term *f;
-};
-
-struct perform_data {
-    struct lambda_term *action, *k;
-};
-
-struct reference_data {
-    struct lambda_term *(*function)(void);
-};
-
-union lambda_term_data {
-    struct apply_data apply;
-    struct lambda_data *lambda;
-    struct var_data var;
-    uint64_t cell;
-    struct unary_call_data u_call;
-    struct binary_call_data b_call;
-    struct if_then_else_data ite;
-    struct fix_data fix;
-    struct perform_data perform;
-    struct reference_data ref;
-};
-
-struct lambda_term {
-    enum lambda_term_type ty;
-    union lambda_term_data data;
-    uint64_t fv_count;
-};
-
-extern LambdaTerm
-apply(const restrict LambdaTerm rator, const restrict LambdaTerm rand) {
-    MY_ASSERT(rator), MY_ASSERT(rand);
-
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_APPLY;
-    term->data.apply.rator = rator;
-    term->data.apply.rand = rand;
-    term->fv_count = rator->fv_count + rand->fv_count;
-
-    return term;
-}
-
-extern LambdaTerm
-prelambda(void) {
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_LAMBDA;
-    term->data.lambda = xcalloc(1, sizeof *term->data.lambda);
-    // All the data fields are zeroed out.
-
-    return term;
-}
-
-extern LambdaTerm
-link_lambda_body(
-    const restrict LambdaTerm binder, const restrict LambdaTerm body) {
-    MY_ASSERT(binder), MY_ASSERT(body);
-    MY_ASSERT(LAMBDA_TERM_LAMBDA == binder->ty);
-
-    binder->data.lambda->body = body;
-    binder->fv_count = body->fv_count - binder->data.lambda->nusages;
-
-    return binder;
-}
-
-extern LambdaTerm
-var(const restrict LambdaTerm binder) {
-    MY_ASSERT(binder);
-    MY_ASSERT(LAMBDA_TERM_LAMBDA == binder->ty);
-
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_VAR;
-    term->data.var.binder = &binder->data.lambda;
-    term->data.var.idx = 0; // to be filled in later
-    term->fv_count = 1;
-
-    binder->data.lambda->nusages++;
-
-    return term;
-}
-
-extern LambdaTerm
-cell(const uint64_t value) {
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_CELL;
-    term->data.cell = value;
-    term->fv_count = 0;
-
-    return term;
-}
-
-extern LambdaTerm
-unary_call(
-    uint64_t (*const function)(uint64_t), const restrict LambdaTerm rand) {
-    MY_ASSERT(function);
-    MY_ASSERT(rand);
-
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_UNARY_CALL;
-    term->data.u_call.function = function;
-    term->data.u_call.rand = rand;
-    term->fv_count = rand->fv_count;
-
-    return term;
-}
-
-extern LambdaTerm
-binary_call(
-    uint64_t (*const function)(uint64_t, uint64_t),
-    const restrict LambdaTerm lhs,
-    const restrict LambdaTerm rhs) {
-    MY_ASSERT(function);
-    MY_ASSERT(lhs), MY_ASSERT(rhs);
-
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_BINARY_CALL;
-    term->data.b_call.function = function;
-    term->data.b_call.lhs = lhs;
-    term->data.b_call.rhs = rhs;
-    term->fv_count = lhs->fv_count + rhs->fv_count;
-
-    return term;
-}
-
-extern LambdaTerm
-if_then_else(
-    const restrict LambdaTerm condition,
-    const restrict LambdaTerm if_then,
-    const restrict LambdaTerm if_else) {
-    MY_ASSERT(condition);
-    MY_ASSERT(if_then), MY_ASSERT(if_else);
-
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_IF_THEN_ELSE;
-    term->data.ite.condition = condition;
-    term->data.ite.if_then = if_then;
-    term->data.ite.if_else = if_else;
-    term->fv_count =
-        condition->fv_count + if_then->fv_count + if_else->fv_count;
-
-    return term;
-}
-
-extern LambdaTerm
-fix(const restrict LambdaTerm f) {
-    MY_ASSERT(f);
-
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_FIX;
-    term->data.fix.f = f;
-    term->fv_count = f->fv_count;
-
-    return term;
-}
-
-extern LambdaTerm
-perform(const restrict LambdaTerm action, const restrict LambdaTerm k) {
-    MY_ASSERT(action), MY_ASSERT(k);
-
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_PERFORM;
-    term->data.perform.action = action;
-    term->data.perform.k = k;
-    term->fv_count = action->fv_count + k->fv_count;
-
-    return term;
-}
-
-extern LambdaTerm
-expand(struct lambda_term *(*const function)(void)) {
-    MY_ASSERT(function);
-
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_REFERENCE;
-    term->data.ref.function = function;
-    term->fv_count = 0;
-
-    return term;
-}
-
-// Operations on Lambda Terms
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-COMPILER_NONNULL(1, 2, 5) //
-static void
-build_duplicator_tree(
-    struct context *const restrict graph,
-    uint64_t *const restrict binder_port,
-    const uint64_t idx,
-    const uint64_t n,
-    uint64_t **const restrict ports) {
-    MY_ASSERT(graph);
-    MY_ASSERT(binder_port);
-    XASSERT(n >= 2);
-
-    struct node current = alloc_node(graph, SYMBOL_DUPLICATOR(idx));
-    ports[0] = &current.ports[1];
-    ports[1] = &current.ports[2];
-
-    for (uint64_t i = 2; i < n; i++) {
-        const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(idx));
-        ports[i] = &dup.ports[1];
-        connect_ports(&dup.ports[2], &current.ports[0]);
-        current = dup;
-    }
-
-    connect_ports(&current.ports[0], binder_port);
-}
-
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
-inline static uint64_t
-de_bruijn_level_to_index(const uint64_t lvl, const uint64_t var) {
-    return lvl - var - 1;
-}
-
-COMPILER_NONNULL(1) COMPILER_COLD //
-static void
-prepare_lambda_term(
-    struct lambda_term *const restrict term, const uint64_t lvl) {
-    MY_ASSERT(term);
-
-    switch (term->ty) {
-    case LAMBDA_TERM_LAMBDA: {
-        struct lambda_data *const lambda = term->data.lambda;
-        XASSERT(lambda);
-        if (lambda->nusages > 0) {
-            lambda->binder_ports =
-                xmalloc(sizeof(uint64_t *) * lambda->nusages);
-        }
-        lambda->lvl = lvl;
-        prepare_lambda_term(lambda->body, lvl + 1);
-        break;
-    }
-    case LAMBDA_TERM_VAR: {
-        struct lambda_data *const binder = *term->data.var.binder;
-        XASSERT(binder);
-        term->data.var.idx = de_bruijn_level_to_index(lvl, binder->lvl);
-        break;
-    }
-    case LAMBDA_TERM_APPLY:
-        prepare_lambda_term(term->data.apply.rator, lvl);
-        prepare_lambda_term(term->data.apply.rand, lvl);
-        break;
-    case LAMBDA_TERM_UNARY_CALL:
-        prepare_lambda_term(term->data.u_call.rand, lvl);
-        break;
-    case LAMBDA_TERM_BINARY_CALL:
-        prepare_lambda_term(term->data.b_call.lhs, lvl);
-        prepare_lambda_term(term->data.b_call.rhs, lvl);
-        break;
-    case LAMBDA_TERM_IF_THEN_ELSE:
-        prepare_lambda_term(term->data.ite.condition, lvl);
-        prepare_lambda_term(term->data.ite.if_else, lvl);
-        prepare_lambda_term(term->data.ite.if_then, lvl);
-        break;
-    case LAMBDA_TERM_FIX: prepare_lambda_term(term->data.fix.f, lvl); break;
-    case LAMBDA_TERM_PERFORM:
-        prepare_lambda_term(term->data.perform.action, lvl);
-        prepare_lambda_term(term->data.perform.k, lvl);
-        break;
-    case LAMBDA_TERM_CELL:
-    case LAMBDA_TERM_REFERENCE: break;
-    default: COMPILER_UNREACHABLE();
-    }
-}
-
-COMPILER_NONNULL(1, 2, 3) //
-static void
-compile_lambda_term(
-    struct context *const restrict graph,
-    struct lambda_term *const restrict term,
-    uint64_t *const restrict output_port) {
-    MY_ASSERT(graph);
-    MY_ASSERT(term);
-    MY_ASSERT(output_port);
-
-    switch (term->ty) {
-    case LAMBDA_TERM_LAMBDA: {
-        struct lambda_data *const binder = term->data.lambda;
-        struct lambda_term *const body = term->data.lambda->body;
-        XASSERT(binder);
-        XASSERT(body);
-
-        const bool is_identity =
-            LAMBDA_TERM_VAR == body->ty && binder == *body->data.var.binder;
-        if (is_identity) {
-            // clang-format off
-            const struct node lambda = alloc_node(graph, SYMBOL_IDENTITY_LAMBDA);
-            // clang-format on
-            connect_ports(&lambda.ports[0], output_port);
-            break;
-        }
-
-        if (0 == binder->nusages) {
-            // This is lambda that "garbage-collects" its argument.
-            const struct node lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
-            compile_lambda_term(graph, body, &lambda.ports[1]);
-            connect_ports(&lambda.ports[0], output_port);
-            break;
-        }
-
-        const uint64_t symbol =
-            term->fv_count > 0 ? SYMBOL_LAMBDA : SYMBOL_LAMBDA_C;
-
-        const struct node lambda = alloc_node(graph, symbol);
-        connect_ports(&lambda.ports[0], output_port);
-        if (1 == binder->nusages) {
-            // This is a linear non-self-referential lambda.
-            binder->binder_ports[0] = &lambda.ports[1];
-        } else {
-            // This is a non-linear lambda that needs a duplicator tree.
-            build_duplicator_tree(
-                graph,
-                &lambda.ports[1],
-                0,
-                binder->nusages,
-                binder->binder_ports);
-        }
-        uint64_t **const ports = binder->binder_ports;
-        compile_lambda_term(graph, body, &lambda.ports[2]);
-        binder->binder_ports = ports;
-
-        break;
-    }
-    case LAMBDA_TERM_VAR: {
-        struct lambda_data *const binder = *term->data.var.binder;
-        const uint64_t idx = term->data.var.idx;
-        XASSERT(binder), XASSERT(binder->binder_ports);
-
-        inst_delimiter(
-            graph,
-            (struct delimiter){.idx = 0, *binder->binder_ports, output_port},
-            idx);
-        binder->binder_ports++;
-
-        break;
-    }
-    case LAMBDA_TERM_APPLY: {
-        struct lambda_term *const rator = term->data.apply.rator, //
-            *const rand = term->data.apply.rand;
-
-        const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
-        compile_lambda_term(graph, rator, &applicator.ports[0]);
-        connect_ports(&applicator.ports[1], output_port);
-        compile_lambda_term(graph, rand, &applicator.ports[2]);
-
-        break;
-    }
-    case LAMBDA_TERM_CELL: {
-        const struct node cell = alloc_node(graph, SYMBOL_CELL);
-        connect_ports(&cell.ports[0], output_port);
-        cell.ports[1] = term->data.cell;
-        break;
-    }
-    case LAMBDA_TERM_UNARY_CALL: {
-        uint64_t (*const function)(uint64_t) = term->data.u_call.function;
-        struct lambda_term *const rand = term->data.u_call.rand;
-
-        const struct node call = alloc_node(graph, SYMBOL_UNARY_CALL);
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-        call.ports[2] = U64_OF_FUNCTION(function);
-#pragma GCC diagnostic pop
-
-        compile_lambda_term(graph, rand, &call.ports[0]);
-        connect_ports(&call.ports[1], output_port);
-
-        break;
-    }
-    case LAMBDA_TERM_BINARY_CALL: {
-        uint64_t (*const function)(uint64_t, uint64_t) = //
-            term->data.b_call.function;
-        struct lambda_term *const lhs = term->data.b_call.lhs, //
-            *const rhs = term->data.b_call.rhs;
-
-        const struct node call = alloc_node(graph, SYMBOL_BINARY_CALL);
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-        call.ports[3] = U64_OF_FUNCTION(function);
-#pragma GCC diagnostic pop
-
-        compile_lambda_term(graph, lhs, &call.ports[0]);
-        connect_ports(&call.ports[1], output_port);
-        compile_lambda_term(graph, rhs, &call.ports[2]);
-
-        break;
-    }
-    case LAMBDA_TERM_IF_THEN_ELSE: {
-        struct lambda_term *const condition = term->data.ite.condition, //
-            *const if_then = term->data.ite.if_then,                    //
-                *const if_else = term->data.ite.if_else;
-
-        const struct node ite = alloc_node(graph, SYMBOL_IF_THEN_ELSE);
-
-        compile_lambda_term(graph, condition, &ite.ports[0]);
-        connect_ports(&ite.ports[1], output_port);
-        compile_lambda_term(graph, if_else, &ite.ports[2]);
-        compile_lambda_term(graph, if_then, &ite.ports[3]);
-
-        break;
-    }
-    case LAMBDA_TERM_FIX: {
-        struct lambda_term *const f = term->data.fix.f;
-
-        const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(0));
-        const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
-
-        compile_lambda_term(graph, f, &applicator.ports[0]);
-        connect_ports(&dup.ports[0], &applicator.ports[1]);
-        connect_ports(&dup.ports[1], output_port);
-        connect_ports(&dup.ports[2], &applicator.ports[2]);
-
-        break;
-    }
-    case LAMBDA_TERM_PERFORM: {
-        struct lambda_term *const action = term->data.perform.action, //
-            *const k = term->data.perform.k;
-
-        const struct node perform = alloc_node(graph, SYMBOL_PERFORM);
-        compile_lambda_term(graph, action, &perform.ports[0]);
-        connect_ports(&perform.ports[1], output_port);
-        compile_lambda_term(graph, k, &perform.ports[2]);
-
-        break;
-    }
-    case LAMBDA_TERM_REFERENCE: {
-        struct lambda_term *(*const function)(void) = term->data.ref.function;
-
-        const struct node ref = alloc_node(graph, SYMBOL_REFERENCE);
-        connect_ports(&ref.ports[0], output_port);
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-        ref.ports[1] = U64_OF_FUNCTION(function);
-#pragma GCC diagnostic pop
-
-        break;
-    }
-    default: COMPILER_UNREACHABLE();
-    }
-}
-
-COMPILER_NONNULL(1) COMPILER_COLD //
-static void
-free_lambda_term(struct lambda_term *const restrict term) {
-    MY_ASSERT(term);
-
-    switch (term->ty) {
-    case LAMBDA_TERM_APPLY:
-        free_lambda_term(term->data.apply.rator);
-        free_lambda_term(term->data.apply.rand);
-        break;
-    case LAMBDA_TERM_LAMBDA:
-        free_lambda_term(term->data.lambda->body);
-        free(term->data.lambda->binder_ports);
-        free(term->data.lambda);
-        break;
-    case LAMBDA_TERM_UNARY_CALL:
-        free_lambda_term(term->data.u_call.rand);
-        break;
-    case LAMBDA_TERM_BINARY_CALL:
-        free_lambda_term(term->data.b_call.lhs);
-        free_lambda_term(term->data.b_call.rhs);
-        break;
-    case LAMBDA_TERM_IF_THEN_ELSE:
-        free_lambda_term(term->data.ite.condition);
-        free_lambda_term(term->data.ite.if_then);
-        free_lambda_term(term->data.ite.if_else);
-        break;
-    case LAMBDA_TERM_FIX: free_lambda_term(term->data.fix.f); break;
-    case LAMBDA_TERM_PERFORM:
-        free_lambda_term(term->data.perform.action);
-        free_lambda_term(term->data.perform.k);
-        break;
-    case LAMBDA_TERM_VAR:
-    case LAMBDA_TERM_CELL:
-    case LAMBDA_TERM_REFERENCE: break;
-    default: COMPILER_UNREACHABLE();
-    }
-
-    free(term);
-}
-
 // Metacircular Interpretation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -4165,7 +4296,7 @@ reduce(struct context *const restrict graph) {
 
     MY_ASSERT(graph);
 
-    struct multifocus *const stack = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
+    struct multifocus stack = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
 
     struct node f = graph->root;
 
@@ -4177,14 +4308,14 @@ reduce(struct context *const restrict graph) {
 
         if (is_interacting_with(f, g)) {
             fire_rule(graph, f, g);
-            f = unfocus_or(stack, graph->root);
+            f = unfocus_or(&stack, graph->root);
             set_phase(&f.ports[0], PHASE_REDUCTION);
         } else if (try_extrude_if_delimiter(graph, f, g, points_to)) {
-            f = unfocus(stack);
+            f = unfocus(&stack);
             set_phase(&f.ports[0], PHASE_REDUCTION);
         } else {
             set_phase(&f.ports[0], PHASE_STACK);
-            focus_on(stack, f);
+            focus_on(&stack, f);
             f = g;
         }
     }
@@ -4206,7 +4337,6 @@ optiscope_algorithm(
 
     struct context *const graph = alloc_context();
 
-    prepare_lambda_term(term, 0);
     if (stream) {
         term = apply(
             apply(
@@ -4214,7 +4344,11 @@ optiscope_algorithm(
                 apply(expand(self_denote), metacode(term))),
             cell(0));
     }
-    compile_lambda_term(graph, term, &graph->root.ports[0]);
+    struct bytecode *const bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
+    emit_bytecode(graph, bc, term, 0);
+    term->connect_to = &graph->root.ports[0];
+    execute_bytecode(graph, bc);
+    free_bytecode(bc);
     free_lambda_term(term);
     reduce(graph);
     const struct node result = follow_port(&graph->root.ports[0]);

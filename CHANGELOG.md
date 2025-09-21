@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
  - Reduction semantics: mimick full reduction via metacircular interpretation for pure LC terms.
+ - Miscellaneous: build nets through bytecode execution rather than term traversal.
 
 ## 0.15.0 - 2025-09-18
 
