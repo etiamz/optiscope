@@ -1436,8 +1436,8 @@ unfocus_or(
 // Dynamic Book of Expansions
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-#ifndef OPTISCOPE_MAX_FUNCTIONS
-#define OPTISCOPE_MAX_FUNCTIONS 4096
+#ifndef OPTISCOPE_BOOK_SIZE
+#define OPTISCOPE_BOOK_SIZE 4096
 #endif
 
 struct expansion {
@@ -1452,7 +1452,7 @@ struct book {
 
 #define alloc_book()                                                           \
     ((struct book){                                                            \
-        .array = xcalloc(OPTISCOPE_MAX_FUNCTIONS, sizeof(struct expansion)),   \
+        .array = xcalloc(OPTISCOPE_BOOK_SIZE, sizeof(struct expansion)),       \
     })
 
 COMPILER_COLD //
@@ -1460,7 +1460,7 @@ static void
 free_book(const struct book book) {
     XASSERT(book.array);
 
-    for (size_t i = 0; i < OPTISCOPE_MAX_FUNCTIONS; i++) {
+    for (size_t i = 0; i < OPTISCOPE_BOOK_SIZE; i++) {
         const struct expansion entry = book.array[i];
 
         if (entry.expansion) {
@@ -3250,41 +3250,55 @@ RULE_DEFINITION(do_expand, graph, f, g) {
 #pragma GCC diagnostic ignored "-Wpedantic"
     // clang-format off
     struct lambda_term *(*const function)(void) = USER_FUNCTION_OF_U64(f.ports[1]);
-    const size_t idx = U64_OF_FUNCTION(function) % OPTISCOPE_MAX_FUNCTIONS;
+    const size_t idx = U64_OF_FUNCTION(function) % OPTISCOPE_BOOK_SIZE;
     // clang-format on
 #pragma GCC diagnostic pop
 
     free_node(graph, f);
 
-    struct expansion *result = NULL;
-    size_t i = idx, limit = OPTISCOPE_MAX_FUNCTIONS;
+    struct expansion *expansion = NULL;
+    struct lambda_term *term = NULL;
+
+    size_t i = idx, limit = OPTISCOPE_BOOK_SIZE;
     while (i < limit) {
         struct expansion *const entry = &graph->book.array[i];
 
         if (function == entry->function) {
-            result = entry;
+            expansion = entry;
             goto execute;
         } else if (NULL == entry->function) {
-            struct lambda_term *const term = function();
-            entry->function = function;
-            entry->expansion = term;
-            entry->bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
-            emit_bytecode(graph, &entry->bc, term, 0);
-            result = entry;
-            goto execute;
-        } else if (OPTISCOPE_MAX_FUNCTIONS - 1 == i) {
+            expansion = entry;
+            goto emit;
+        } else if (OPTISCOPE_BOOK_SIZE - 1 == i) {
             i = 0, limit = idx;
         } else {
             i++;
         }
     }
 
-    // TODO: implement a proper resizing strategy for the book.
-    panic("The book is out of memory!");
+    if (NULL == expansion) {
+        // Evict an old entry from the book.
+        struct expansion *const victim = &graph->book.array[idx];
+        free_lambda_term(victim->expansion);
+        free_bytecode(victim->bc);
+        expansion = victim;
+    }
 
-execute:
-    result->expansion->connect_to = &g.ports[0];
-    execute_bytecode(graph, result->bc);
+emit:;
+    {
+        term = function();
+        expansion->function = function;
+        expansion->expansion = term;
+        expansion->bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
+        emit_bytecode(graph, &expansion->bc, term, 0);
+    }
+
+execute:;
+    {
+        term = expansion->expansion;
+        term->connect_to = &g.ports[0];
+        execute_bytecode(graph, expansion->bc);
+    }
 }
 
 TYPE_CHECK_RULE(do_expand);
