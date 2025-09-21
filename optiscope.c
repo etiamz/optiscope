@@ -420,7 +420,8 @@ struct lambda_term {
 
 extern LambdaTerm
 apply(const restrict LambdaTerm rator, const restrict LambdaTerm rand) {
-    MY_ASSERT(rator), MY_ASSERT(rand);
+    MY_ASSERT(rator);
+    MY_ASSERT(rand);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_APPLY;
@@ -444,7 +445,8 @@ prelambda(void) {
 extern LambdaTerm
 link_lambda_body(
     const restrict LambdaTerm binder, const restrict LambdaTerm body) {
-    MY_ASSERT(binder), MY_ASSERT(body);
+    MY_ASSERT(binder);
+    MY_ASSERT(body);
     MY_ASSERT(LAMBDA_TERM_LAMBDA == binder->ty);
 
     binder->data.lambda->body = body;
@@ -499,7 +501,8 @@ binary_call(
     const restrict LambdaTerm lhs,
     const restrict LambdaTerm rhs) {
     MY_ASSERT(function);
-    MY_ASSERT(lhs), MY_ASSERT(rhs);
+    MY_ASSERT(lhs);
+    MY_ASSERT(rhs);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_BINARY_CALL;
@@ -517,7 +520,8 @@ if_then_else(
     const restrict LambdaTerm if_then,
     const restrict LambdaTerm if_else) {
     MY_ASSERT(condition);
-    MY_ASSERT(if_then), MY_ASSERT(if_else);
+    MY_ASSERT(if_then);
+    MY_ASSERT(if_else);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_IF_THEN_ELSE;
@@ -544,7 +548,8 @@ fix(const restrict LambdaTerm f) {
 
 extern LambdaTerm
 perform(const restrict LambdaTerm action, const restrict LambdaTerm k) {
-    MY_ASSERT(action), MY_ASSERT(k);
+    MY_ASSERT(action);
+    MY_ASSERT(k);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_PERFORM;
@@ -1149,7 +1154,8 @@ follow_port(uint64_t *const restrict port) {
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static bool
 is_interacting_with(const struct node f, const struct node g) {
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
 
     // Supposing that `g` is derived from `f` by `follow_port(&f.ports[0])`.
     return DECODE_ADDRESS(g.ports[0]) == &f.ports[0];
@@ -1158,7 +1164,8 @@ is_interacting_with(const struct node f, const struct node g) {
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
 inline static bool
 is_interaction(const struct node f, const struct node g) {
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
 
     return is_interacting_with(f, g) && is_interacting_with(g, f);
 }
@@ -1637,19 +1644,24 @@ alloc_node_from(
     case SYMBOL_LAMBDA_C:
     case SYMBOL_PERFORM:
     duplicator:
-        ports = ALLOC_POOL_OBJECT(u64x4_pool), SET_PORTS_2();
+        ports = ALLOC_POOL_OBJECT(u64x4_pool);
+        SET_PORTS_2();
         break;
     case SYMBOL_ERASER:
     case SYMBOL_IDENTITY_LAMBDA:
-        ports = ALLOC_POOL_OBJECT(u64x2_pool), SET_PORTS_0();
+        ports = ALLOC_POOL_OBJECT(u64x2_pool);
+        SET_PORTS_0();
         break;
     case SYMBOL_GC_LAMBDA:
-        ports = ALLOC_POOL_OBJECT(u64x3_pool), SET_PORTS_1();
+        ports = ALLOC_POOL_OBJECT(u64x3_pool);
+        SET_PORTS_1();
         break;
     case SYMBOL_IF_THEN_ELSE:
-        ports = ALLOC_POOL_OBJECT(u64x5_pool), SET_PORTS_3();
+        ports = ALLOC_POOL_OBJECT(u64x5_pool);
+        SET_PORTS_3();
         break;
     case SYMBOL_CELL:
+    case SYMBOL_REFERENCE:
         ports = ALLOC_POOL_OBJECT(u64x3_pool);
         if (prototype) { ports[1] = prototype->ports[1]; }
         SET_PORTS_0();
@@ -1667,19 +1679,12 @@ alloc_node_from(
     case SYMBOL_BINARY_CALL_AUX:
         ports = ALLOC_POOL_OBJECT(u64x5_pool);
         if (prototype) {
-            ports[2] = prototype->ports[2], ports[3] = prototype->ports[3];
+            ports[2] = prototype->ports[2];
+            ports[3] = prototype->ports[3];
         }
         SET_PORTS_1();
         break;
-    case SYMBOL_REFERENCE:
-        ports = ALLOC_POOL_OBJECT(u64x3_pool), SET_PORTS_0();
-        if (prototype) { ports[1] = prototype->ports[1]; }
-        break;
     case SYMBOL_BARRIER:
-        ports = ALLOC_POOL_OBJECT(u64x4_pool);
-        if (prototype) { ports[2] = prototype->ports[2]; }
-        SET_PORTS_1();
-        break;
     delimiter:
         ports = ALLOC_POOL_OBJECT(u64x4_pool);
         if (prototype) { ports[2] = prototype->ports[2]; }
@@ -1794,7 +1799,8 @@ struct delimiter {
 static void
 assert_delimiter_template(const struct delimiter template) {
     MY_ASSERT(template.idx < INDEX_RANGE);
-    MY_ASSERT(template.points_to), MY_ASSERT(template.goes_from);
+    MY_ASSERT(template.points_to);
+    MY_ASSERT(template.goes_from);
 }
 
 #else
@@ -2153,7 +2159,8 @@ COMPILER_NONNULL(1) //
 static void
 graphviz_draw_node(
     struct graphviz_context *const restrict ctx, const struct node node) {
-    MY_ASSERT(ctx), XASSERT(ctx->stream);
+    MY_ASSERT(ctx);
+    XASSERT(ctx->stream);
     XASSERT(node.ports);
 
     const uint64_t *const p = node.ports;
@@ -2217,7 +2224,8 @@ go_graphviz(
     struct graphviz_context *const restrict ctx,
     const struct node source,
     const uint8_t i) {
-    MY_ASSERT(ctx), XASSERT(ctx->stream);
+    MY_ASSERT(ctx);
+    XASSERT(ctx->stream);
     XASSERT(source.ports);
 
     const struct node node = follow_port(&source.ports[i]);
@@ -2600,7 +2608,8 @@ gc_step(
     const struct node g,
     const ptrdiff_t i) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     XASSERT(i >= 0 && (uint64_t)i < MAX_PORTS);
     XASSERT(SYMBOL_ERASER == f.ports[-1]);
 
@@ -2662,7 +2671,8 @@ gc_step(
         break;
     }
     annihilate:
-        free_node(graph, f), free_node(graph, g);
+        free_node(graph, f);
+        free_node(graph, g);
 
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ngc++;
@@ -2674,7 +2684,8 @@ gc_step(
             const struct node gc_lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
             connect_ports(&gc_lambda.ports[0], DECODE_ADDRESS(g.ports[0]));
             connect_ports(&gc_lambda.ports[1], DECODE_ADDRESS(g.ports[2]));
-            free_node(graph, f), free_node(graph, g);
+            free_node(graph, f);
+            free_node(graph, g);
             break;
         } else {
             goto commute_1_3;
@@ -2788,7 +2799,8 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
 
 static void
 assert_annihilation(const struct node f, const struct node g) {
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(f.ports[-1] == g.ports[-1]);
 }
@@ -2799,7 +2811,8 @@ assert_beta(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
     MY_ASSERT(SYMBOL_LAMBDA == g.ports[-1]);
@@ -2811,7 +2824,8 @@ assert_beta_c(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
     MY_ASSERT(SYMBOL_LAMBDA_C == g.ports[-1]);
@@ -2823,7 +2837,8 @@ assert_identity_beta(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
     MY_ASSERT(SYMBOL_IDENTITY_LAMBDA == g.ports[-1]);
@@ -2835,7 +2850,8 @@ assert_gc_beta(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
     MY_ASSERT(SYMBOL_GC_LAMBDA == g.ports[-1]);
@@ -2847,7 +2863,8 @@ assert_expand(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_REFERENCE == f.ports[-1]);
     MY_ASSERT(is_operator_symbol(g.ports[-1]));
@@ -2855,7 +2872,8 @@ assert_expand(
 
 static void
 assert_commutation(const struct node f, const struct node g) {
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(f.ports[-1] != g.ports[-1]);
 }
@@ -2866,7 +2884,8 @@ assert_unary_call(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_UNARY_CALL == f.ports[-1]);
     MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
@@ -2878,7 +2897,8 @@ assert_binary_call(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_BINARY_CALL == f.ports[-1]);
     MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
@@ -2890,7 +2910,8 @@ assert_binary_call_aux(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_BINARY_CALL_AUX == f.ports[-1]);
     MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
@@ -2902,7 +2923,8 @@ assert_if_then_else(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_IF_THEN_ELSE == f.ports[-1]);
     MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
@@ -2914,7 +2936,8 @@ assert_perform(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_PERFORM == f.ports[-1]);
     MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
@@ -2926,7 +2949,8 @@ assert_barrier(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_BARRIER == f.ports[-1]);
     MY_ASSERT(SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1]);
@@ -2938,7 +2962,8 @@ assert_unbarrier(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports), MY_ASSERT(g.ports);
+    MY_ASSERT(f.ports);
+    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_BARRIER == f.ports[-1]);
     // `g` is unspecified.
@@ -2976,12 +3001,13 @@ debug_interaction(
     MY_ASSERT(graph);
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
-    graph->current_pair[0] = f, graph->current_pair[1] = g;
+    graph->current_pair[0] = f;
+    graph->current_pair[1] = g;
 #endif
 
     char f_ssymbol[MAX_SSYMBOL_SIZE] = {0}, g_ssymbol[MAX_SSYMBOL_SIZE] = {0};
-    strcpy(f_ssymbol, print_symbol(f.ports[-1])),
-        strcpy(g_ssymbol, print_symbol(g.ports[-1]));
+    strcpy(f_ssymbol, print_symbol(f.ports[-1]));
+    strcpy(g_ssymbol, print_symbol(g.ports[-1]));
     debug(
         "%s(%p %s, %p %s)",
         caller,
@@ -3011,7 +3037,8 @@ typedef void (*Rule)(
 
 RULE_DEFINITION(annihilate, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_annihilation(f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3027,14 +3054,16 @@ RULE_DEFINITION(annihilate, graph, f, g) {
         connect_ports(DECODE_ADDRESS(f.ports[i]), DECODE_ADDRESS(g.ports[i]));
     }
 
-    free_node(graph, f), free_node(graph, g);
+    free_node(graph, f);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(annihilate);
 
 RULE_DEFINITION(commute, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_commutation(f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3082,9 +3111,6 @@ RULE_DEFINITION(commute, graph, f, g) {
     struct node f_updates[MAX_AUXILIARY_PORTS] = {{NULL}},
                 g_updates[MAX_AUXILIARY_PORTS] = {{NULL}};
 
-    // Hint the compiler to automatically unroll the following loops.
-    XASSERT(m <= MAX_AUXILIARY_PORTS), XASSERT(n <= MAX_AUXILIARY_PORTS);
-
     for (uint8_t i = 0; i < m; i++) {
         f_updates[i] = alloc_node_from(graph, fsym, &f);
         // clang-format off
@@ -3107,14 +3133,16 @@ RULE_DEFINITION(commute, graph, f, g) {
         }
     }
 
-    free_node(graph, f), free_node(graph, g);
+    free_node(graph, f);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(commute);
 
 RULE_DEFINITION(beta, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_beta(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3133,14 +3161,16 @@ RULE_DEFINITION(beta, graph, f, g) {
             .idx = 0, DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[1])},
         1);
 
-    free_node(graph, f), free_node(graph, g);
+    free_node(graph, f);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(beta);
 
 RULE_DEFINITION(beta_c, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_beta_c(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3151,14 +3181,16 @@ RULE_DEFINITION(beta_c, graph, f, g) {
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
     connect_ports(DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[1]));
 
-    free_node(graph, f), free_node(graph, g);
+    free_node(graph, f);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(beta_c);
 
 RULE_DEFINITION(identity_beta, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_identity_beta(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3168,14 +3200,16 @@ RULE_DEFINITION(identity_beta, graph, f, g) {
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
-    free_node(graph, f), free_node(graph, g);
+    free_node(graph, f);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(identity_beta);
 
 RULE_DEFINITION(gc_beta, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_gc_beta(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3193,14 +3227,16 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
     // if so, we must garbage-collect it.
     gc(graph, DECODE_ADDRESS(f.ports[2]));
 
-    free_node(graph, f), free_node(graph, g);
+    free_node(graph, f);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(gc_beta);
 
 RULE_DEFINITION(barrier, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_barrier(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3218,7 +3254,8 @@ TYPE_CHECK_RULE(barrier);
 
 RULE_DEFINITION(unbarrier, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_unbarrier(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3238,7 +3275,8 @@ TYPE_CHECK_RULE(unbarrier);
 
 RULE_DEFINITION(do_expand, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_expand(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3305,7 +3343,8 @@ TYPE_CHECK_RULE(do_expand);
 
 RULE_DEFINITION(do_unary_call, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_unary_call(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3326,7 +3365,8 @@ TYPE_CHECK_RULE(do_unary_call);
 
 RULE_DEFINITION(do_binary_call, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_binary_call(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3340,14 +3380,16 @@ RULE_DEFINITION(do_binary_call, graph, f, g) {
     aux.ports[3] = g.ports[1];
     connect_ports(&aux.ports[0], DECODE_ADDRESS(f.ports[2]));
 
-    free_node(graph, f), free_node(graph, g);
+    free_node(graph, f);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(do_binary_call);
 
 RULE_DEFINITION(do_binary_call_aux, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_binary_call_aux(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3368,7 +3410,8 @@ TYPE_CHECK_RULE(do_binary_call_aux);
 
 RULE_DEFINITION(do_if_then_else, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_if_then_else(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3386,14 +3429,16 @@ RULE_DEFINITION(do_if_then_else, graph, f, g) {
     connect_ports(DECODE_ADDRESS(f.ports[1]), choose);
     gc(graph, discard);
 
-    free_node(graph, f), free_node(graph, g);
+    free_node(graph, f);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(do_if_then_else);
 
 RULE_DEFINITION(do_perform, graph, f, g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     assert_perform(graph, f, g);
     debug_interaction(__func__, graph, f, g);
 
@@ -3403,7 +3448,8 @@ RULE_DEFINITION(do_perform, graph, f, g) {
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
-    free_node(graph, f), free_node(graph, g);
+    free_node(graph, f);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(do_perform);
@@ -3414,7 +3460,8 @@ TYPE_CHECK_RULE(do_perform);
 #define ANNIHILATION_PROLOGUE(graph, f, g)                                     \
     do {                                                                       \
         MY_ASSERT(graph);                                                      \
-        XASSERT(f.ports), XASSERT(g.ports);                                    \
+        XASSERT(f.ports);                                                      \
+        XASSERT(g.ports);                                                      \
         assert_annihilation(f, g);                                             \
         debug_interaction(__func__, graph, f, g);                              \
         NANNIHILATIONS_PLUS_PLUS(graph);                                       \
@@ -3428,11 +3475,13 @@ TYPE_CHECK_RULE(do_perform);
 
 RULE_DEFINITION(annihilate_delim_delim, graph, f, g) {
     ANNIHILATION_PROLOGUE(graph, f, g);
-    XASSERT(f.ports[2] > 0), XASSERT(g.ports[2] > 0);
+    XASSERT(f.ports[2] > 0);
+    XASSERT(g.ports[2] > 0);
 
     if (f.ports[2] == g.ports[2]) {
         connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
-        free_node(graph, f), free_node(graph, g);
+        free_node(graph, f);
+        free_node(graph, g);
     } else if (f.ports[2] > g.ports[2]) {
         f.ports[2] -= g.ports[2];
         connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
@@ -3454,7 +3503,8 @@ RULE_DEFINITION(annihilate_dup_dup, graph, f, g) {
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
     connect_ports(DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[2]));
 
-    free_node(graph, f), free_node(graph, g);
+    free_node(graph, f);
+    free_node(graph, g);
 }
 
 TYPE_CHECK_RULE(annihilate_dup_dup);
@@ -3468,7 +3518,8 @@ TYPE_CHECK_RULE(annihilate_dup_dup);
 #define COMMUTATION_PROLOGUE(graph, f, g)                                      \
     do {                                                                       \
         MY_ASSERT(graph);                                                      \
-        XASSERT(f.ports), XASSERT(g.ports);                                    \
+        XASSERT(f.ports);                                                      \
+        XASSERT(g.ports);                                                      \
         assert_commutation(f, g);                                              \
         debug_interaction(__func__, graph, f, g);                              \
         NCOMMUTATIONS_PLUS_PLUS(graph);                                        \
@@ -3743,7 +3794,8 @@ TYPE_CHECK_RULE(commute_lambda_c_dup);
 #define EXTRUSION_PROLOGUE(graph, f, g)                                        \
     do {                                                                       \
         MY_ASSERT(graph);                                                      \
-        XASSERT(f.ports), XASSERT(g.ports);                                    \
+        XASSERT(f.ports);                                                      \
+        XASSERT(g.ports);                                                      \
         NEXTRUSIONS_PLUS_PLUS(graph);                                          \
     } while (false)
 
@@ -3815,7 +3867,8 @@ fire_rule(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
     MY_ASSERT(is_interaction(f, g));
@@ -4248,7 +4301,8 @@ try_extrude_if_delimiter(
     const struct node g,
     uint64_t *const restrict points_to) {
     MY_ASSERT(graph);
-    XASSERT(f.ports), XASSERT(g.ports);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     MY_ASSERT(points_to);
 
     if (!IS_DELIMITER(f.ports[-1])) { return false; }
