@@ -52,7 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //   Linux).
 // - `OPTISCOPE_MAX_FUNCTIONS`
 //   The maximum number of different functions for reference expansion caching.
-//   Defaulting to 1024.
+//   Defaulting to 4096.
 
 #if defined(OPTISCOPE_ENABLE_GRAPHVIZ) && defined(NDEBUG)
 #error `OPTISCOPE_ENABLE_GRAPHVIZ` is not compatible with `NDEBUG`!

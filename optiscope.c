@@ -1437,7 +1437,7 @@ unfocus_or(
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #ifndef OPTISCOPE_MAX_FUNCTIONS
-#define OPTISCOPE_MAX_FUNCTIONS 1024
+#define OPTISCOPE_MAX_FUNCTIONS 4096
 #endif
 
 struct expansion {
@@ -3304,7 +3304,8 @@ RULE_DEFINITION(do_expand, graph, f, g) {
         }
     }
 
-    panic("No memory for expansion; increase `OPTISCOPE_MAX_FUNCTIONS`!");
+    // TODO: implement a proper resizing strategy for the book.
+    panic("The book is out of memory!");
 
 execute:
     result->expansion->connect_to = &g.ports[0];
