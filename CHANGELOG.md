@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
  - User interface: change the `OPTISCOPE_MAX_FUNCTIONS` default to `4096`.
+ - Statistics: doe not measure memory pressure of duplicators & delimiters anymore.
  - Miscellaneous:
    - Mimick full reduction via metacircular interpretation for pure lambda calculus terms.
    - Translate terms through bytecode execution instead of recursive traversal.

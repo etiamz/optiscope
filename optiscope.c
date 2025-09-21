@@ -1498,8 +1498,7 @@ struct context {
     // The numbers of non-interaction graph rewrites.
     uint64_t nmergings, nextrusions, ngc;
     // The memory usage statistics.
-    uint64_t nduplicators, ndelimiters, ntotal, //
-        nmax_duplicators, nmax_delimiters, nmax_total;
+    uint64_t ntotal, nmax_total;
 #endif
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
@@ -1585,8 +1584,6 @@ print_stats(const struct context *const restrict graph) {
     printf("Delimiter extrusions: %" PRIu64 "\n", graph->nextrusions);
     printf("      Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
     printf("    Bookkeeping work: %.2f%%\n", bookkeeping_percentage);
-    printf("     Max duplicators: %" PRIu64 "\n", graph->nmax_duplicators);
-    printf("      Max delimiters: %" PRIu64 "\n", graph->nmax_delimiters);
     printf("     Max total nodes: %" PRIu64 "\n", graph->nmax_total);
 }
 
@@ -1639,6 +1636,7 @@ alloc_node_from(
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
     case SYMBOL_PERFORM:
+    duplicator:
         ports = ALLOC_POOL_OBJECT(u64x4_pool), SET_PORTS_2();
         break;
     case SYMBOL_ERASER:
@@ -1682,25 +1680,10 @@ alloc_node_from(
         if (prototype) { ports[2] = prototype->ports[2]; }
         SET_PORTS_1();
         break;
-    duplicator:
-        ports = ALLOC_POOL_OBJECT(u64x4_pool), SET_PORTS_2();
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->nduplicators++;
-        if (graph->nmax_duplicators < graph->nduplicators) {
-            graph->nmax_duplicators = graph->nduplicators;
-        }
-#endif
-        break;
     delimiter:
         ports = ALLOC_POOL_OBJECT(u64x4_pool);
         if (prototype) { ports[2] = prototype->ports[2]; }
         SET_PORTS_1();
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->ndelimiters++;
-        if (graph->nmax_delimiters < graph->ndelimiters) {
-            graph->nmax_delimiters = graph->ndelimiters;
-        }
-#endif
         break;
     default:
         if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
@@ -1779,7 +1762,11 @@ free_node(struct context *const restrict graph, const struct node node) {
     case SYMBOL_LAMBDA_C:
     case SYMBOL_UNARY_CALL:
     case SYMBOL_PERFORM:
-    case SYMBOL_BARRIER: FREE_POOL_OBJECT(u64x4_pool, p); break;
+    case SYMBOL_BARRIER:
+    duplicator:
+    delimiter:
+        FREE_POOL_OBJECT(u64x4_pool, p);
+        break;
     case SYMBOL_BINARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_IF_THEN_ELSE: FREE_POOL_OBJECT(u64x5_pool, p); break;
@@ -1787,18 +1774,6 @@ free_node(struct context *const restrict graph, const struct node node) {
         if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
         else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
         else COMPILER_UNREACHABLE();
-    duplicator:
-        FREE_POOL_OBJECT(u64x4_pool, p);
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->nduplicators--;
-#endif
-        break;
-    delimiter:
-        FREE_POOL_OBJECT(u64x4_pool, p);
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->ndelimiters--;
-#endif
-        break;
     }
 
 #ifdef OPTISCOPE_ENABLE_STATS
