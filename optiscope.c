@@ -3885,6 +3885,15 @@ interact(
 
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
+#ifdef OPTISCOPE_ENABLE_STATS
+    if (IS_DUPLICATOR(fsym) || IS_DUPLICATOR(gsym)) { //
+        graph->nduplication_itrs++;
+    }
+    if (IS_DELIMITER(fsym) || IS_DELIMITER(gsym)) { //
+        graph->ndelimiter_itrs++;
+    }
+#endif
+
     if ((is_operator_symbol(fsym) || IS_DUPLICATOR(fsym)) &&
         SYMBOL_DELIMITER(UINT64_C(0)) == gsym) {
         uint64_t *const h_port = DECODE_ADDRESS(g.ports[1]);
@@ -3899,15 +3908,6 @@ interact(
             return;
         }
     }
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    if (IS_DUPLICATOR(fsym) || IS_DUPLICATOR(gsym)) { //
-        graph->nduplication_itrs++;
-    }
-    if (IS_DELIMITER(fsym) || IS_DELIMITER(gsym)) { //
-        graph->ndelimiter_itrs++;
-    }
-#endif
 
     switch (fsym) {
     duplicator:
