@@ -3866,12 +3866,12 @@ RULE_DEFINITION(extrude_2_4, graph, f, g) {
 
 #undef TYPE_CHECK_RULE
 
-// Rule Dispatching
+// Interaction Rule Dispatching
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
-fire_rule(
+interact(
     struct context *const restrict graph,
     const struct node f,
     const struct node g) {
@@ -3882,48 +3882,6 @@ fire_rule(
 #pragma GCC diagnostic ignored "-Wunused-result"
     MY_ASSERT(is_interaction(f, g));
 #pragma GCC diagnostic pop
-
-#define BETA                          beta
-#define BETA_C                        beta_c
-#define IDENTITY_BETA                 identity_beta
-#define GC_BETA                       gc_beta
-#define EXPAND                        do_expand
-#define DO_UNARY_CALL                 do_unary_call
-#define DO_BINARY_CALL                do_binary_call
-#define DO_BINARY_CALL_AUX            do_binary_call_aux
-#define DO_IF_THEN_ELSE               do_if_then_else
-#define DO_PERFORM                    do_perform
-#define BARRIER                       barrier
-#define UNBARRIER                     unbarrier
-#define ANNIHILATE_DELIM_DELIM        annihilate_delim_delim
-#define ANNIHILATE_DUP_DUP            annihilate_dup_dup
-#define COMMUTE                       commute
-#define COMMUTE_ROOT_DELIM            commute_1_2
-#define COMMUTE_APPL_DELIM            commute_3_2
-#define COMMUTE_CELL_DELIM            commute_1_2
-#define COMMUTE_UCALL_DELIM           commute_2_2
-#define COMMUTE_BCALL_DELIM           commute_3_2
-#define COMMUTE_BCALL_AUX_DELIM       commute_2_2
-#define COMMUTE_ITE_DELIM             commute_4_2
-#define COMMUTE_REF_DELIM             commute_1_2
-#define COMMUTE_APPL_DUP              commute_3_3
-#define COMMUTE_CELL_DUP              commute_1_3
-#define COMMUTE_UCALL_DUP             commute_2_3
-#define COMMUTE_BCALL_DUP             commute_3_3
-#define COMMUTE_BCALL_AUX_DUP         commute_2_3
-#define COMMUTE_ITE_DUP               commute_4_3
-#define COMMUTE_REF_DUP               commute_1_3
-#define COMMUTE_DUP_DELIM             commute_dup_delim
-#define COMMUTE_DELIM_DELIM           commute_delim_delim
-#define COMMUTE_DUP_DUP               commute_3_3
-#define COMMUTE_LAMBDA_DELIM          commute_lambda_delim
-#define COMMUTE_LAMBDA_DUP            commute_lambda_dup
-#define COMMUTE_IDENTITY_LAMBDA_DELIM commute_1_2
-#define COMMUTE_IDENTITY_LAMBDA_DUP   commute_1_3
-#define COMMUTE_GC_LAMBDA_DELIM       commute_gc_lambda_delim
-#define COMMUTE_GC_LAMBDA_DUP         commute_gc_lambda_dup
-#define COMMUTE_LAMBDA_C_DELIM        commute_lambda_c_delim
-#define COMMUTE_LAMBDA_C_DUP          commute_lambda_c_dup
 
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
@@ -3953,205 +3911,106 @@ fire_rule(
 
     switch (fsym) {
     duplicator:
-        if (fsym == gsym) ANNIHILATE_DUP_DUP(graph, f, g);
-        else if (SYMBOL_APPLICATOR == gsym) COMMUTE_APPL_DUP(graph, g, f);
-        else if (SYMBOL_LAMBDA == gsym) COMMUTE_LAMBDA_DUP(graph, g, f);
-        else if (SYMBOL_IDENTITY_LAMBDA == gsym)
-            COMMUTE_IDENTITY_LAMBDA_DUP(graph, g, f);
-        else if (SYMBOL_GC_LAMBDA == gsym) COMMUTE_GC_LAMBDA_DUP(graph, g, f);
-        else if (SYMBOL_LAMBDA_C == gsym) COMMUTE_LAMBDA_C_DUP(graph, g, f);
-        else if (SYMBOL_CELL == gsym) COMMUTE_CELL_DUP(graph, g, f);
-        else if (SYMBOL_UNARY_CALL == gsym) COMMUTE_UCALL_DUP(graph, g, f);
-        else if (SYMBOL_BINARY_CALL == gsym) COMMUTE_BCALL_DUP(graph, g, f);
-        else if (SYMBOL_BINARY_CALL_AUX == gsym)
-            COMMUTE_BCALL_AUX_DUP(graph, g, f);
-        else if (SYMBOL_IF_THEN_ELSE == gsym) COMMUTE_ITE_DUP(graph, g, f);
-        else if (SYMBOL_REFERENCE == gsym) COMMUTE_REF_DUP(graph, g, f);
-        else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_DUP_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_DUP_DUP(graph, f, g);
-        else COMMUTE(graph, f, g);
+        if (fsym == gsym) annihilate_dup_dup(graph, f, g);
+        else if (SYMBOL_APPLICATOR == gsym) commute_3_3(graph, g, f);
+        else if (SYMBOL_LAMBDA == gsym) commute_lambda_dup(graph, g, f);
+        else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_1_3(graph, g, f);
+        else if (SYMBOL_GC_LAMBDA == gsym) commute_gc_lambda_dup(graph, g, f);
+        else if (SYMBOL_LAMBDA_C == gsym) commute_lambda_c_dup(graph, g, f);
+        else if (SYMBOL_CELL == gsym) commute_1_3(graph, g, f);
+        else if (SYMBOL_UNARY_CALL == gsym) commute_2_3(graph, g, f);
+        else if (SYMBOL_BINARY_CALL == gsym) commute_3_3(graph, g, f);
+        else if (SYMBOL_BINARY_CALL_AUX == gsym) commute_2_3(graph, g, f);
+        else if (SYMBOL_IF_THEN_ELSE == gsym) commute_4_3(graph, g, f);
+        else if (SYMBOL_REFERENCE == gsym) commute_1_3(graph, g, f);
+        else if (SYMBOL_BARRIER == gsym) unbarrier(graph, g, f);
+        else if (IS_DELIMITER(gsym)) commute_dup_delim(graph, f, g);
+        else if (IS_DUPLICATOR(gsym)) commute_3_3(graph, f, g);
+        else commute(graph, f, g);
         break;
     delimiter:
-        if (fsym == gsym) ANNIHILATE_DELIM_DELIM(graph, f, g);
-        else if (SYMBOL_ROOT == gsym) COMMUTE_ROOT_DELIM(graph, g, f);
-        else if (SYMBOL_APPLICATOR == gsym) COMMUTE_APPL_DELIM(graph, g, f);
-        else if (SYMBOL_LAMBDA == gsym) COMMUTE_LAMBDA_DELIM(graph, g, f);
-        else if (SYMBOL_IDENTITY_LAMBDA == gsym)
-            COMMUTE_IDENTITY_LAMBDA_DELIM(graph, g, f);
-        else if (SYMBOL_GC_LAMBDA == gsym) COMMUTE_GC_LAMBDA_DELIM(graph, g, f);
-        else if (SYMBOL_LAMBDA_C == gsym) COMMUTE_LAMBDA_C_DELIM(graph, g, f);
-        else if (SYMBOL_CELL == gsym) COMMUTE_CELL_DELIM(graph, g, f);
-        else if (SYMBOL_UNARY_CALL == gsym) COMMUTE_UCALL_DELIM(graph, g, f);
-        else if (SYMBOL_BINARY_CALL == gsym) COMMUTE_BCALL_DELIM(graph, g, f);
-        else if (SYMBOL_BINARY_CALL_AUX == gsym)
-            COMMUTE_BCALL_AUX_DELIM(graph, g, f);
-        else if (SYMBOL_IF_THEN_ELSE == gsym) COMMUTE_ITE_DELIM(graph, g, f);
-        else if (SYMBOL_REFERENCE == gsym) COMMUTE_REF_DELIM(graph, g, f);
-        else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_DELIM_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_DUP_DELIM(graph, g, f);
+        if (fsym == gsym) annihilate_delim_delim(graph, f, g);
+        else if (SYMBOL_ROOT == gsym) commute_1_2(graph, g, f);
+        else if (SYMBOL_APPLICATOR == gsym) commute_3_2(graph, g, f);
+        else if (SYMBOL_LAMBDA == gsym) commute_lambda_delim(graph, g, f);
+        else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_1_2(graph, g, f);
+        else if (SYMBOL_GC_LAMBDA == gsym) commute_gc_lambda_delim(graph, g, f);
+        else if (SYMBOL_LAMBDA_C == gsym) commute_lambda_c_delim(graph, g, f);
+        else if (SYMBOL_CELL == gsym) commute_1_2(graph, g, f);
+        else if (SYMBOL_UNARY_CALL == gsym) commute_2_2(graph, g, f);
+        else if (SYMBOL_BINARY_CALL == gsym) commute_3_2(graph, g, f);
+        else if (SYMBOL_BINARY_CALL_AUX == gsym) commute_2_2(graph, g, f);
+        else if (SYMBOL_IF_THEN_ELSE == gsym) commute_4_2(graph, g, f);
+        else if (SYMBOL_REFERENCE == gsym) commute_1_2(graph, g, f);
+        else if (SYMBOL_BARRIER == gsym) unbarrier(graph, g, f);
+        else if (IS_DELIMITER(gsym)) commute_delim_delim(graph, f, g);
+        else if (IS_DUPLICATOR(gsym)) commute_dup_delim(graph, g, f);
         else
-            COMMUTE(graph, g, f); /* delimiters must be the second, unless they
+            commute(graph, g, f); /* delimiters must be the second, unless they
                                      commute with lambdas */
         break;
     case SYMBOL_DELIMITER(UINT64_C(0)):
-        if (SYMBOL_BARRIER == gsym) BARRIER(graph, g, f);
+        if (SYMBOL_BARRIER == gsym) barrier(graph, g, f);
         else goto delimiter;
         break;
     case SYMBOL_ROOT:
-        if (IS_DELIMITER(gsym)) COMMUTE_ROOT_DELIM(graph, f, g);
+        if (IS_DELIMITER(gsym)) commute_1_2(graph, f, g);
         else if (IS_ANY_LAMBDA(gsym) || SYMBOL_CELL == gsym)
             graph->time_to_stop = true;
         else COMPILER_UNREACHABLE();
         break;
     case SYMBOL_APPLICATOR:
-        if (SYMBOL_LAMBDA == gsym) BETA(graph, f, g);
-        else if (SYMBOL_LAMBDA_C == gsym) BETA_C(graph, f, g);
-        else if (SYMBOL_IDENTITY_LAMBDA == gsym) IDENTITY_BETA(graph, f, g);
-        else if (SYMBOL_GC_LAMBDA == gsym) GC_BETA(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) EXPAND(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_APPL_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_APPL_DUP(graph, f, g);
-        else COMMUTE(graph, f, g);
-        break;
-    case SYMBOL_LAMBDA:
-        if (SYMBOL_APPLICATOR == gsym) BETA(graph, g, f);
-        else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_LAMBDA_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_LAMBDA_DUP(graph, f, g);
-        else if (SYMBOL_ROOT == gsym) graph->time_to_stop = true;
-        else COMMUTE(graph, g, f); /* lambdas must alwaies be the second */
-        break;
-    case SYMBOL_IDENTITY_LAMBDA:
-        if (SYMBOL_APPLICATOR == gsym) IDENTITY_BETA(graph, g, f);
-        else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_IDENTITY_LAMBDA_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_IDENTITY_LAMBDA_DUP(graph, f, g);
-        else if (SYMBOL_ROOT == gsym) graph->time_to_stop = true;
-        else COMMUTE(graph, g, f); /* same as for `SYMBOL_LAMBDA` */
-        break;
-    case SYMBOL_GC_LAMBDA:
-        if (SYMBOL_APPLICATOR == gsym) GC_BETA(graph, g, f);
-        else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_GC_LAMBDA_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_GC_LAMBDA_DUP(graph, f, g);
-        else if (SYMBOL_ROOT == gsym) graph->time_to_stop = true;
-        else COMMUTE(graph, g, f); /* same as for `SYMBOL_LAMBDA` */
-        break;
-    case SYMBOL_LAMBDA_C:
-        if (SYMBOL_APPLICATOR == gsym) BETA_C(graph, g, f);
-        else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_LAMBDA_C_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_LAMBDA_C_DUP(graph, f, g);
-        else if (SYMBOL_ROOT == gsym) graph->time_to_stop = true;
-        else COMMUTE(graph, g, f); /* same as for `SYMBOL_LAMBDA` */
-        break;
-    case SYMBOL_ERASER: COMMUTE(graph, f, g); break;
-    case SYMBOL_CELL:
-        if (SYMBOL_UNARY_CALL == gsym) DO_UNARY_CALL(graph, g, f);
-        else if (SYMBOL_BINARY_CALL == gsym) DO_BINARY_CALL(graph, g, f);
-        else if (SYMBOL_BINARY_CALL_AUX == gsym)
-            DO_BINARY_CALL_AUX(graph, g, f);
-        else if (SYMBOL_IF_THEN_ELSE == gsym) DO_IF_THEN_ELSE(graph, g, f);
-        else if (SYMBOL_PERFORM == gsym) DO_PERFORM(graph, g, f);
-        else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_CELL_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_CELL_DUP(graph, f, g);
-        else if (SYMBOL_ROOT == gsym) graph->time_to_stop = true;
-        else COMMUTE(graph, f, g);
+        if (SYMBOL_LAMBDA == gsym) beta(graph, f, g);
+        else if (SYMBOL_LAMBDA_C == gsym) beta_c(graph, f, g);
+        else if (SYMBOL_IDENTITY_LAMBDA == gsym) identity_beta(graph, f, g);
+        else if (SYMBOL_GC_LAMBDA == gsym) gc_beta(graph, f, g);
+        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
+        else if (IS_DELIMITER(gsym)) commute_3_2(graph, f, g);
+        else if (IS_DUPLICATOR(gsym)) commute_3_3(graph, f, g);
+        else commute(graph, f, g);
         break;
     case SYMBOL_UNARY_CALL:
-        if (SYMBOL_CELL == gsym) DO_UNARY_CALL(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) EXPAND(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_UCALL_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_UCALL_DUP(graph, f, g);
-        else COMMUTE(graph, f, g);
+        if (SYMBOL_CELL == gsym) do_unary_call(graph, f, g);
+        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
+        else if (IS_DELIMITER(gsym)) commute_2_2(graph, f, g);
+        else if (IS_DUPLICATOR(gsym)) commute_2_3(graph, f, g);
+        else commute(graph, f, g);
         break;
     case SYMBOL_BINARY_CALL:
-        if (SYMBOL_CELL == gsym) DO_BINARY_CALL(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) EXPAND(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_BCALL_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_BCALL_DUP(graph, f, g);
-        else COMMUTE(graph, f, g);
+        if (SYMBOL_CELL == gsym) do_binary_call(graph, f, g);
+        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
+        else if (IS_DELIMITER(gsym)) commute_3_2(graph, f, g);
+        else if (IS_DUPLICATOR(gsym)) commute_3_3(graph, f, g);
+        else commute(graph, f, g);
         break;
     case SYMBOL_BINARY_CALL_AUX:
-        if (SYMBOL_CELL == gsym) DO_BINARY_CALL_AUX(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) EXPAND(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_BCALL_AUX_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_BCALL_AUX_DUP(graph, f, g);
-        else COMMUTE(graph, f, g);
+        if (SYMBOL_CELL == gsym) do_binary_call_aux(graph, f, g);
+        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
+        else if (IS_DELIMITER(gsym)) commute_2_2(graph, f, g);
+        else if (IS_DUPLICATOR(gsym)) commute_2_3(graph, f, g);
+        else commute(graph, f, g);
         break;
     case SYMBOL_IF_THEN_ELSE:
-        if (SYMBOL_CELL == gsym) DO_IF_THEN_ELSE(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) EXPAND(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_ITE_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_ITE_DUP(graph, f, g);
-        else COMMUTE(graph, f, g);
+        if (SYMBOL_CELL == gsym) do_if_then_else(graph, f, g);
+        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
+        else if (IS_DELIMITER(gsym)) commute_4_2(graph, f, g);
+        else if (IS_DUPLICATOR(gsym)) commute_4_3(graph, f, g);
+        else commute(graph, f, g);
         break;
     case SYMBOL_PERFORM:
-        if (SYMBOL_CELL == gsym) DO_PERFORM(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) EXPAND(graph, g, f);
-        else COMMUTE(graph, f, g);
-        break;
-    case SYMBOL_REFERENCE:
-        if (is_operator_symbol(gsym)) EXPAND(graph, f, g);
-        else if (SYMBOL_BARRIER == gsym) UNBARRIER(graph, g, f);
-        else if (IS_DELIMITER(gsym)) COMMUTE_REF_DELIM(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) COMMUTE_REF_DUP(graph, f, g);
-        else COMMUTE(graph, f, g);
+        if (SYMBOL_CELL == gsym) do_perform(graph, f, g);
+        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
+        else commute(graph, f, g);
         break;
     case SYMBOL_BARRIER:
-        if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) BARRIER(graph, f, g);
-        else UNBARRIER(graph, f, g);
+        if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) barrier(graph, f, g);
+        else unbarrier(graph, f, g);
         break;
     default:
-        if (fsym <= MAX_DUPLICATOR_INDEX) goto duplicator;
-        else if (fsym <= MAX_DELIMITER_INDEX) goto delimiter;
+        if (IS_DUPLICATOR(fsym)) goto duplicator;
+        else if (IS_DELIMITER(fsym)) goto delimiter;
         else COMPILER_UNREACHABLE();
     }
-
-#undef COMMUTE_LAMBDA_C_DUP
-#undef COMMUTE_LAMBDA_C_DELIM
-#undef COMMUTE_GC_LAMBDA_DUP
-#undef COMMUTE_GC_LAMBDA_DELIM
-#undef COMMUTE_IDENTITY_LAMBDA_DUP
-#undef COMMUTE_IDENTITY_LAMBDA_DELIM
-#undef COMMUTE_LAMBDA_DUP
-#undef COMMUTE_LAMBDA_DELIM
-#undef COMMUTE_DUP_DUP
-#undef COMMUTE_DELIM_DELIM
-#undef COMMUTE_DUP_DELIM
-#undef COMMUTE_REF_DUP
-#undef COMMUTE_ITE_DUP
-#undef COMMUTE_BCALL_AUX_DUP
-#undef COMMUTE_BCALL_DUP
-#undef COMMUTE_UCALL_DUP
-#undef COMMUTE_CELL_DUP
-#undef COMMUTE_APPL_DUP
-#undef COMMUTE_REF_DELIM
-#undef COMMUTE_ITE_DELIM
-#undef COMMUTE_BCALL_AUX_DELIM
-#undef COMMUTE_BCALL_DELIM
-#undef COMMUTE_UCALL_DELIM
-#undef COMMUTE_CELL_DELIM
-#undef COMMUTE_APPL_DELIM
-#undef COMMUTE_ROOT_DELIM
-#undef COMMUTE
-#undef ANNIHILATE_DUP_DUP
-#undef ANNIHILATE_DELIM_DELIM
-#undef UNBARRIER
-#undef BARRIER
-#undef DO_PERFORM
-#undef DO_IF_THEN_ELSE
-#undef DO_BINARY_CALL_AUX
-#undef DO_BINARY_CALL
-#undef DO_UNARY_CALL
-#undef EXPAND
-#undef GC_BETA
-#undef IDENTITY_BETA
-#undef BETA_C
-#undef BETA
 }
 
 // Metacircular Interpretation
@@ -4350,7 +4209,7 @@ reduce(struct context *const restrict graph) {
         XASSERT(g.ports);
 
         if (is_interacting_with(f, g)) {
-            fire_rule(graph, f, g);
+            interact(graph, f, g);
             f = unfocus_or(&stack, graph->root);
             f.ports[0] &= PHASE_MASK;
         } else if (try_extrude_if_delimiter(graph, f, g, points_to)) {
