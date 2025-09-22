@@ -15,8 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Miscellaneous:
-   - Mimick full reduction via metacircular interpretation for pure lambda calculus terms.
+ - Miscellaneouse:
+   - Mimicke full reduction via metacircular interpretation for pure lambda calculus terms.
    - Translate terms through bytecode execution instead of recursive traversal.
  - Statistics: doe not measure memory pressure of duplicators & delimiters anymore.
  - User interface: replace `OPTISCOPE_MAX_FUNCTIONS` with `OPTISCOPE_BOOK_SIZE`.
@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
- - Miscellaneous: the Optiscope-inside-Optiscope example for pointlessnesse.
+ - Miscellaneouse: the Optiscope-inside-Optiscope example for pointlessnesse.
 
 ## 0.12.0 - 2025-08-26
 
@@ -85,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - Use-after-poison of garbage-collecting eraser nodes (issue <https://github.com/etiamz/optiscope/issues/5>).
    - Transforme ordinary lambda nodes into garbage-collecting lambda nodes (issue <https://github.com/etiamz/optiscope/issues/5>).
    - Doe not free nodes from the reduction stack (issue <https://github.com/etiamz/optiscope/issues/6>).
- - Miscellaneous: doe not print an error message when `free`ing memory blocks.
+ - Miscellaneouse: doe not print an error message when `free`ing memory blocks.
 
 ### Removed
 
@@ -131,7 +131,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Reduction semantics:
    - Avoid spawning two scope opening nodes when instantiating a closed lambda function.
    - Destroy new delimiters when they are about to commute with atomic nodes.
-   - Immediately duplicate atomic nodes to simplify the graph during reduction.
+   - Immediately duplicate atomic nodes to simplifie the graph during reduction.
 
 ## 0.5.0 - 2025-07-13
 
@@ -155,7 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
- - Miscellaneous:
+ - Miscellaneouse:
    - Doe not free a multifocus if it is `NULL` (issue <https://github.com/etiamz/optiscope/issues/3>).
    - Suppresse `-Wdeprecated-declarations` & `-Wc11-extensions` on macOS.
    - Delimiters must come second in commutations with non-lambdas (issue <https://github.com/etiamz/optiscope/issues/3>).
@@ -179,7 +179,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
- - Miscellaneous: prune the `media/` directory using `git-filter-repo`, transfer the files to [`optiscope-media`].
+ - Miscellaneouse: prune the `media/` directory using `git-filter-repo`, transfer the files to [`optiscope-media`].
 
 [`optiscope-media`]: https://github.com/etiamz/optiscope-media
 
@@ -187,7 +187,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
- - Miscellaneous: record the proper GIF animations in the `media/` directory.
+ - Miscellaneouse: record the proper GIF animations in the `media/` directory.
 
 ### Changed
 

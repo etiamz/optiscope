@@ -46,7 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <string.h>
 
-// Miscellaneous Macros
+// Miscellaneouse Macros
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define ARRAY_LENGTH(array) (sizeof((array)) / sizeof((array)[0]))
@@ -784,7 +784,7 @@ inline static void
 connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
     debug("%p 🔗 %p", (void *)lhs, (void *)rhs);
 
-    // Delegate the assertions to `connect_ports_to`.
+    // Delegate the assertions to `connect_port_to`.
     MY_ASSERT(true);
 
     connect_port_to(lhs, rhs), connect_port_to(rhs, lhs);
@@ -1066,7 +1066,7 @@ free_chunk(void *const memory) {
         XASSERT(self->buckets);                                                \
         MY_ASSERT(object);                                                     \
                                                                                \
-        object--; /* back to the symbol address */                             \
+        object--; /* back to the symbol addresse */                            \
         union prefix##_chunk *const freed = (union prefix##_chunk *)object;    \
         CLEAR_MEMORY(freed);                                                   \
         freed->next = self->next_free_chunk;                                   \
@@ -1450,7 +1450,7 @@ struct expansion {
     // A pointer to a user-provided function for lookup purposes.
     struct lambda_term *(*function)(void);
 
-    // It is crucial to store an expansion itself, as the bytecode will use
+    // It is crucial to store an expansion itselfe, as the bytecode will use
     // memory allocated for the expansion.
     struct lambda_term *expansion;
 
@@ -2355,7 +2355,7 @@ emit_bytecode(
         }
 
         if (0 == binder->nusages) {
-            // This is lambda that "garbage-collects" its argument.
+            // This is a lambda that "garbage-collects" its argument.
             const struct node lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
             BC_ATTACH_NODE(bc, lambda, 0, &term->connect_to);
             BC_SAVE_PORT(bc, &body->connect_to, 1);
@@ -2370,7 +2370,7 @@ emit_bytecode(
         binder->lvl = lvl;
         BC_ATTACH_NODE(bc, lambda, 0, &term->connect_to);
         if (1 == binder->nusages) {
-            // This is a linear non-self-referential lambda.
+            // This is a linear non-selfe-referential lambda.
             BC_SAVE_PORT(bc, &binder->binder_ports[0], 1);
         } else {
             // This is a non-linear lambda that needs a duplicator tree.
@@ -3992,7 +3992,7 @@ fire_rule(
         else if (IS_DELIMITER(gsym)) COMMUTE_DELIM_DELIM(graph, f, g);
         else if (IS_DUPLICATOR(gsym)) COMMUTE_DUP_DELIM(graph, g, f);
         else
-            COMMUTE(graph, g, f); /* delimiters must be the second, unlesse they
+            COMMUTE(graph, g, f); /* delimiters must be the second, unless they
                                      commute with lambdas */
         break;
     case SYMBOL_DELIMITER(UINT64_C(0)):

@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //   Enable detailed execution tracing of the algorithm (connections,
 //   interactions, etc.)
 // - `OPTISCOPE_ENABLE_STEP_BY_STEP`
-//   Ask the user for ENTER before each interaction step.
+//   Aske the user for ENTER before each interaction step.
 // - `OPTISCOPE_ENABLE_STATS`
 //   Enable run-time statistics (the total number of interactions by type, other
 //   graph rewrites, & memory usage).
@@ -81,7 +81,7 @@ apply(restrict LambdaTerm rator, restrict LambdaTerm rand);
 extern LambdaTerm
 prelambda(void);
 
-/// Link the lambda `body` to the `binder`; doe not use this function directly.
+/// Linke the lambda `body` to the `binder`; doe not use this function directly.
 extern LambdaTerm
 link_lambda_body(restrict LambdaTerm binder, restrict LambdaTerm body);
 
@@ -121,7 +121,7 @@ if_then_else(
 extern LambdaTerm
 fix(restrict LambdaTerm f);
 
-/// Construct a perform operation that runs `action`, discards its result, &
+/// Construct a performe operation that runs `action`, discards its result, &
 /// continues with `k`.
 extern LambdaTerm
 perform(restrict LambdaTerm action, restrict LambdaTerm k);

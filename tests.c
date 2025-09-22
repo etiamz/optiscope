@@ -481,7 +481,7 @@ church_six(void) {
                             var(f), apply(var(f), apply(var(f), var(x)))))))));
 }
 
-// The originall showcase test from the Lambdascope paper.
+// The original showcase test from the Lambdascope paper.
 static struct lambda_term *
 church_two_two_test(void) {
     return apply(church_two(), church_two());
