@@ -1506,8 +1506,8 @@ struct context {
     // The numbers of proper interactions.
     uint64_t nbetas, ncommutations, nannihilations, nexpansions,
         ncell_operations, nbarrier_operations;
-    // The number of bookkeeping ("oracle") interactions.
-    uint64_t nbookkeeping_interactions;
+    // The numbers of duplication & delimiter interactions.
+    uint64_t nduplication_itrs, ndelimiter_itrs;
     // The numbers of non-interaction graph rewrites.
     uint64_t nmergings, nextrusions, ngc;
     // The memory usage statistics.
@@ -1579,10 +1579,12 @@ print_stats(const struct context *const restrict graph) {
         graph->ngc;
 
     const uint64_t nbookkeeping_rewrites = //
-        graph->nbookkeeping_interactions + graph->nmergings +
-        graph->nextrusions;
+        graph->ndelimiter_itrs + graph->nmergings + graph->nextrusions;
 
-    const double bookkeeping_percentage = //
+    const double sharing_work = //
+        ((double)graph->nduplication_itrs / (double)ntotal_rewrites) * 100.0;
+
+    const double bookkeeping_work = //
         ((double)nbookkeeping_rewrites / (double)ntotal_rewrites) * 100.0;
 
     printf("   Family reductions: %" PRIu64 "\n", graph->nbetas);
@@ -1596,7 +1598,8 @@ print_stats(const struct context *const restrict graph) {
     printf("  Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
     printf("Delimiter extrusions: %" PRIu64 "\n", graph->nextrusions);
     printf("      Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
-    printf("    Bookkeeping work: %.2f%%\n", bookkeeping_percentage);
+    printf("        Sharing work: %.2f%%\n", sharing_work);
+    printf("    Bookkeeping work: %.2f%%\n", bookkeeping_work);
     printf("     Peak node count: %" PRIu64 "\n", graph->nmax_total);
 }
 
@@ -1925,6 +1928,7 @@ try_duplicate(struct context *const restrict graph, const struct node f) {
         free_node(graph, f);
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ncommutations++;
+        graph->nduplication_itrs++;
 #endif
     }
 }
@@ -3940,8 +3944,11 @@ fire_rule(
     }
 
 #ifdef OPTISCOPE_ENABLE_STATS
-    if (IS_DELIMITER(fsym) || IS_DELIMITER(gsym)) {
-        graph->nbookkeeping_interactions++;
+    if (IS_DUPLICATOR(fsym) || IS_DUPLICATOR(gsym)) { //
+        graph->nduplication_itrs++;
+    }
+    if (IS_DELIMITER(fsym) || IS_DELIMITER(gsym)) { //
+        graph->ndelimiter_itrs++;
     }
 #endif
 
