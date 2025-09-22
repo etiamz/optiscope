@@ -56,7 +56,7 @@ Benchmark 1: ./ackermann
 Delimiter extrusions: 4182018
       Total rewrites: 96132115
     Bookkeeping work: 17.40%
-     Max total nodes: 4182126
+     Peak node count: 4182126
 ```
 
 </details>
@@ -87,7 +87,7 @@ Benchmark 1: ./tak
 Delimiter extrusions: 3792105
       Total rewrites: 94492840
     Bookkeeping work: 27.44%
-     Max total nodes: 3889561
+     Peak node count: 3889561
 ```
 
 </details>
@@ -118,7 +118,7 @@ Benchmark 1: ./scott-bubble-sort
 Delimiter extrusions: 1528812
       Total rewrites: 198608273
     Bookkeeping work: 9.72%
-     Max total nodes: 148549009
+     Peak node count: 148549009
 ```
 
 </details>
@@ -149,7 +149,7 @@ Benchmark 1: ./scott-insertion-sort
 Delimiter extrusions: 4998999
       Total rewrites: 56067030
     Bookkeeping work: 40.16%
-     Max total nodes: 1014249
+     Peak node count: 1014249
 ```
 
 </details>
@@ -180,7 +180,7 @@ Benchmark 1: ./scott-merge-sort
 Delimiter extrusions: 9893731
       Total rewrites: 41802194
     Bookkeeping work: 75.74%
-     Max total nodes: 7575569
+     Peak node count: 7575569
 ```
 
 </details>
@@ -211,7 +211,7 @@ Benchmark 1: ./scott-quicksort
 Delimiter extrusions: 173031257
       Total rewrites: 621743336
     Bookkeeping work: 83.97%
-     Max total nodes: 1064615
+     Peak node count: 1064615
 ```
 
 </details>
@@ -242,7 +242,7 @@ Benchmark 1: ./nqueens
 Delimiter extrusions: 32325233
       Total rewrites: 377274979
     Bookkeeping work: 32.90%
-     Max total nodes: 6662066
+     Peak node count: 6662066
 ```
 
 </details>

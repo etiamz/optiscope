@@ -1597,7 +1597,7 @@ print_stats(const struct context *const restrict graph) {
     printf("Delimiter extrusions: %" PRIu64 "\n", graph->nextrusions);
     printf("      Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
     printf("    Bookkeeping work: %.2f%%\n", bookkeeping_percentage);
-    printf("     Max total nodes: %" PRIu64 "\n", graph->nmax_total);
+    printf("     Peak node count: %" PRIu64 "\n", graph->nmax_total);
 }
 
 #else
