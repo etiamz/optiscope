@@ -1448,8 +1448,14 @@ unfocus_or(
 #endif
 
 struct expansion {
+    // A pointer to a user-provided function for lookup purposes.
     struct lambda_term *(*function)(void);
+
+    // It is crucial to store an expansion itself, as the bytecode will use
+    // memory allocated for the expansion.
     struct lambda_term *expansion;
+
+    // The bytecode that describes how to build a net.
     struct bytecode bc;
 };
 
