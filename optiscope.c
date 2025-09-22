@@ -4278,7 +4278,7 @@ self_pp(void) {
     // clang-format on
 }
 
-COMPILER_NONNULL(1) //
+COMPILER_RETURNS_NONNULL COMPILER_NONNULL(1) //
 static struct lambda_term *
 metacode(struct lambda_term *const restrict term) {
     MY_ASSERT(term);
