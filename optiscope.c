@@ -867,16 +867,16 @@ bump_index(const uint64_t symbol, const uint64_t offset) {
 #define PHASE_GC_AUX    UINT64_C(2)
 #define PHASE_STACK     UINT64_C(3)
 
+#define PHASE_MASK                                                             \
+    UINT64_C(0xC3FFFFFFFFFFFFFF) /* clear the phase bits (61-58) */
+
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
 set_phase(uint64_t *const restrict port, const uint64_t phase) {
     MY_ASSERT(port);
     MY_ASSERT(IS_PRINCIPAL_PORT(*port));
 
-    const uint64_t mask =
-        UINT64_C(0xC3FFFFFFFFFFFFFF); /* clear the phase bits (61-58) */
-
-    *port = (*port & mask) | (phase << EFFECTIVE_ADDRESS_BITS);
+    *port = (*port & PHASE_MASK) | (phase << EFFECTIVE_ADDRESS_BITS);
 
     MY_ASSERT(DECODE_PHASE_METADATA(*port) == phase);
 }
@@ -2734,7 +2734,7 @@ gc_step(
                 graph->ngc++;
 #endif
             } else {
-                set_phase(&f.ports[0], PHASE_REDUCTION);
+                f.ports[0] &= PHASE_MASK;
             }
 
             break;
@@ -2792,7 +2792,7 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
                 set_phase(&g.ports[0], PHASE_GC_AUX);
                 break;
             case PHASE_STACK: //
-                set_phase(&f.ports[0], PHASE_REDUCTION);
+                f.ports[0] &= PHASE_MASK;
                 break;
             default: //
                 gc_step(graph, f, g, points_to - g.ports);
@@ -4352,10 +4352,10 @@ reduce(struct context *const restrict graph) {
         if (is_interacting_with(f, g)) {
             fire_rule(graph, f, g);
             f = unfocus_or(&stack, graph->root);
-            set_phase(&f.ports[0], PHASE_REDUCTION);
+            f.ports[0] &= PHASE_MASK;
         } else if (try_extrude_if_delimiter(graph, f, g, points_to)) {
             f = unfocus(&stack);
-            set_phase(&f.ports[0], PHASE_REDUCTION);
+            f.ports[0] &= PHASE_MASK;
         } else {
             set_phase(&f.ports[0], PHASE_STACK);
             focus_on(&stack, f);
