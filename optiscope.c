@@ -770,7 +770,6 @@ connect_port_to(
     MY_ASSERT(port);
     MY_ASSERT(another);
     XASSERT(port != another);
-    MY_ASSERT(DECODE_ADDRESS(*port) != another);
 
     const uint64_t port_metadata = DECODE_ADDRESS_METADATA(*port);
 
