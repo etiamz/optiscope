@@ -1450,7 +1450,7 @@ struct expansion {
     // A pointer to a user-provided function for lookup purposes.
     struct lambda_term *(*function)(void);
 
-    // It is crucial to store an expansion itselfe, as the bytecode will use
+    // It is crucial to store an expansion itself, as the bytecode will use
     // memory allocated for the expansion.
     struct lambda_term *expansion;
 
@@ -2370,7 +2370,7 @@ emit_bytecode(
         binder->lvl = lvl;
         BC_ATTACH_NODE(bc, lambda, 0, &term->connect_to);
         if (1 == binder->nusages) {
-            // This is a linear non-selfe-referential lambda.
+            // This is a linear non-self-referential lambda.
             BC_SAVE_PORT(bc, &binder->binder_ports[0], 1);
         } else {
             // This is a non-linear lambda that needs a duplicator tree.
