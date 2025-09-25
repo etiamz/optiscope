@@ -2876,7 +2876,7 @@ assert_expand(
     MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_REFERENCE == f.ports[-1]);
-    MY_ASSERT(is_operator_symbol(g.ports[-1]));
+    MY_ASSERT(is_operator_symbol(g.ports[-1]) || IS_DUPLICATOR(g.ports[-1]));
 }
 
 static void
@@ -3922,7 +3922,7 @@ interact(
         else if (SYMBOL_BINARY_CALL == gsym) commute_3_3(graph, f, g);
         else if (SYMBOL_BINARY_CALL_AUX == gsym) commute_3_2(graph, f, g);
         else if (SYMBOL_IF_THEN_ELSE == gsym) commute_3_4(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) commute_3_1(graph, f, g);
+        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
         else if (SYMBOL_BARRIER == gsym) unbarrier(graph, g, f);
         else if (IS_DELIMITER(gsym)) commute_dup_delim(graph, f, g);
         else if (IS_DUPLICATOR(gsym)) commute_3_3(graph, f, g);

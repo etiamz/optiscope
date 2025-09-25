@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Statistics: measure the percentage of sharing work realized by duplication interactions.
 
+### Changed
+
+ - Reduction semantics: expand a reference when it faces a duplicator for optimality.
+
 ## 0.16.0 - 2025-09-22
 
 ### Changed
