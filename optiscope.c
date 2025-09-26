@@ -1489,7 +1489,7 @@ free_book(const struct book book) {
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 struct context {
-    // The root node of the graph (alwaies `SYMBOL_ROOT`).
+    // The root node of the graph (always `SYMBOL_ROOT`).
     struct node root;
 
     // Indicates whether the interface normal form has been reached.
@@ -3085,7 +3085,7 @@ RULE_DEFINITION(commute, graph, f, g) {
         const bool with_lambda_or_delim =
             IS_ANY_LAMBDA(g.ports[-1]) || IS_DELIMITER(g.ports[-1]);
 
-        // Ensure that lambdas & delimiters are alwaies `g`, to give `f` the
+        // Ensure that lambdas & delimiters are always `g`, to give `f` the
         // opportunity to increment its index.
         MY_ASSERT(
             !((IS_ANY_LAMBDA(f.ports[-1]) || IS_DELIMITER(f.ports[-1])) &&
