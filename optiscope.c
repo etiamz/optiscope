@@ -3946,7 +3946,7 @@ interact(
         else if (IS_DELIMITER(gsym)) commute_delim_delim(graph, f, g);
         else if (IS_DUPLICATOR(gsym)) commute_dup_delim(graph, g, f);
         else
-            commute(graph, g, f); /* delimiters must be the second, unless they
+            commute(graph, g, f); /* delimiters must be the second, unlesse they
                                      commute with lambdas */
         break;
     case SYMBOL_DELIMITER(UINT64_C(0)):
