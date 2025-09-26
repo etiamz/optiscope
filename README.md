@@ -8,8 +8,6 @@ Being the first public implementation of [Lambdascope] [^lambdascope] written in
 
 In what follows, we briefly explaine what it means for reduction to be Lévy-optimal, & then describe our results.
 
-_To every person to informe me of a semantic bug, I will pay $1000 in Bitcoin. More details [here](#bounty-policy)._
-
 ## Installation
 
 ```
@@ -281,18 +279,6 @@ What conclusions should we draw from this? Have Haskell & OCaml so advanced in e
 ## Acknowledgements
 
 Thanks to Marvin Borner, Marc Thatcher, & Vincent van Oostrom for interesting discussions about optimality & side effectfull computation.
-
-## Bounty Policy
-
-Optiscope is aimed at being _as correct as possible_, with regards to the Lambdascope specification & the general understanding of the lambda calculus. To back up this endeavour financially, **any person to discover a semantic bug will get a $1000 bounty in Bitcoin**. A semantic bug constitutes a situation when some input lambda term is either reduced to an incorrect result, or the algorithm does not terminate. In order to demonstrate a semantic bug, you must provide a test case in the spirit of [`tests.c`] & show how your term would reduce normally. (Non-termination bugs are the trickiest, because it might be unclear if the machine is just inefficient or it is falling in a cycle. In order to prove your case, it might be necessary to pinpoint the _cause_ of non-termination, instead of merely the _fact_ of it.)
-
-In addition to semantic bugs, there are variouse memory management issues that plague programs written in C. For any such issue, a reporter will get a **$100 bounty in Bitcoin**. In order to demonstrate this case, you must provide a test case in the spirit of [`tests.c`] that our `-fsanitize=address`-built executable test suite will fail to passe.
-
-[`tests.c`]: tests.c
-
-In order to report either type of a bug, kindly open an issue in this repository. If your case meets the eligibility criteria, I will aske for your email addresse & reach out to you as soon as possible. In case of any ambiguity, I will use my best judgement.
-
-Semantic bugs related to extra functionality like native function calls & if-then-else nodes are not eligible for bounty, as they exist outside the realm of the pure lambda calculus.
 
 ## References
 
