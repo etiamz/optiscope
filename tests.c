@@ -1014,6 +1014,9 @@ scott_sum_list_test(void) {
     return apply(scott_sum_list(), scott_list_1_2_3_4_5());
 }
 
+// Scott Insertion sort
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
 // clang-format off
 static uint64_t less_than_or_equal(const uint64_t x, const uint64_t y)
     { return x <= y; }
