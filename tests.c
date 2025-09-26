@@ -90,6 +90,55 @@ test_case_whnf(
     printf("Good: %s\n", test_case_name);
 }
 
+// Helper Functions
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+// clang-format off
+static uint64_t square(const uint64_t x) { return x * x; }
+
+static uint64_t cube(const uint64_t x) { return x * x * x; }
+
+static uint64_t halve(const uint64_t x) { return x / 2; }
+
+static uint64_t plus_one(const uint64_t x) { return x + 1; }
+
+static uint64_t minus_one(const uint64_t x) { return x - 1; }
+
+static uint64_t add(const uint64_t x, const uint64_t y)
+    { return x + y; }
+
+static uint64_t multiply(const uint64_t x, const uint64_t y)
+    { return x * y; }
+
+static uint64_t subtract(const uint64_t x, const uint64_t y)
+    { return x - y; }
+
+static uint64_t divide(const uint64_t x, const uint64_t y)
+    { return x / y; }
+
+static uint64_t is_zero(const uint64_t x) { return 0 == x; }
+
+static uint64_t is_one(const uint64_t x) { return 1 == x; }
+
+static uint64_t equals(const uint64_t x, const uint64_t y)
+    { return x == y; }
+
+static uint64_t less_than(const uint64_t x, const uint64_t y)
+    { return x < y; }
+
+static uint64_t less_than_or_equal(const uint64_t x, const uint64_t y)
+    { return x <= y; }
+
+static uint64_t greater_than_or_equal(const uint64_t x, const uint64_t y)
+    { return x >= y; }
+
+static uint64_t concatenate_ints(uint64_t x, const uint64_t y) {
+    uint64_t z = y;
+    do { x *= 10; } while (z /= 10);
+    return x + y;
+}
+// clang-format on
+
 // S, K, I Combinators
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -198,18 +247,6 @@ bcw_test(void) {
 // Unary Arithmetic
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-// clang-format off
-static uint64_t square(const uint64_t x) { return x * x; }
-
-static uint64_t cube(const uint64_t x) { return x * x * x; }
-
-static uint64_t halve(const uint64_t x) { return x / 2; }
-
-static uint64_t plus_one(const uint64_t x) { return x + 1; }
-
-static uint64_t minus_one(const uint64_t x) { return x - 1; }
-// clang-format on
-
 static struct lambda_term *
 unary_arithmetic(void) {
     struct lambda_term *f, *x;
@@ -223,20 +260,6 @@ unary_arithmetic(void) {
 
 // Binary Arithmetic
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-// clang-format off
-static uint64_t add(const uint64_t x, const uint64_t y)
-    { return x + y; }
-
-static uint64_t multiply(const uint64_t x, const uint64_t y)
-    { return x * y; }
-
-static uint64_t subtract(const uint64_t x, const uint64_t y)
-    { return x - y; }
-
-static uint64_t divide(const uint64_t x, const uint64_t y)
-    { return x / y; }
-// clang-format on
 
 static struct lambda_term *
 binary_arithmetic(void) {
@@ -257,11 +280,6 @@ binary_arithmetic(void) {
 // Conditional Logic With Recursion
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-// clang-format off
-static uint64_t equals(const uint64_t x, const uint64_t y)
-    { return x == y; }
-// clang-format on
-
 static struct lambda_term *
 conditionals(void) {
     struct lambda_term *x;
@@ -276,12 +294,6 @@ conditionals(void) {
         cell(5),
         cell(10));
 }
-
-// clang-format off
-static uint64_t is_zero(const uint64_t x) { return 0 == x; }
-
-static uint64_t is_one(const uint64_t x) { return 1 == x; }
-// clang-format on
 
 static struct lambda_term *
 fibonacci_function(
@@ -1017,11 +1029,6 @@ scott_sum_list_test(void) {
 // Scott Insertion sort
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-// clang-format off
-static uint64_t less_than_or_equal(const uint64_t x, const uint64_t y)
-    { return x <= y; }
-// clang-format on
-
 static struct lambda_term *
 scott_insert(void) {
     struct lambda_term *y, *list, *z, *zs;
@@ -1064,14 +1071,6 @@ scott_insertion_sort(void) {
                         apply(expand(scott_insert), var(x)),
                         apply(expand(scott_insertion_sort), var(xs)))))));
 }
-
-// clang-format off
-static uint64_t concatenate_ints(uint64_t x, const uint64_t y) {
-    uint64_t z = y;
-    do { x *= 10; } while (z /= 10);
-    return x + y;
-}
-// clang-format on
 
 static struct lambda_term *
 scott_concatenate_list(void) {
@@ -1119,14 +1118,6 @@ scott_insertion_sort_test(void) {
 
 // Scott Quicksort
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-// clang-format off
-static uint64_t less_than(const uint64_t x, const uint64_t y)
-    { return x < y; }
-
-static uint64_t greater_than_or_equal(const uint64_t x, const uint64_t y)
-    { return x >= y; }
-// clang-format on
 
 static struct lambda_term *
 scott_filter(void) {
