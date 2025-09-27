@@ -765,29 +765,15 @@ get_principal_port(uint64_t *const restrict port) {
 
 COMPILER_NONNULL(1, 2) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
-connect_port_to(
-    uint64_t *const restrict port, const uint64_t *const restrict another) {
-    MY_ASSERT(port);
-    MY_ASSERT(another);
-    XASSERT(port != another);
-
-    const uint64_t port_metadata = DECODE_ADDRESS_METADATA(*port);
-
-    *port = ENCODE_ADDRESS(port_metadata, (uint64_t)another);
-
-    MY_ASSERT(DECODE_ADDRESS(*port) == another);
-    MY_ASSERT(DECODE_ADDRESS_METADATA(*port) == port_metadata);
-}
-
-COMPILER_NONNULL(1, 2) COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static void
 connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
     debug("%p 🔗 %p", (void *)lhs, (void *)rhs);
 
-    // Delegate the assertions to `connect_port_to`.
-    MY_ASSERT(true);
+    MY_ASSERT(lhs);
+    MY_ASSERT(rhs);
+    XASSERT(lhs != rhs);
 
-    connect_port_to(lhs, rhs), connect_port_to(rhs, lhs);
+    *lhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*lhs), (uint64_t)rhs);
+    *rhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*rhs), (uint64_t)lhs);
 }
 
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT
