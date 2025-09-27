@@ -166,7 +166,7 @@ def lessEqual = \x.\y.if x <= y then 1 else 0;;
 def scottInsert = rec scottInsert = \elem.\list.
   let onNil = (scottSingleton elem) in
   let onCons = \h.\t.
-    if (lessEqual elem h) == 1 
+    if (lessEqual elem h) == 1
       then (scottCons elem (scottCons h t)) 
       else (scottCons h (scottInsert elem t)) in
   (list onCons onNil);;
@@ -181,13 +181,15 @@ def scottSumList = rec scottSumList = \list.
   let onCons = \h.\t.h + (scottSumList t) in
   (list onCons onNil);;
 
-def generateList = rec generateList = \n.
-  if n == 0 
-    then scottNil 
-    else (scottCons (n-1) (generateList (n-1)));;
+def generateList = \n.
+  let go = rec go = \i.\acc.
+    if i < n
+      then (go (i + 1) (scottCons i acc))
+      else acc in
+  (go 0 scottNil);;
 
-def benchmarkTerm = 
-  (scottSumList (scottInsertionSort (generateList 1000)));;
+def benchmarkTerm =
+  (scottSumList (scottInsertionSort (generateList 100)));;
 
 benchmarkTerm;;
 ```
