@@ -128,7 +128,7 @@ The onely difference between Optiscope and Haskell-style monads is that, while m
 
 ## On Performance
 
-_Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, including leveraging compiler- & platform-specific functionality, yet, [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than [unoptimized Haskell] & [unoptimized OCaml]; for instance, whereas Optiscope needs about 6 seconds to execute an insertion sort on a Scott-encoded list of onely 2000 elements (in decreasing order), the Haskell implementation handles 10'000 elements in just two seconds. In general, the nature of performance penalty caused by bookkeeping work is unclear; however, with increasing list sizes, the factor by which Optiscope runs slower than more traditional lambda calculus implementations is onely increasing.
+_Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, including leveraging compiler- & platform-specific functionality, yet, [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than [unoptimized Haskell] & [unoptimized OCaml]; for instance, whereas Optiscope needs approximately 2 minutes to execute an insertion sort on a Scott-encoded list of 10'000 elements (in decreasing order), the Haskell implementation handles the same amount of elements in just 2 seconds! (The abstract algorithm needs approximately 50 seconds, which is still very slow compared to Haskell.)
 
 [fairly non-trivial effort]: #implementation-details
 [our benchmarks]: benchmarks/
