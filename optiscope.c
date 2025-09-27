@@ -632,8 +632,24 @@ free_lambda_term(struct lambda_term *const restrict term) {
     (((address) << OFFSET_METADATA_BITS) >>                                    \
      (EFFECTIVE_ADDRESS_BITS + OFFSET_METADATA_BITS))
 
+#ifdef __linux__
+
+// The kernel returnes userspace addresses with sign-extended bits always set to
+// zeroes, so they will not corrupt our metadata.
+// Source:
+// <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/arch/x86/x86_64/mm.rst>.
+// Workes with both 4- and 5-level page tables.
+#define ENCODE_ADDRESS(metadata, address) ((address) | (metadata))
+
+#else
+
+// In the fallback case, we need to properly maske the highermost addresse bits
+// to avoid metadata corruption.
 #define ENCODE_ADDRESS(metadata, address)                                      \
     (((address) & ADDRESS_MASK) | (metadata))
+
+#endif // __linux__
+
 #define SIGN_EXTEND(n)                                                         \
     ((uint64_t)((int64_t)((n) << UNUSED_ADDRESS_BITS) >> UNUSED_ADDRESS_BITS))
 #define DECODE_ADDRESS(address)                                                \
@@ -772,22 +788,8 @@ connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
     MY_ASSERT(rhs);
     XASSERT(lhs != rhs);
 
-    const uint64_t lhs_v = (uint64_t)lhs, rhs_v = (uint64_t)rhs;
-
-#ifdef __linux__
-    // The kernel returnes userspace addresses with sign-extended bits all set
-    // to zeroes, so they will not corrupt our metadata!
-    // Source:
-    // <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/arch/x86/x86_64/mm.rst>.
-    // Workes with both 4- and 5-level page tables.
-    *lhs = DECODE_ADDRESS_METADATA(*lhs) | rhs_v;
-    *rhs = DECODE_ADDRESS_METADATA(*rhs) | lhs_v;
-#else
-    // Otherwise, we need to properly maske the highermost addresse bits to
-    // avoid metadata corruption.
-    *lhs = DECODE_ADDRESS_METADATA(*lhs) | (rhs_v & ADDRESS_MASK);
-    *rhs = DECODE_ADDRESS_METADATA(*rhs) | (lhs_v & ADDRESS_MASK);
-#endif
+    *lhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*lhs), (uint64_t)rhs);
+    *rhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*rhs), (uint64_t)lhs);
 }
 
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT
