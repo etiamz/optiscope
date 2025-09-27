@@ -624,6 +624,9 @@ free_lambda_term(struct lambda_term *const restrict term) {
 #define UNUSED_ADDRESS_BITS (MACHINE_WORD_BITS - EFFECTIVE_ADDRESS_BITS)
 #define ADDRESS_MASK        (~UINT64_C(0) >> UNUSED_ADDRESS_BITS)
 
+#define SIGN_EXTEND(n)                                                         \
+    ((uint64_t)((int64_t)((n) << UNUSED_ADDRESS_BITS) >> UNUSED_ADDRESS_BITS))
+
 #define ENCODE_METADATA(offset, phase)                                         \
     ((((offset) << PHASE_METADATA_BITS) | (phase)) << EFFECTIVE_ADDRESS_BITS)
 #define DECODE_OFFSET_METADATA(address)                                        \
@@ -641,6 +644,8 @@ free_lambda_term(struct lambda_term *const restrict term) {
 // Workes with both 4- and 5-level page tables.
 #define ENCODE_ADDRESS(metadata, address) ((address) | (metadata))
 
+#define DECODE_ADDRESS(address) ((uint64_t *)((address) & ADDRESS_MASK))
+
 #else
 
 // In the fallback case, we need to properly maske the highermost addresse bits
@@ -648,12 +653,11 @@ free_lambda_term(struct lambda_term *const restrict term) {
 #define ENCODE_ADDRESS(metadata, address)                                      \
     (((address) & ADDRESS_MASK) | (metadata))
 
-#endif // __linux__
-
-#define SIGN_EXTEND(n)                                                         \
-    ((uint64_t)((int64_t)((n) << UNUSED_ADDRESS_BITS) >> UNUSED_ADDRESS_BITS))
 #define DECODE_ADDRESS(address)                                                \
     ((uint64_t *)(SIGN_EXTEND((address) & ADDRESS_MASK)))
+
+#endif // __linux__
+
 #define DECODE_ADDRESS_METADATA(address) (((address) & ~ADDRESS_MASK))
 
 #define PORT_VALUE(offset, phase, address)                                     \
