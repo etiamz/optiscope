@@ -1,0 +1,52 @@
+def scottNil = \f.\g.g;;
+
+def scottCons = \a.\b.\f.\g.(f a b);;
+
+def scottSingleton = \x.(scottCons x scottNil);;
+
+def scottSplit = rec scottSplit = \list.\k.
+  let onNil = (k scottNil scottNil) in
+  let onCons = \x.\xs.
+    let onNilXs = (k (scottSingleton x) scottNil) in
+    let onConsXs = \y.\ys.
+      (scottSplit ys (\left.\right.(k (scottCons x left) (scottCons y right)))) in
+    (xs onConsXs onNilXs) in
+  (list onCons onNil);;
+
+def scottMerge = rec scottMerge = \xs.\ys.
+  let onNilYs = xs in
+  let onConsYs = \y.\yss.
+    let onNilXs = ys in
+    let onConsXs = \x.\xss.
+      if x < y
+        then (scottCons x (scottMerge xss ys))
+        else (scottCons y (scottMerge xs yss)) in
+    (xs onConsXs onNilXs) in
+  (ys onConsYs onNilYs);;
+
+def scottMergeSort = rec scottMergeSort = \list.
+  let onNil = scottNil in
+  let onCons = \x.\xs.
+    let onNilXs = (scottSingleton x) in
+    let onConsXs = \dummy.\dummyx.
+      (scottSplit list (\left.\right.
+        (scottMerge (scottMergeSort left) (scottMergeSort right)))) in
+    (xs onConsXs onNilXs) in
+  (list onCons onNil);;
+
+def scottSumList = rec scottSumList = \list.
+  let onNil = 0 in
+  let onCons = \h.\t.h + (scottSumList t) in
+  (list onCons onNil);;
+
+def generateList = \n.
+  let go = rec go = \i.\acc.
+    if i < n
+      then (go (i + 1) (scottCons i acc))
+      else acc in
+  (go 0 scottNil);;
+
+def benchmarkTerm =
+  (scottSumList (scottMergeSort (generateList 100)));;
+
+benchmarkTerm;;

@@ -1,0 +1,41 @@
+def scottNil = \f.\g.g;;
+
+def scottCons = \a.\b.\f.\g.(f a b);;
+
+def scottFilter = rec scottFilter = \f.\list.
+  let onNil = scottNil in
+  let onCons = \x.\xs.
+    if (f x) == 1
+      then (scottCons x (scottFilter f xs))
+      else (scottFilter f xs) in
+  (list onCons onNil);;
+
+def scottAppend = rec scottAppend = \xs.\ys.
+  let onNil = ys in
+  let onCons = \x.\xss.(scottCons x (scottAppend xss ys)) in
+  (xs onCons onNil);;
+
+def scottQuicksort = rec scottQuicksort = \list.
+  let onNil = scottNil in
+  let onCons = \x.\xs.
+    (scottAppend
+      (scottQuicksort (scottFilter (\y.if y < x then 1 else 0) xs))
+      (scottCons x (scottQuicksort (scottFilter (\z.if z >= x then 1 else 0) xs)))) in
+  (list onCons onNil);;
+
+def scottSumList = rec scottSumList = \list.
+  let onNil = 0 in
+  let onCons = \h.\t.h + (scottSumList t) in
+  (list onCons onNil);;
+
+def generateList = \n.
+  let go = rec go = \i.\acc.
+    if i < n
+      then (go (i + 1) (scottCons i acc))
+      else acc in
+  (go 0 scottNil);;
+
+def benchmarkTerm =
+  (scottSumList (scottQuicksort (generateList 100)));;
+
+benchmarkTerm;;

@@ -1,0 +1,48 @@
+def scottNil = \f.\g.g;;
+
+def scottCons = \a.\b.\f.\g.(f a b);;
+
+def scottMember = rec scottMember = \x.\list.
+  let onNil = 0 in
+  let onCons = \y.\ys.
+    if x == y
+      then 1
+      else (scottMember x ys) in
+  (list onCons onNil);;
+
+def scottLength = rec scottLength = \list.
+  let onNil = 0 in
+  let onCons = \x.\xs.1 + (scottLength xs) in
+  (list onCons onNil);;
+
+def scottAppend = rec scottAppend = \xs.\ys.
+  let onNil = ys in
+  let onCons = \x.\xss.(scottCons x (scottAppend xss ys)) in
+  (xs onCons onNil);;
+
+def scottThreat = rec scottThreat = \k.\m.\list.
+  let onNil = 0 in
+  let onCons = \x.\xs.
+    if k == x - m
+      then 1
+      else if k == m - x
+        then 1
+        else (scottThreat (k + 1) m xs) in
+  (list onCons onNil);;
+
+def scottQueenAux = rec scottQueenAux = \m.\b.\n.
+  if m == 0
+    then scottNil
+    else if (scottMember m b) == 1
+      then (scottQueenAux (m - 1) b n)
+      else if (scottThreat 1 m b) == 1
+        then (scottQueenAux (m - 1) b n)
+        else if (scottLength b) == n - 1
+          then (scottAppend (scottCons (scottCons m b) scottNil) (scottQueenAux (m - 1) b n))
+          else (scottAppend (scottQueenAux n (scottCons m b) n) (scottQueenAux (m - 1) b n));;
+
+def scottQueen = \n.(scottQueenAux n scottNil n);;
+
+def benchmarkTerm = (scottLength (scottQueen 5));;
+
+benchmarkTerm;;

@@ -1,0 +1,37 @@
+def scottNil = \f.\g.g;;
+
+def scottCons = \a.\b.\f.\g.(f a b);;
+
+def scottSingleton = \x.(scottCons x scottNil);;
+
+def lessEqual = \x.\y.if x <= y then 1 else 0;;
+
+def scottInsert = rec scottInsert = \elem.\list.
+  let onNil = (scottSingleton elem) in
+  let onCons = \h.\t.
+    if (lessEqual elem h) == 1
+      then (scottCons elem (scottCons h t)) 
+      else (scottCons h (scottInsert elem t)) in
+  (list onCons onNil);;
+
+def scottInsertionSort = rec scottInsertionSort = \list.
+  let onNil = scottNil in
+  let onCons = \h.\t.(scottInsert h (scottInsertionSort t)) in
+  (list onCons onNil);;
+
+def scottSumList = rec scottSumList = \list.
+  let onNil = 0 in
+  let onCons = \h.\t.h + (scottSumList t) in
+  (list onCons onNil);;
+
+def generateList = \n.
+  let go = rec go = \i.\acc.
+    if i < n
+      then (go (i + 1) (scottCons i acc))
+      else acc in
+  (go 0 scottNil);;
+
+def benchmarkTerm =
+  (scottSumList (scottInsertionSort (generateList 100)));;
+
+benchmarkTerm;;
