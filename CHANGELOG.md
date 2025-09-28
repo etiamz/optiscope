@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
  - Statistics: measure the percentage of sharing work realized by duplication interactions.
+ - Benchmarking: translate all the current benchmarks to BOHM in `benchmarks-bohm/`.
 
 ### Changed
 
