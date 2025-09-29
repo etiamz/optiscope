@@ -986,7 +986,7 @@ free_chunk(void *const memory) {
     prefix##_pool_create(void) {                                               \
         struct prefix##_pool *const self = xmalloc(sizeof *self);              \
                                                                                \
-        union prefix##_chunk *chunks =                                         \
+        union prefix##_chunk *const chunks =                                   \
             alloc_chunk(POOL_CHUNK_LIST_SIZE(chunk_size) * chunk_size);        \
         for (size_t i = 0; i < POOL_CHUNK_LIST_SIZE(chunk_size) - 1; i++) {    \
             chunks[i].next = &chunks[i + 1];                                   \
