@@ -3,7 +3,7 @@
 set -e
 
 optiscope_options="-DNDEBUG -DOPTISCOPE_ENABLE_HUGE_PAGES"
-compiler_options="-Wall -Wextra -std=gnu99 -O3 -march=native -funroll-loops -Wno-unused-function"
+compiler_options="-Wall -Wextra -std=gnu99 -O3 -march=native -fipa-pta -funroll-loops -Wno-unused-function"
 all_options="$optiscope_options $compiler_options"
 
 if [ -z $CC ]; then
