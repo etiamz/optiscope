@@ -2729,7 +2729,8 @@ gc_step(
 #endif
             } else if (is_atomic_symbol(shared.ports[-1])) {
                 connect_ports(&shared.ports[0], shares_with);
-                free_node(graph, g), free_node(graph, f);
+                free_node(graph, f);
+                free_node(graph, g);
 #ifdef OPTISCOPE_ENABLE_STATS
                 graph->ngc++;
 #endif
