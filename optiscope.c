@@ -1236,6 +1236,7 @@ is_active(const struct node node) {
 enum bc_instruction_type {
     INSTRUCTION_ATTACH_NODE,
     INSTRUCTION_SAVE_PORT,
+    INSTRUCTION_CONNECT,
     INSTRUCTION_DELIMIT,
     INSTRUCTION_TREE,
     INSTRUCTION_FIX,
@@ -1250,6 +1251,10 @@ struct bc_attach_node_data {
 struct bc_save_port_data {
     uint64_t **location;
     uint64_t port_idx;
+};
+
+struct bc_connect_data {
+    uint64_t **lhs, **rhs;
 };
 
 struct bc_delimit_data {
@@ -1269,6 +1274,7 @@ struct bc_fix_data {
 union bc_instruction_data {
     struct bc_attach_node_data attach_node;
     struct bc_save_port_data save_port;
+    struct bc_connect_data connect;
     struct bc_delimit_data delimit;
     struct bc_tree_data tree;
     struct bc_fix_data fix;
@@ -1335,6 +1341,12 @@ emit_instruction(
         (bc),                                                                  \
         (struct bc_instruction){.ty = INSTRUCTION_SAVE_PORT,                   \
                                 .data.save_port = {__VA_ARGS__}})
+
+#define BC_CONNECT(bc, ...)                                                    \
+    emit_instruction(                                                          \
+        (bc),                                                                  \
+        (struct bc_instruction){.ty = INSTRUCTION_CONNECT,                     \
+                                .data.connect = {__VA_ARGS__}})
 
 #define BC_DELIMIT(bc, ...)                                                    \
     emit_instruction(                                                          \
@@ -2395,7 +2407,11 @@ emit_bytecode(
         XASSERT(binder->binder_ports);
 
         const uint64_t idx = de_bruijn_level_to_index(lvl, binder->lvl);
-        BC_DELIMIT(bc, binder->binder_ports++, &term->connect_to, idx);
+        if (0 == idx) {
+            BC_CONNECT(bc, binder->binder_ports++, &term->connect_to);
+        } else {
+            BC_DELIMIT(bc, binder->binder_ports++, &term->connect_to, idx);
+        }
 
         break;
     }
@@ -2576,12 +2592,20 @@ execute_bytecode(
 
             break;
         }
+        case INSTRUCTION_CONNECT: {
+            uint64_t **const lhs = instr.data.connect.lhs, //
+                **const rhs = instr.data.connect.rhs;
+
+            connect_ports(*lhs, *rhs);
+
+            break;
+        }
         case INSTRUCTION_DELIMIT: {
             uint64_t **const points_to = instr.data.delimit.points_to, //
-                **goes_from = instr.data.delimit.goes_from;
+                **const goes_from = instr.data.delimit.goes_from;
             const uint64_t n = instr.data.delimit.n;
 
-            inst_delimiter(
+            inst_delimiter_as_is(
                 graph, (struct delimiter){.idx = 0, *points_to, *goes_from}, n);
 
             break;
