@@ -4168,7 +4168,7 @@ metacode(struct lambda_term *const restrict term) {
     }
 }
 
-// WHNF Reduction
+// Weak Reduction to Interface Normal Form (WRINF)
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 4) COMPILER_HOT //
