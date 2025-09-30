@@ -725,20 +725,6 @@ is_atomic_symbol(const uint64_t symbol) {
     }
 }
 
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
-inline static bool
-is_operator_symbol(const uint64_t symbol) {
-    switch (symbol) {
-    case SYMBOL_APPLICATOR:
-    case SYMBOL_UNARY_CALL:
-    case SYMBOL_BINARY_CALL:
-    case SYMBOL_BINARY_CALL_AUX:
-    case SYMBOL_IF_THEN_ELSE:
-    case SYMBOL_PERFORM: return true;
-    default: return false;
-    }
-}
-
 #define FOR_ALL_PORTS(node, i, seed)                                           \
     for (uint8_t i = seed; i < ports_count((node).ports[-1]); i++)
 
@@ -871,7 +857,7 @@ bump_index(const uint64_t symbol, const uint64_t offset) {
 #define PHASE_REDUCTION UINT64_C(0)
 #define PHASE_GC        UINT64_C(1)
 #define PHASE_GC_AUX    UINT64_C(2)
-#define PHASE_STACK     UINT64_C(3)
+#define PHASE_IN_STACK  UINT64_C(3)
 
 #define PHASE_MASK                                                             \
     UINT64_C(0xC3FFFFFFFFFFFFFF) /* clear the phase bits (61-58) */
@@ -1158,12 +1144,11 @@ follow_port(uint64_t *const restrict port) {
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static bool
-is_interacting_with(const struct node f, const struct node g) {
+is_pointing_to(const struct node f, const struct node g) {
     XASSERT(f.ports);
     XASSERT(g.ports);
 
-    // Supposing that `g` is derived from `f` by `follow_port(&f.ports[0])`.
-    return DECODE_ADDRESS(g.ports[0]) == &f.ports[0];
+    return DECODE_ADDRESS(f.ports[0]) == &g.ports[0];
 }
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
@@ -1172,7 +1157,7 @@ is_interaction(const struct node f, const struct node g) {
     XASSERT(f.ports);
     XASSERT(g.ports);
 
-    return is_interacting_with(f, g) && is_interacting_with(g, f);
+    return is_pointing_to(f, g) && is_pointing_to(g, f);
 }
 
 #ifdef OPTISCOPE_ENABLE_TRACING
@@ -1225,7 +1210,7 @@ inline static bool
 is_active(const struct node node) {
     XASSERT(node.ports);
 
-    return is_interacting_with(node, follow_port(&node.ports[0]));
+    return is_pointing_to(follow_port(&node.ports[0]), node);
 }
 
 #endif // OPTISCOPE_ENABLE_GRAPHVIZ
@@ -2169,7 +2154,7 @@ graphviz_is_active_node(const struct node node) {
 
     const struct node f = node, g = follow_port(&node.ports[0]);
 
-    return is_interacting_with(f, g) && SYMBOL_ROOT != node.ports[-1];
+    return is_pointing_to(g, f) && SYMBOL_ROOT != node.ports[-1];
 }
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
@@ -2822,11 +2807,8 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
                 free_node(graph, f);
                 set_phase(&g.ports[0], PHASE_GC_AUX);
                 break;
-            case PHASE_STACK: //
-                f.ports[0] &= PHASE_MASK;
-                break;
-            default: //
-                gc_step(graph, f, g, points_to - g.ports);
+            case PHASE_IN_STACK: f.ports[0] &= PHASE_MASK; break;
+            default: gc_step(graph, f, g, points_to - g.ports);
             }
         }
     }
@@ -2907,7 +2889,7 @@ assert_expand(
     MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_REFERENCE == f.ports[-1]);
-    MY_ASSERT(is_operator_symbol(g.ports[-1]) || IS_DUPLICATOR(g.ports[-1]));
+    // `g` is unspecified.
 }
 
 static void
@@ -3074,110 +3056,6 @@ typedef void (*Rule)(
 
 #define TYPE_CHECK_RULE(name)                                                  \
     COMPILER_UNUSED static const Rule name##_type_check = name
-
-RULE_DEFINITION(annihilate, graph, f, g) {
-    MY_ASSERT(graph);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-    assert_annihilation(f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nannihilations++;
-#endif
-
-    const uint64_t n = ports_count(f.ports[-1]) - 1;
-    XASSERT(n <= MAX_AUXILIARY_PORTS);
-
-    for (uint8_t i = 1; i <= n; i++) {
-        // Respective ports must have the same semantic meaning.
-        connect_ports(DECODE_ADDRESS(f.ports[i]), DECODE_ADDRESS(g.ports[i]));
-    }
-
-    free_node(graph, f);
-    free_node(graph, g);
-}
-
-TYPE_CHECK_RULE(annihilate);
-
-RULE_DEFINITION(commute, graph, f, g) {
-    MY_ASSERT(graph);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-    assert_commutation(f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->ncommutations++;
-#endif
-
-#ifndef NDEBUG
-    {
-        const bool with_lambda_or_delim =
-            IS_ANY_LAMBDA(g.ports[-1]) || IS_DELIMITER(g.ports[-1]);
-
-        // Ensure that lambdas & delimiters are always `g`, to give `f` the
-        // opportunity to increment its index.
-        MY_ASSERT(
-            !((IS_ANY_LAMBDA(f.ports[-1]) || IS_DELIMITER(f.ports[-1])) &&
-              !with_lambda_or_delim));
-
-        // If `f` is a lambda & `g` is a delimiter, swap them so that the index
-        // of `g` could be incremented.
-        MY_ASSERT(!(IS_ANY_LAMBDA(f.ports[-1]) && IS_DELIMITER(g.ports[-1])));
-    }
-#endif
-
-    int64_t i = symbol_index(f.ports[-1]), j = symbol_index(g.ports[-1]);
-
-    // If both are delimiters, the one with a higher index should be `f`.
-    if (IS_DELIMITER(f.ports[-1]) && IS_DELIMITER(g.ports[-1]) && j > i) {
-        const struct node h = f;
-        f = g, g = h;
-        const int64_t k = i;
-        i = j, j = k;
-    }
-
-    const bool update_symbol = (IS_ANY_LAMBDA(g.ports[-1]) && i >= 0) ||
-                               (IS_DELIMITER(g.ports[-1]) && i >= j);
-
-    const uint64_t fsym =
-                       update_symbol ? bump_index(f.ports[-1], 1) : f.ports[-1],
-                   gsym = g.ports[-1];
-
-    const uint8_t n = ports_count(f.ports[-1]) - 1,
-                  m = ports_count(g.ports[-1]) - 1;
-
-    struct node f_updates[MAX_AUXILIARY_PORTS] = {{NULL}},
-                g_updates[MAX_AUXILIARY_PORTS] = {{NULL}};
-
-    for (uint8_t i = 0; i < m; i++) {
-        f_updates[i] = alloc_node_from(graph, fsym, &f);
-        // clang-format off
-        connect_ports(
-            &f_updates[i].ports[0], DECODE_ADDRESS(g.ports[m - i]));
-        // clang-format on
-    }
-    for (uint8_t i = 0; i < n; i++) {
-        g_updates[i] = alloc_node_from(graph, gsym, &g);
-        // clang-format off
-        connect_ports(
-            &g_updates[i].ports[0], DECODE_ADDRESS(f.ports[i + 1]));
-        // clang-format on
-    }
-
-    for (uint8_t i = 0; i < m; i++) {
-        for (uint8_t j = 0; j < n; j++) {
-            connect_ports(
-                &f_updates[i].ports[j + 1], &g_updates[j].ports[m - i]);
-        }
-    }
-
-    free_node(graph, f);
-    free_node(graph, g);
-}
-
-TYPE_CHECK_RULE(commute);
 
 RULE_DEFINITION(beta, graph, f, g) {
     MY_ASSERT(graph);
@@ -3900,95 +3778,126 @@ RULE_DEFINITION(extrude_2_4, graph, f, g) {
 // Interaction Rule Dispatching
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-COMPILER_NONNULL(1) COMPILER_HOT //
-static void
-interact(
+COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
+static bool
+try_install_barrier(
     struct context *const restrict graph,
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-result"
-    MY_ASSERT(is_interaction(f, g));
-#pragma GCC diagnostic pop
 
+    if (SYMBOL_DELIMITER(UINT64_C(0)) != g.ports[-1]) { return false; }
+
+    uint64_t *const h_port = DECODE_ADDRESS(g.ports[1]);
+    const struct node h = node_of_port(h_port);
+
+    if (DECODE_ADDRESS(h.ports[0]) != &g.ports[1]) {
+        const struct node barrier = alloc_node(graph, SYMBOL_BARRIER);
+        barrier.ports[2] = g.ports[2];
+        connect_ports(&barrier.ports[0], h_port);
+        connect_ports(&barrier.ports[1], &f.ports[0]);
+        free_node(graph, g);
+        return true;
+    }
+
+    return false;
+}
+
+COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
+static bool
+try_extrude(
+    struct context *const restrict graph,
+    const struct node f,
+    const struct node g) {
+    MY_ASSERT(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    MY_ASSERT(IS_DELIMITER(f.ports[-1]));
+
+    uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
+
+    if (1 != DECODE_OFFSET_METADATA(*points_to)) { return false; }
+
+    switch (g.ports[-1]) {
+    case SYMBOL_UNARY_CALL:
+    case SYMBOL_BINARY_CALL_AUX: extrude_2_2(graph, f, g); return true;
+    case SYMBOL_APPLICATOR:
+    case SYMBOL_BINARY_CALL:
+    case SYMBOL_PERFORM: extrude_2_3(graph, f, g); return true;
+    case SYMBOL_IF_THEN_ELSE: extrude_2_4(graph, f, g); return true;
+    default: return false;
+    }
+}
+
+COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
+static bool
+try_interact(
+    struct context *const restrict graph,
+    const struct node f,
+    const struct node g) {
+    MY_ASSERT(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
 #ifdef OPTISCOPE_ENABLE_STATS
-    if (IS_DUPLICATOR(fsym) || IS_DUPLICATOR(gsym)) { //
-        graph->nduplication_itrs++;
-    }
-    if (IS_DELIMITER(fsym) || IS_DELIMITER(gsym)) { //
-        graph->ndelimiter_itrs++;
+    if (is_interaction(f, g)) {
+        if (IS_DUPLICATOR(fsym) || IS_DUPLICATOR(gsym)) { //
+            graph->nduplication_itrs++;
+        }
+        if (IS_DELIMITER(fsym) || IS_DELIMITER(gsym)) { //
+            graph->ndelimiter_itrs++;
+        }
     }
 #endif
 
-    if ((is_operator_symbol(fsym) || IS_DUPLICATOR(fsym)) &&
-        SYMBOL_DELIMITER(UINT64_C(0)) == gsym) {
-        uint64_t *const h_port = DECODE_ADDRESS(g.ports[1]);
-        const struct node h = node_of_port(h_port);
-
-        if (DECODE_ADDRESS(h.ports[0]) != &g.ports[1]) {
-            const struct node barrier = alloc_node(graph, SYMBOL_BARRIER);
-            barrier.ports[2] = g.ports[2];
-            connect_ports(&barrier.ports[0], h_port);
-            connect_ports(&barrier.ports[1], &f.ports[0]);
-            free_node(graph, g);
-            return;
-        }
-    }
-
     switch (fsym) {
     duplicator:
-        if (fsym == gsym) annihilate_dup_dup(graph, f, g);
-        else if (SYMBOL_APPLICATOR == gsym) commute_3_3(graph, f, g);
-        else if (SYMBOL_LAMBDA == gsym) commute_lambda_dup(graph, g, f);
+        if (SYMBOL_LAMBDA == gsym) commute_lambda_dup(graph, g, f);
         else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_3_1(graph, f, g);
         else if (SYMBOL_GC_LAMBDA == gsym) commute_gc_lambda_dup(graph, g, f);
         else if (SYMBOL_LAMBDA_C == gsym) commute_lambda_c_dup(graph, g, f);
         else if (SYMBOL_CELL == gsym) commute_3_1(graph, f, g);
-        else if (SYMBOL_UNARY_CALL == gsym) commute_3_2(graph, f, g);
-        else if (SYMBOL_BINARY_CALL == gsym) commute_3_3(graph, f, g);
-        else if (SYMBOL_BINARY_CALL_AUX == gsym) commute_3_2(graph, f, g);
-        else if (SYMBOL_IF_THEN_ELSE == gsym) commute_3_4(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (SYMBOL_BARRIER == gsym) unbarrier(graph, g, f);
-        else if (IS_DELIMITER(gsym)) commute_dup_delim(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) commute_3_3(graph, f, g);
-        else commute(graph, f, g);
+        else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
+            if (!try_install_barrier(graph, f, g)) {
+                commute_dup_delim(graph, f, g);
+            }
+        } else if (IS_DUPLICATOR(gsym) && is_pointing_to(g, f)) {
+            if (fsym == gsym) {
+                annihilate_dup_dup(graph, f, g);
+            } else {
+                commute_3_3(graph, f, g);
+            }
+        } else return false;
         break;
     delimiter:
-        if (fsym == gsym) annihilate_delim_delim(graph, f, g);
+        if (try_extrude(graph, f, g)) return true;
         else if (SYMBOL_ROOT == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_APPLICATOR == gsym) commute_2_3(graph, f, g);
         else if (SYMBOL_LAMBDA == gsym) commute_lambda_delim(graph, g, f);
         else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_2_1(graph, f, g);
         else if (SYMBOL_GC_LAMBDA == gsym) commute_gc_lambda_delim(graph, g, f);
         else if (SYMBOL_LAMBDA_C == gsym) commute_lambda_c_delim(graph, g, f);
         else if (SYMBOL_CELL == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_UNARY_CALL == gsym) commute_2_2(graph, f, g);
-        else if (SYMBOL_BINARY_CALL == gsym) commute_2_3(graph, f, g);
-        else if (SYMBOL_BINARY_CALL_AUX == gsym) commute_2_2(graph, f, g);
-        else if (SYMBOL_IF_THEN_ELSE == gsym) commute_2_4(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_BARRIER == gsym) unbarrier(graph, g, f);
-        else if (IS_DELIMITER(gsym)) commute_delim_delim(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) commute_dup_delim(graph, g, f);
-        else
-            commute(graph, g, f); /* delimiters must be the second, unlesse they
-                                     commute with lambdas */
-        break;
-    case SYMBOL_DELIMITER(UINT64_C(0)):
-        if (SYMBOL_BARRIER == gsym) barrier(graph, g, f);
-        else goto delimiter;
+        else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
+            if (fsym == gsym) {
+                annihilate_delim_delim(graph, f, g);
+            } else {
+                commute_delim_delim(graph, f, g);
+            }
+        } else if (IS_DUPLICATOR(gsym) && is_pointing_to(g, f)) {
+            commute_dup_delim(graph, g, f);
+        } else return false;
         break;
     case SYMBOL_ROOT:
-        if (IS_DELIMITER(gsym)) commute_1_2(graph, f, g);
-        else if (IS_ANY_LAMBDA(gsym) || SYMBOL_CELL == gsym)
+        if (IS_ANY_LAMBDA(gsym) || SYMBOL_CELL == gsym)
             graph->time_to_stop = true;
-        else COMPILER_UNREACHABLE();
+        else if (IS_DELIMITER(gsym) && is_pointing_to(g, f))
+            commute_1_2(graph, f, g);
+        else return false;
         break;
     case SYMBOL_APPLICATOR:
         if (SYMBOL_LAMBDA == gsym) beta(graph, f, g);
@@ -3996,52 +3905,83 @@ interact(
         else if (SYMBOL_IDENTITY_LAMBDA == gsym) identity_beta(graph, f, g);
         else if (SYMBOL_GC_LAMBDA == gsym) gc_beta(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (IS_DELIMITER(gsym)) commute_3_2(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) commute_3_3(graph, f, g);
-        else commute(graph, f, g);
+        else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
+            if (!try_install_barrier(graph, f, g)) { //
+                commute_3_2(graph, f, g);
+            }
+        } else if (IS_DUPLICATOR(gsym) && is_pointing_to(g, f)) {
+            commute_3_3(graph, f, g);
+        } else return false;
         break;
     case SYMBOL_UNARY_CALL:
         if (SYMBOL_CELL == gsym) do_unary_call(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (IS_DELIMITER(gsym)) commute_2_2(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) commute_2_3(graph, f, g);
-        else commute(graph, f, g);
+        else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
+            if (!try_install_barrier(graph, f, g)) { //
+                commute_2_2(graph, f, g);
+            }
+        } else if (IS_DUPLICATOR(gsym) && is_pointing_to(g, f)) {
+            commute_2_3(graph, f, g);
+        } else return false;
         break;
     case SYMBOL_BINARY_CALL:
         if (SYMBOL_CELL == gsym) do_binary_call(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (IS_DELIMITER(gsym)) commute_3_2(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) commute_3_3(graph, f, g);
-        else commute(graph, f, g);
+        else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
+            if (!try_install_barrier(graph, f, g)) { //
+                commute_3_2(graph, f, g);
+            }
+        } else if (IS_DUPLICATOR(gsym) && is_pointing_to(g, f)) {
+            commute_3_3(graph, f, g);
+        } else return false;
         break;
     case SYMBOL_BINARY_CALL_AUX:
         if (SYMBOL_CELL == gsym) do_binary_call_aux(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (IS_DELIMITER(gsym)) commute_2_2(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) commute_2_3(graph, f, g);
-        else commute(graph, f, g);
+        else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
+            if (!try_install_barrier(graph, f, g)) { //
+                commute_2_2(graph, f, g);
+            }
+        } else if (IS_DUPLICATOR(gsym) && is_pointing_to(g, f)) {
+            commute_2_3(graph, f, g);
+        } else return false;
         break;
     case SYMBOL_IF_THEN_ELSE:
         if (SYMBOL_CELL == gsym) do_if_then_else(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (IS_DELIMITER(gsym)) commute_4_2(graph, f, g);
-        else if (IS_DUPLICATOR(gsym)) commute_4_3(graph, f, g);
-        else commute(graph, f, g);
+        else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
+            if (!try_install_barrier(graph, f, g)) { //
+                commute_4_2(graph, f, g);
+            }
+        } else if (IS_DUPLICATOR(gsym) && is_pointing_to(g, f)) {
+            commute_4_3(graph, f, g);
+        } else return false;
         break;
     case SYMBOL_PERFORM:
         if (SYMBOL_CELL == gsym) do_perform(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else commute(graph, f, g);
+        else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
+            if (!try_install_barrier(graph, f, g)) { //
+                commute_3_2(graph, f, g);
+            }
+        } else if (IS_DUPLICATOR(gsym) && is_pointing_to(g, f)) {
+            commute_3_3(graph, f, g);
+        } else return false;
         break;
     case SYMBOL_BARRIER:
-        if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) barrier(graph, f, g);
-        else unbarrier(graph, f, g);
+        if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym && is_pointing_to(g, f)) {
+            barrier(graph, f, g);
+        } else if (is_pointing_to(g, f)) {
+            unbarrier(graph, f, g);
+        } else return false;
         break;
     default:
         if (IS_DUPLICATOR(fsym)) goto duplicator;
         else if (IS_DELIMITER(fsym)) goto delimiter;
         else COMPILER_UNREACHABLE();
     }
+
+    return true;
 }
 
 // Metacircular Interpretation
@@ -4195,33 +4135,6 @@ metacode(struct lambda_term *const restrict term) {
 // Weak Reduction to Interface Normal Form (WRINF)
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 4) COMPILER_HOT //
-static bool
-try_extrude_if_delimiter(
-    struct context *const restrict graph,
-    const struct node f,
-    const struct node g,
-    uint64_t *const restrict points_to) {
-    MY_ASSERT(graph);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-    MY_ASSERT(points_to);
-
-    if (!IS_DELIMITER(f.ports[-1])) { return false; }
-
-    if (1 != DECODE_OFFSET_METADATA(*points_to)) { return false; }
-
-    switch (g.ports[-1]) {
-    case SYMBOL_UNARY_CALL:
-    case SYMBOL_BINARY_CALL_AUX: extrude_2_2(graph, f, g); return true;
-    case SYMBOL_APPLICATOR:
-    case SYMBOL_BINARY_CALL:
-    case SYMBOL_PERFORM: extrude_2_3(graph, f, g); return true;
-    case SYMBOL_IF_THEN_ELSE: extrude_2_4(graph, f, g); return true;
-    default: return false;
-    }
-}
-
 COMPILER_NONNULL(1) //
 static void
 reduce(struct context *const restrict graph) {
@@ -4234,20 +4147,14 @@ reduce(struct context *const restrict graph) {
     struct node f = graph->root;
 
     while (!graph->time_to_stop) {
-        uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
-
-        const struct node g = node_of_port(points_to);
+        const struct node g = follow_port(&f.ports[0]);
         XASSERT(g.ports);
 
-        if (is_interacting_with(f, g)) {
-            interact(graph, f, g);
+        if (try_interact(graph, f, g)) {
             f = unfocus_or(&stack, graph->root);
             f.ports[0] &= PHASE_MASK;
-        } else if (try_extrude_if_delimiter(graph, f, g, points_to)) {
-            f = unfocus(&stack);
-            f.ports[0] &= PHASE_MASK;
         } else {
-            set_phase(&f.ports[0], PHASE_STACK);
+            set_phase(&f.ports[0], PHASE_IN_STACK);
             focus_on(&stack, f);
             f = g;
         }
