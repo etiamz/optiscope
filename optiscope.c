@@ -3840,6 +3840,7 @@ try_interact(
     MY_ASSERT(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
+
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
 #ifdef OPTISCOPE_ENABLE_STATS
