@@ -255,10 +255,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Assertions that are checked at compile-time.
 #if defined(__GNUC__) || STANDARD_C11_OR_HIGHER
-#define STATIC_ASSERT _Static_assert
+#define STATIC_ASSERT(constant_expression)                                     \
+    _Static_assert((constant_expression), #constant_expression)
 #else
 // clang-format off
-#define STATIC_ASSERT(constant_expression, string_literal) \
+#define STATIC_ASSERT(constant_expression) \
     COMPILER_UNUSED /* */ \
     static const char CAT(c99_static_assert_, __LINE__) \
         [(constant_expression) ? 1 : -1] = {0}
@@ -665,10 +666,6 @@ free_lambda_term(struct lambda_term *const restrict term) {
 
 #define IS_PRINCIPAL_PORT(port) (0 == DECODE_OFFSET_METADATA((port)))
 
-STATIC_ASSERT(CHAR_BIT == 8, "The byte width must be 8 bits!");
-STATIC_ASSERT(sizeof(uint64_t *) == sizeof(uint64_t), "The machine word width must be 64 bits!");
-STATIC_ASSERT(sizeof(uint64_t (*)(uint64_t value)) <= sizeof(uint64_t), "Function handles must fit in `uint64_t`!");
-
 #define MAX_REGULAR_SYMBOL   UINT64_C(15)
 #define INDEX_RANGE          UINT64_C(9223372036854775800)
 #define MAX_DUPLICATOR_INDEX (MAX_REGULAR_SYMBOL + INDEX_RANGE)
@@ -676,8 +673,14 @@ STATIC_ASSERT(sizeof(uint64_t (*)(uint64_t value)) <= sizeof(uint64_t), "Functio
 #define MAX_PORTS            UINT64_C(4)
 #define MAX_AUXILIARY_PORTS  (MAX_PORTS - 1)
 
-STATIC_ASSERT(UINT64_MAX == UINT64_C(18446744073709551615), "`uint64_t` must have the expected range of [0; 2^64 - 1]!");
-STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX, "Every bit of a symbol must be used!");
+STATIC_ASSERT(CHAR_BIT == 8);
+STATIC_ASSERT(sizeof(uint64_t *) == sizeof(uint64_t));
+STATIC_ASSERT(sizeof(uint64_t (*)(uint64_t)) <= sizeof(uint64_t));
+STATIC_ASSERT(sizeof(uint64_t (*)(uint64_t, uint64_t)) <= sizeof(uint64_t));
+STATIC_ASSERT(sizeof(struct lambda_term *(*)(void)) <= sizeof(uint64_t));
+STATIC_ASSERT(UINT64_MAX == UINT64_C(18446744073709551615));
+STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
+STATIC_ASSERT(INDEX_RANGE <= (uint64_t)INT64_MAX);
 
 #define SYMBOL_ROOT            UINT64_C(0)
 #define SYMBOL_APPLICATOR      UINT64_C(1)
@@ -786,9 +789,7 @@ COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT
 COMPILER_ALWAYS_INLINE //
 inline static int64_t
 symbol_index(const uint64_t symbol) {
-    STATIC_ASSERT(INDEX_RANGE <= (uint64_t)INT64_MAX, "Indices must fit in `int64_t`!");
-
-    if (symbol <= MAX_REGULAR_SYMBOL) { return -1; }
+    XASSERT(symbol > MAX_REGULAR_SYMBOL);
 
     if (symbol <= MAX_DUPLICATOR_INDEX) {
         return (int64_t)(symbol - MAX_REGULAR_SYMBOL - 1);
@@ -1119,7 +1120,7 @@ struct node {
     uint64_t *ports;
 };
 
-STATIC_ASSERT(sizeof(struct node) == sizeof(uint64_t *), "`struct node` must be as tiny as a pointer!");
+STATIC_ASSERT(sizeof(struct node) == sizeof(uint64_t *));
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT
 COMPILER_ALWAYS_INLINE //
