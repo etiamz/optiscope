@@ -3834,7 +3834,7 @@ try_extrude(
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
 static bool
-try_interact(
+try_rewrite(
     struct context *const restrict graph,
     const struct node f,
     const struct node g) {
@@ -4152,7 +4152,7 @@ reduce(struct context *const restrict graph) {
         const struct node g = follow_port(&f.ports[0]);
         XASSERT(g.ports);
 
-        if (try_interact(graph, f, g)) {
+        if (try_rewrite(graph, f, g)) {
             f = unfocus_or(&stack, graph->root);
             f.ports[0] &= PHASE_MASK;
         } else {
