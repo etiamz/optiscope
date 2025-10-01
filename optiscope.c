@@ -600,7 +600,9 @@ free_lambda_term(struct lambda_term *const restrict term) {
         free_lambda_term(term->data.ite.if_then);
         free_lambda_term(term->data.ite.if_else);
         break;
-    case LAMBDA_TERM_FIX: free_lambda_term(term->data.fix.f); break;
+    case LAMBDA_TERM_FIX: //
+        free_lambda_term(term->data.fix.f);
+        break;
     case LAMBDA_TERM_PERFORM:
         free_lambda_term(term->data.perform.action);
         free_lambda_term(term->data.perform.k);
@@ -680,7 +682,6 @@ STATIC_ASSERT(sizeof(uint64_t (*)(uint64_t, uint64_t)) <= sizeof(uint64_t));
 STATIC_ASSERT(sizeof(struct lambda_term *(*)(void)) <= sizeof(uint64_t));
 STATIC_ASSERT(UINT64_MAX == UINT64_C(18446744073709551615));
 STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
-STATIC_ASSERT(INDEX_RANGE <= (uint64_t)INT64_MAX);
 
 #define SYMBOL_ROOT            UINT64_C(0)
 #define SYMBOL_APPLICATOR      UINT64_C(1)
@@ -785,20 +786,10 @@ connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
     *rhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*rhs), (uint64_t)lhs);
 }
 
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT
-COMPILER_ALWAYS_INLINE //
-inline static int64_t
-symbol_index(const uint64_t symbol) {
-    XASSERT(symbol > MAX_REGULAR_SYMBOL);
-
-    if (symbol <= MAX_DUPLICATOR_INDEX) {
-        return (int64_t)(symbol - MAX_REGULAR_SYMBOL - 1);
-    } else if (symbol <= MAX_DELIMITER_INDEX) {
-        return (int64_t)(symbol - MAX_DUPLICATOR_INDEX - 1);
-    } else {
-        COMPILER_UNREACHABLE();
-    }
-}
+#define SYMBOL_INDEX(symbol)                                                   \
+    /* Extract the symbol without branching, considering that duplicators &    \
+     * delimiters share the same symbol range. */                              \
+    (((symbol) - MAX_REGULAR_SYMBOL - 1) % INDEX_RANGE)
 
 #if defined(OPTISCOPE_ENABLE_TRACING) || defined(OPTISCOPE_ENABLE_GRAPHVIZ)
 
@@ -1634,77 +1625,69 @@ alloc_node_from(
     }
 #endif
 
-    uint64_t *ports = NULL;
+    uint64_t *p = NULL;
 
-#define SET_SYMBOL() (ports[-1] = symbol)
+#define SET_SYMBOL() (p[-1] = symbol)
 #define SET_PORTS_0()                                                          \
-    (SET_SYMBOL(),                                                             \
-     ports[0] = PORT_VALUE(UINT64_C(0), PHASE_REDUCTION, UINT64_C(0)))
+    (SET_SYMBOL(), p[0] = PORT_VALUE(UINT64_C(0), PHASE_REDUCTION, UINT64_C(0)))
 #define SET_PORTS_1()                                                          \
-    (SET_PORTS_0(),                                                            \
-     ports[1] = PORT_VALUE(UINT64_C(1), UINT64_C(0), UINT64_C(0)))
+    (SET_PORTS_0(), p[1] = PORT_VALUE(UINT64_C(1), UINT64_C(0), UINT64_C(0)))
 #define SET_PORTS_2()                                                          \
-    (SET_PORTS_1(),                                                            \
-     ports[2] = PORT_VALUE(UINT64_C(2), UINT64_C(0), UINT64_C(0)))
+    (SET_PORTS_1(), p[2] = PORT_VALUE(UINT64_C(2), UINT64_C(0), UINT64_C(0)))
 #define SET_PORTS_3()                                                          \
-    (SET_PORTS_2(),                                                            \
-     ports[3] = PORT_VALUE(UINT64_C(3), UINT64_C(0), UINT64_C(0)))
+    (SET_PORTS_2(), p[3] = PORT_VALUE(UINT64_C(3), UINT64_C(0), UINT64_C(0)))
 
     switch (symbol) {
+    case SYMBOL_ERASER:
+    case SYMBOL_IDENTITY_LAMBDA:
+        p = ALLOC_POOL_OBJECT(u64x2_pool);
+        SET_PORTS_0();
+        break;
+    case SYMBOL_GC_LAMBDA:
+        p = ALLOC_POOL_OBJECT(u64x3_pool);
+        SET_PORTS_1();
+        break;
+    case SYMBOL_CELL:
+    case SYMBOL_REFERENCE:
+        p = ALLOC_POOL_OBJECT(u64x3_pool);
+        if (prototype) { p[1] = prototype->ports[1]; }
+        SET_PORTS_0();
+        break;
     case SYMBOL_APPLICATOR:
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
     case SYMBOL_PERFORM:
     duplicator:
-        ports = ALLOC_POOL_OBJECT(u64x4_pool);
+        p = ALLOC_POOL_OBJECT(u64x4_pool);
         SET_PORTS_2();
         break;
-    case SYMBOL_ERASER:
-    case SYMBOL_IDENTITY_LAMBDA:
-        ports = ALLOC_POOL_OBJECT(u64x2_pool);
-        SET_PORTS_0();
-        break;
-    case SYMBOL_GC_LAMBDA:
-        ports = ALLOC_POOL_OBJECT(u64x3_pool);
+    case SYMBOL_UNARY_CALL:
+    case SYMBOL_BARRIER:
+    delimiter:
+        p = ALLOC_POOL_OBJECT(u64x4_pool);
+        if (prototype) { p[2] = prototype->ports[2]; }
         SET_PORTS_1();
         break;
     case SYMBOL_IF_THEN_ELSE:
-        ports = ALLOC_POOL_OBJECT(u64x5_pool);
+        p = ALLOC_POOL_OBJECT(u64x5_pool);
         SET_PORTS_3();
         break;
-    case SYMBOL_CELL:
-    case SYMBOL_REFERENCE:
-        ports = ALLOC_POOL_OBJECT(u64x3_pool);
-        if (prototype) { ports[1] = prototype->ports[1]; }
-        SET_PORTS_0();
-        break;
-    case SYMBOL_UNARY_CALL:
-        ports = ALLOC_POOL_OBJECT(u64x4_pool);
-        if (prototype) { ports[2] = prototype->ports[2]; }
-        SET_PORTS_1();
-        break;
     case SYMBOL_BINARY_CALL:
-        ports = ALLOC_POOL_OBJECT(u64x5_pool);
-        if (prototype) { ports[3] = prototype->ports[3]; }
+        p = ALLOC_POOL_OBJECT(u64x5_pool);
+        if (prototype) { p[3] = prototype->ports[3]; }
         SET_PORTS_2();
         break;
     case SYMBOL_BINARY_CALL_AUX:
-        ports = ALLOC_POOL_OBJECT(u64x5_pool);
+        p = ALLOC_POOL_OBJECT(u64x5_pool);
         if (prototype) {
-            ports[2] = prototype->ports[2];
-            ports[3] = prototype->ports[3];
+            p[2] = prototype->ports[2];
+            p[3] = prototype->ports[3];
         }
         SET_PORTS_1();
         break;
-    case SYMBOL_BARRIER:
-    delimiter:
-        ports = ALLOC_POOL_OBJECT(u64x4_pool);
-        if (prototype) { ports[2] = prototype->ports[2]; }
-        SET_PORTS_1();
-        break;
     default:
-        if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
-        else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
+        if (IS_DUPLICATOR(symbol)) goto duplicator;
+        else if (IS_DELIMITER(symbol)) goto delimiter;
         else COMPILER_UNREACHABLE();
     }
 
@@ -1721,9 +1704,9 @@ alloc_node_from(
     }
 #endif
 
-    debug("🔨 %s", print_node((struct node){ports}));
+    debug("🔨 %s", print_node((struct node){p}));
 
-    return (struct node){ports};
+    return (struct node){p};
 }
 
 #define alloc_node(graph, symbol) alloc_node_from((graph), (symbol), NULL)
@@ -1788,8 +1771,8 @@ free_node(struct context *const restrict graph, const struct node node) {
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_IF_THEN_ELSE: FREE_POOL_OBJECT(u64x5_pool, p); break;
     default:
-        if (symbol <= MAX_DUPLICATOR_INDEX) goto duplicator;
-        else if (symbol <= MAX_DELIMITER_INDEX) goto delimiter;
+        if (IS_DUPLICATOR(symbol)) goto duplicator;
+        else if (IS_DELIMITER(symbol)) goto delimiter;
         else COMPILER_UNREACHABLE();
     }
 
@@ -3047,16 +3030,10 @@ debug_interaction(
 
 #endif // OPTISCOPE_ENABLE_TRACING
 
-typedef void (*Rule)(
-    struct context *const restrict graph, struct node f, struct node g);
-
 #define RULE_DEFINITION(name, graph, f, g)                                     \
     COMPILER_NONNULL(1) COMPILER_HOT /* */                                     \
     static void                                                                \
     name(struct context *const restrict graph, struct node f, struct node g)
-
-#define TYPE_CHECK_RULE(name)                                                  \
-    COMPILER_UNUSED static const Rule name##_type_check = name
 
 RULE_DEFINITION(beta, graph, f, g) {
     MY_ASSERT(graph);
@@ -3084,8 +3061,6 @@ RULE_DEFINITION(beta, graph, f, g) {
     free_node(graph, g);
 }
 
-TYPE_CHECK_RULE(beta);
-
 RULE_DEFINITION(beta_c, graph, f, g) {
     MY_ASSERT(graph);
     XASSERT(f.ports);
@@ -3104,8 +3079,6 @@ RULE_DEFINITION(beta_c, graph, f, g) {
     free_node(graph, g);
 }
 
-TYPE_CHECK_RULE(beta_c);
-
 RULE_DEFINITION(identity_beta, graph, f, g) {
     MY_ASSERT(graph);
     XASSERT(f.ports);
@@ -3122,8 +3095,6 @@ RULE_DEFINITION(identity_beta, graph, f, g) {
     free_node(graph, f);
     free_node(graph, g);
 }
-
-TYPE_CHECK_RULE(identity_beta);
 
 RULE_DEFINITION(gc_beta, graph, f, g) {
     MY_ASSERT(graph);
@@ -3150,8 +3121,6 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
     free_node(graph, g);
 }
 
-TYPE_CHECK_RULE(gc_beta);
-
 RULE_DEFINITION(barrier, graph, f, g) {
     MY_ASSERT(graph);
     XASSERT(f.ports);
@@ -3168,8 +3137,6 @@ RULE_DEFINITION(barrier, graph, f, g) {
 
     free_node(graph, g);
 }
-
-TYPE_CHECK_RULE(barrier);
 
 RULE_DEFINITION(unbarrier, graph, f, g) {
     MY_ASSERT(graph);
@@ -3189,8 +3156,6 @@ RULE_DEFINITION(unbarrier, graph, f, g) {
 
     free_node(graph, f);
 }
-
-TYPE_CHECK_RULE(unbarrier);
 
 RULE_DEFINITION(do_expand, graph, f, g) {
     MY_ASSERT(graph);
@@ -3258,8 +3223,6 @@ execute:;
     }
 }
 
-TYPE_CHECK_RULE(do_expand);
-
 RULE_DEFINITION(do_unary_call, graph, f, g) {
     MY_ASSERT(graph);
     XASSERT(f.ports);
@@ -3279,8 +3242,6 @@ RULE_DEFINITION(do_unary_call, graph, f, g) {
 
     free_node(graph, f);
 }
-
-TYPE_CHECK_RULE(do_unary_call);
 
 RULE_DEFINITION(do_binary_call, graph, f, g) {
     MY_ASSERT(graph);
@@ -3303,8 +3264,6 @@ RULE_DEFINITION(do_binary_call, graph, f, g) {
     free_node(graph, g);
 }
 
-TYPE_CHECK_RULE(do_binary_call);
-
 RULE_DEFINITION(do_binary_call_aux, graph, f, g) {
     MY_ASSERT(graph);
     XASSERT(f.ports);
@@ -3324,8 +3283,6 @@ RULE_DEFINITION(do_binary_call_aux, graph, f, g) {
 
     free_node(graph, f);
 }
-
-TYPE_CHECK_RULE(do_binary_call_aux);
 
 RULE_DEFINITION(do_if_then_else, graph, f, g) {
     MY_ASSERT(graph);
@@ -3352,8 +3309,6 @@ RULE_DEFINITION(do_if_then_else, graph, f, g) {
     free_node(graph, g);
 }
 
-TYPE_CHECK_RULE(do_if_then_else);
-
 RULE_DEFINITION(do_perform, graph, f, g) {
     MY_ASSERT(graph);
     XASSERT(f.ports);
@@ -3370,8 +3325,6 @@ RULE_DEFINITION(do_perform, graph, f, g) {
     free_node(graph, f);
     free_node(graph, g);
 }
-
-TYPE_CHECK_RULE(do_perform);
 
 // Specialized Annihilation Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -3414,8 +3367,6 @@ RULE_DEFINITION(annihilate_delim_delim, graph, f, g) {
     }
 }
 
-TYPE_CHECK_RULE(annihilate_delim_delim);
-
 RULE_DEFINITION(annihilate_dup_dup, graph, f, g) {
     ANNIHILATION_PROLOGUE(graph, f, g);
 
@@ -3425,8 +3376,6 @@ RULE_DEFINITION(annihilate_dup_dup, graph, f, g) {
     free_node(graph, f);
     free_node(graph, g);
 }
-
-TYPE_CHECK_RULE(annihilate_dup_dup);
 
 #undef NANNIHILATIONS_PLUS_PLUS
 #undef ANNIHILATION_PROLOGUE
@@ -3458,8 +3407,6 @@ RULE_DEFINITION(commute_1_2, graph, f, g) {
     free_node(graph, g);
 }
 
-TYPE_CHECK_RULE(commute_1_2);
-
 #define commute_2_1(graph, f, g) commute_1_2((graph), (g), (f))
 
 RULE_DEFINITION(commute_1_3, graph, f, g) {
@@ -3472,8 +3419,6 @@ RULE_DEFINITION(commute_1_3, graph, f, g) {
 
     free_node(graph, g);
 }
-
-TYPE_CHECK_RULE(commute_1_3);
 
 #define commute_3_1(graph, f, g) commute_1_3((graph), (g), (f))
 
@@ -3489,14 +3434,10 @@ RULE_DEFINITION(commute_2_2_core, graph, f, g) {
     try_merge_if_delimiter(graph, g);
 }
 
-TYPE_CHECK_RULE(commute_2_2_core);
-
 RULE_DEFINITION(commute_2_2, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
     commute_2_2_core(graph, f, g);
 }
-
-TYPE_CHECK_RULE(commute_2_2);
 
 RULE_DEFINITION(commute_3_2_core, graph, f, g) {
     const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
@@ -3516,16 +3457,12 @@ RULE_DEFINITION(commute_3_2_core, graph, f, g) {
     }
 }
 
-TYPE_CHECK_RULE(commute_3_2_core);
-
 #define commute_2_3_core(graph, f, g) commute_3_2_core((graph), (g), (f))
 
 RULE_DEFINITION(commute_3_2, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
     commute_3_2_core(graph, f, g);
 }
-
-TYPE_CHECK_RULE(commute_3_2);
 
 #define commute_2_3(graph, f, g) commute_3_2((graph), (g), (f))
 
@@ -3554,14 +3491,10 @@ RULE_DEFINITION(commute_3_3_core, graph, f, g) {
     }
 }
 
-TYPE_CHECK_RULE(commute_3_3_core);
-
 RULE_DEFINITION(commute_3_3, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
     commute_3_3_core(graph, f, g);
 }
-
-TYPE_CHECK_RULE(commute_3_3);
 
 RULE_DEFINITION(commute_4_2, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
@@ -3584,8 +3517,6 @@ RULE_DEFINITION(commute_4_2, graph, f, g) {
         try_merge_delimiter(graph, gxx);
     }
 }
-
-TYPE_CHECK_RULE(commute_4_2);
 
 #define commute_2_4(graph, f, g) commute_4_2((graph), (g), (f))
 
@@ -3616,21 +3547,17 @@ RULE_DEFINITION(commute_4_3, graph, f, g) {
     }
 }
 
-TYPE_CHECK_RULE(commute_4_3);
-
 #define commute_3_4(graph, f, g) commute_4_3((graph), (g), (f))
 
 RULE_DEFINITION(commute_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
-    if (symbol_index(f.ports[-1]) >= symbol_index(g.ports[-1])) {
+    if (SYMBOL_INDEX(f.ports[-1]) >= SYMBOL_INDEX(g.ports[-1])) {
         f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
     }
 
     commute_3_2_core(graph, f, g);
 }
-
-TYPE_CHECK_RULE(commute_dup_delim);
 
 RULE_DEFINITION(commute_delim_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
@@ -3644,15 +3571,11 @@ RULE_DEFINITION(commute_delim_delim, graph, f, g) {
     commute_2_2_core(graph, f, g);
 }
 
-TYPE_CHECK_RULE(commute_delim_delim);
-
 RULE_DEFINITION(commute_lambda_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
     g.ports[-1] = bump_index(g.ports[-1], 1);
     commute_3_2_core(graph, f, g);
 }
-
-TYPE_CHECK_RULE(commute_lambda_delim);
 
 RULE_DEFINITION(commute_lambda_dup, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
@@ -3660,23 +3583,17 @@ RULE_DEFINITION(commute_lambda_dup, graph, f, g) {
     commute_3_3_core(graph, f, g);
 }
 
-TYPE_CHECK_RULE(commute_lambda_dup);
-
 RULE_DEFINITION(commute_gc_lambda_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
     g.ports[-1] = bump_index(g.ports[-1], 1);
     commute_2_2_core(graph, f, g);
 }
 
-TYPE_CHECK_RULE(commute_gc_lambda_delim);
-
 RULE_DEFINITION(commute_gc_lambda_dup, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
     g.ports[-1] = bump_index(g.ports[-1], 1);
     commute_2_3_core(graph, f, g);
 }
-
-TYPE_CHECK_RULE(commute_gc_lambda_dup);
 
 // An excerpt from "8.1. Optimal vs. efficient":
 // > For instance, extruding a scope over a closed λ-term costs time linear in
@@ -3690,15 +3607,11 @@ RULE_DEFINITION(commute_lambda_c_delim, graph, f, g) {
     free_node(graph, g);
 }
 
-TYPE_CHECK_RULE(commute_lambda_c_delim);
-
 RULE_DEFINITION(commute_lambda_c_dup, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
     g.ports[-1] = bump_index(g.ports[-1], 1);
     commute_3_3_core(graph, f, g);
 }
-
-TYPE_CHECK_RULE(commute_lambda_c_dup);
 
 #undef NCOMMUTATIONS_PLUS_PLUS
 #undef COMMUTATION_PROLOGUE
