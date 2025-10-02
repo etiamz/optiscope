@@ -3790,14 +3790,14 @@ try_rewrite(
         } else COMPILER_UNREACHABLE();
         break;
     delimiter:
-        if (try_extrude(graph, f, g)) return true;
-        else if (SYMBOL_ROOT == gsym) commute_2_1(graph, f, g);
+        if (SYMBOL_ROOT == gsym) commute_2_1(graph, f, g);
         else if (SYMBOL_LAMBDA == gsym) commute_lambda_delim(graph, g, f);
         else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_2_1(graph, f, g);
         else if (SYMBOL_GC_LAMBDA == gsym) commute_gc_lambda_delim(graph, g, f);
         else if (SYMBOL_LAMBDA_C == gsym) commute_lambda_c_delim(graph, g, f);
         else if (SYMBOL_CELL == gsym) commute_2_1(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) commute_2_1(graph, f, g);
+        else if (try_extrude(graph, f, g)) return true;
         else if (!is_pointing_to(g, f)) return false;
         else if (IS_DUPLICATOR(gsym)) {
             commute_dup_delim(graph, g, f);
