@@ -3796,8 +3796,10 @@ try_rewrite(
             if (!try_inst_barrier(graph, f, g)) {
                 commute_dup_delim(graph, f, g);
             }
-        } else COMPILER_UNREACHABLE();
-        break;
+        } else {
+            COMPILER_UNREACHABLE();
+        }
+        return true;
     delimiter:
         if (SYMBOL_ROOT == gsym) commute_2_1(graph, f, g);
         else if (SYMBOL_LAMBDA == gsym) commute_delim_lambda(graph, f, g);
@@ -3816,26 +3818,14 @@ try_rewrite(
             } else {
                 commute_delim_delim(graph, f, g);
             }
-        } else COMPILER_UNREACHABLE();
-        break;
-    case SYMBOL_ROOT:
-        if (IS_ANY_LAMBDA(gsym) || SYMBOL_CELL == gsym) {
-            graph->time_to_stop = true;
-        } else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
-            commute_1_2(graph, f, g);
         } else {
-            return false;
+            COMPILER_UNREACHABLE();
         }
-        break;
-    case SYMBOL_BARRIER:
-        if (!is_pointing_to(g, f)) {
-            return false;
-        } else if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) {
-            barrier(graph, f, g);
-        } else {
-            unbarrier(graph, f, g);
-        }
-        break;
+        return true;
+    default:
+        if (IS_DUPLICATOR(fsym)) goto duplicator;
+        else if (IS_DELIMITER(fsym)) goto delimiter;
+        else COMPILER_UNREACHABLE();
     case SYMBOL_APPLICATOR:
         if (SYMBOL_LAMBDA == gsym) beta(graph, f, g);
         else if (SYMBOL_LAMBDA_C == gsym) beta_c(graph, f, g);
@@ -3849,8 +3839,10 @@ try_rewrite(
             if (!try_inst_barrier(graph, f, g)) { //
                 commute_3_2(graph, f, g);
             }
-        } else COMPILER_UNREACHABLE();
-        break;
+        } else {
+            COMPILER_UNREACHABLE();
+        }
+        return true;
     case SYMBOL_UNARY_CALL:
         if (SYMBOL_CELL == gsym) do_unary_call(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
@@ -3861,8 +3853,10 @@ try_rewrite(
             if (!try_inst_barrier(graph, f, g)) { //
                 commute_2_2(graph, f, g);
             }
-        } else COMPILER_UNREACHABLE();
-        break;
+        } else {
+            COMPILER_UNREACHABLE();
+        }
+        return true;
     case SYMBOL_BINARY_CALL:
         if (SYMBOL_CELL == gsym) do_binary_call(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
@@ -3873,8 +3867,10 @@ try_rewrite(
             if (!try_inst_barrier(graph, f, g)) { //
                 commute_3_2(graph, f, g);
             }
-        } else COMPILER_UNREACHABLE();
-        break;
+        } else {
+            COMPILER_UNREACHABLE();
+        }
+        return true;
     case SYMBOL_BINARY_CALL_AUX:
         if (SYMBOL_CELL == gsym) do_binary_call_aux(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
@@ -3885,8 +3881,10 @@ try_rewrite(
             if (!try_inst_barrier(graph, f, g)) { //
                 commute_2_2(graph, f, g);
             }
-        } else COMPILER_UNREACHABLE();
-        break;
+        } else {
+            COMPILER_UNREACHABLE();
+        }
+        return true;
     case SYMBOL_IF_THEN_ELSE:
         if (SYMBOL_CELL == gsym) do_if_then_else(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
@@ -3897,8 +3895,10 @@ try_rewrite(
             if (!try_inst_barrier(graph, f, g)) { //
                 commute_4_2(graph, f, g);
             }
-        } else COMPILER_UNREACHABLE();
-        break;
+        } else {
+            COMPILER_UNREACHABLE();
+        }
+        return true;
     case SYMBOL_PERFORM:
         if (SYMBOL_CELL == gsym) do_perform(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
@@ -3909,15 +3909,29 @@ try_rewrite(
             if (!try_inst_barrier(graph, f, g)) { //
                 commute_3_2(graph, f, g);
             }
-        } else COMPILER_UNREACHABLE();
-        break;
-    default:
-        if (IS_DUPLICATOR(fsym)) goto duplicator;
-        else if (IS_DELIMITER(fsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        } else {
+            COMPILER_UNREACHABLE();
+        }
+        return true;
+    case SYMBOL_BARRIER:
+        if (!is_pointing_to(g, f)) {
+            return false;
+        } else if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) {
+            barrier(graph, f, g);
+        } else {
+            unbarrier(graph, f, g);
+        }
+        return true;
+    case SYMBOL_ROOT:
+        if (IS_ANY_LAMBDA(gsym) || SYMBOL_CELL == gsym) {
+            graph->time_to_stop = true;
+        } else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
+            commute_1_2(graph, f, g);
+        } else {
+            return false;
+        }
+        return true;
     }
-
-    return true;
 }
 
 // Metacircular Interpretation
