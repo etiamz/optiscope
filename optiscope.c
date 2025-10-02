@@ -821,10 +821,10 @@ print_symbol(const uint64_t symbol) {
         else if (IS_DELIMITER(symbol)) goto delimiter;
         else COMPILER_UNREACHABLE();
     duplicator:
-        sprintf(buffer, "δ/%" PRIi64, symbol_index(symbol));
+        sprintf(buffer, "δ/%" PRIi64, SYMBOL_INDEX(symbol));
         break;
     delimiter:
-        sprintf(buffer, "⊔/%" PRIi64, symbol_index(symbol));
+        sprintf(buffer, "⊔/%" PRIi64, SYMBOL_INDEX(symbol));
         break;
     }
 
@@ -833,17 +833,21 @@ print_symbol(const uint64_t symbol) {
 
 #endif
 
-COMPILER_WARN_UNUSED_RESULT COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static uint64_t
-bump_index(const uint64_t symbol, const uint64_t offset) {
-    XASSERT(symbol > MAX_REGULAR_SYMBOL);
+COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
+inline static void
+bump_index(uint64_t *const restrict port, const uint64_t offset) {
+    MY_ASSERT(port);
+
+    const uint64_t symbol = *port;
+
+    MY_ASSERT(symbol > MAX_REGULAR_SYMBOL);
 
     if ((IS_DUPLICATOR(symbol) && offset > MAX_DUPLICATOR_INDEX - symbol) ||
         (IS_DELIMITER(symbol) && offset > MAX_DELIMITER_INDEX - symbol)) {
         panic("Maximum index of %" PRIu64 " is reached!", INDEX_RANGE);
     }
 
-    return symbol + offset;
+    *port += offset;
 }
 
 #define PHASE_REDUCTION UINT64_C(0)
@@ -2020,10 +2024,27 @@ graphviz_edge_tailport(const struct node node, const uint8_t i) {
         case 0: return "s";
         default: COMPILER_UNREACHABLE();
         }
+    case SYMBOL_ERASER:
+    case SYMBOL_CELL:
+    case SYMBOL_IDENTITY_LAMBDA:
+    case SYMBOL_REFERENCE:
+        switch (i) {
+        case 0: return "n";
+        default: COMPILER_UNREACHABLE();
+        }
     case SYMBOL_GC_LAMBDA:
         switch (i) {
         case 0: return "n";
         case 1: return "s";
+        default: COMPILER_UNREACHABLE();
+        }
+    case SYMBOL_UNARY_CALL:
+    case SYMBOL_BINARY_CALL_AUX:
+    case SYMBOL_BARRIER:
+    delimiter:
+        switch (i) {
+        case 0: return "s";
+        case 1: return "n";
         default: COMPILER_UNREACHABLE();
         }
     case SYMBOL_APPLICATOR:
@@ -2039,14 +2060,6 @@ graphviz_edge_tailport(const struct node node, const uint8_t i) {
         case 0: return "n";
         case 1: return "e";
         case 2: return "s";
-        default: COMPILER_UNREACHABLE();
-        }
-    case SYMBOL_ERASER:
-    case SYMBOL_CELL:
-    case SYMBOL_IDENTITY_LAMBDA:
-    case SYMBOL_REFERENCE:
-        switch (i) {
-        case 0: return "n";
         default: COMPILER_UNREACHABLE();
         }
     case SYMBOL_BINARY_CALL:
@@ -2065,10 +2078,6 @@ graphviz_edge_tailport(const struct node node, const uint8_t i) {
         case 3: return "s";
         default: COMPILER_UNREACHABLE();
         }
-    default:
-        if (IS_DUPLICATOR(node.ports[-1])) goto duplicator;
-        else if (IS_DELIMITER(node.ports[-1])) goto delimiter;
-        else COMPILER_UNREACHABLE();
     duplicator:
         switch (i) {
         case 0: return "s";
@@ -2076,15 +2085,10 @@ graphviz_edge_tailport(const struct node node, const uint8_t i) {
         case 2: return "ne";
         default: COMPILER_UNREACHABLE();
         }
-    case SYMBOL_UNARY_CALL:
-    case SYMBOL_BINARY_CALL_AUX:
-    case SYMBOL_BARRIER:
-    delimiter:
-        switch (i) {
-        case 0: return "s";
-        case 1: return "n";
-        default: COMPILER_UNREACHABLE();
-        }
+    default:
+        if (IS_DUPLICATOR(node.ports[-1])) goto duplicator;
+        else if (IS_DELIMITER(node.ports[-1])) goto delimiter;
+        else COMPILER_UNREACHABLE();
     }
 }
 
@@ -2690,10 +2694,13 @@ gc_step(
     case SYMBOL_LAMBDA_C:
         if (1 == i) {
             const struct node gc_lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
+
             connect_ports(&gc_lambda.ports[0], DECODE_ADDRESS(g.ports[0]));
             connect_ports(&gc_lambda.ports[1], DECODE_ADDRESS(g.ports[2]));
+
             free_node(graph, f);
             free_node(graph, g);
+
             break;
         } else {
             goto commute_1_3;
@@ -3030,10 +3037,12 @@ debug_interaction(
 
 #endif // OPTISCOPE_ENABLE_TRACING
 
-#define RULE_DEFINITION(name, graph, f, g)                                     \
-    COMPILER_NONNULL(1) COMPILER_HOT /* */                                     \
-    static void                                                                \
-    name(struct context *const restrict graph, struct node f, struct node g)
+// clang-format off
+#define RULE_DEFINITION(name, graph, f, g) \
+    COMPILER_NONNULL(1) COMPILER_HOT \
+    static void \
+    name(struct context *const restrict graph, const struct node f, const struct node g)
+// clang-format on
 
 RULE_DEFINITION(beta, graph, f, g) {
     MY_ASSERT(graph);
@@ -3553,7 +3562,7 @@ RULE_DEFINITION(commute_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
     if (SYMBOL_INDEX(f.ports[-1]) >= SYMBOL_INDEX(g.ports[-1])) {
-        f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
+        bump_index(&f.ports[-1], g.ports[2]);
     }
 
     commute_3_2_core(graph, f, g);
@@ -3563,54 +3572,54 @@ RULE_DEFINITION(commute_delim_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
     if (f.ports[-1] > g.ports[-1]) {
-        f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
+        bump_index(&f.ports[-1], g.ports[2]);
     } else {
-        g.ports[-1] = bump_index(g.ports[-1], f.ports[2]);
+        bump_index(&g.ports[-1], f.ports[2]);
     }
 
     commute_2_2_core(graph, f, g);
 }
 
-RULE_DEFINITION(commute_lambda_delim, graph, f, g) {
+RULE_DEFINITION(commute_dup_lambda, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    g.ports[-1] = bump_index(g.ports[-1], 1);
-    commute_3_2_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_lambda_dup, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    g.ports[-1] = bump_index(g.ports[-1], 1);
+    bump_index(&f.ports[-1], 1);
     commute_3_3_core(graph, f, g);
 }
 
-RULE_DEFINITION(commute_gc_lambda_delim, graph, f, g) {
+RULE_DEFINITION(commute_dup_gc_lambda, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    g.ports[-1] = bump_index(g.ports[-1], 1);
-    commute_2_2_core(graph, f, g);
+    bump_index(&f.ports[-1], 1);
+    commute_3_2_core(graph, f, g);
 }
 
-RULE_DEFINITION(commute_gc_lambda_dup, graph, f, g) {
+RULE_DEFINITION(commute_dup_lambda_c, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    g.ports[-1] = bump_index(g.ports[-1], 1);
+    bump_index(&f.ports[-1], 1);
+    commute_3_3_core(graph, f, g);
+}
+
+RULE_DEFINITION(commute_delim_lambda, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+    bump_index(&f.ports[-1], 1);
     commute_2_3_core(graph, f, g);
+}
+
+RULE_DEFINITION(commute_delim_gc_lambda, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+    bump_index(&f.ports[-1], 1);
+    commute_2_2_core(graph, f, g);
 }
 
 // An excerpt from "8.1. Optimal vs. efficient":
 // > For instance, extruding a scope over a closed λ-term costs time linear in
 //   the size of the term in our implementation, whereas one observes that in
 //   such cases it would be safe to simply remove the scope.
-RULE_DEFINITION(commute_lambda_c_delim, graph, f, g) {
+RULE_DEFINITION(commute_delim_lambda_c, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
-    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 
-    free_node(graph, g);
-}
-
-RULE_DEFINITION(commute_lambda_c_dup, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    g.ports[-1] = bump_index(g.ports[-1], 1);
-    commute_3_3_core(graph, f, g);
+    free_node(graph, f);
 }
 
 #undef NCOMMUTATIONS_PLUS_PLUS
@@ -3694,7 +3703,7 @@ RULE_DEFINITION(extrude_2_4, graph, f, g) {
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
 static bool
-try_install_barrier(
+try_inst_barrier(
     struct context *const restrict graph,
     const struct node f,
     const struct node g) {
@@ -3770,10 +3779,10 @@ try_rewrite(
 
     switch (fsym) {
     duplicator:
-        if (SYMBOL_LAMBDA == gsym) commute_lambda_dup(graph, g, f);
+        if (SYMBOL_LAMBDA == gsym) commute_dup_lambda(graph, f, g);
         else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_3_1(graph, f, g);
-        else if (SYMBOL_GC_LAMBDA == gsym) commute_gc_lambda_dup(graph, g, f);
-        else if (SYMBOL_LAMBDA_C == gsym) commute_lambda_c_dup(graph, g, f);
+        else if (SYMBOL_GC_LAMBDA == gsym) commute_dup_gc_lambda(graph, f, g);
+        else if (SYMBOL_LAMBDA_C == gsym) commute_dup_lambda_c(graph, f, g);
         else if (SYMBOL_CELL == gsym) commute_3_1(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
         else if (!is_pointing_to(g, f)) return false;
@@ -3784,17 +3793,17 @@ try_rewrite(
                 commute_3_3(graph, f, g);
             }
         } else if (IS_DELIMITER(gsym)) {
-            if (!try_install_barrier(graph, f, g)) {
+            if (!try_inst_barrier(graph, f, g)) {
                 commute_dup_delim(graph, f, g);
             }
         } else COMPILER_UNREACHABLE();
         break;
     delimiter:
         if (SYMBOL_ROOT == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_LAMBDA == gsym) commute_lambda_delim(graph, g, f);
+        else if (SYMBOL_LAMBDA == gsym) commute_delim_lambda(graph, f, g);
         else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_GC_LAMBDA == gsym) commute_gc_lambda_delim(graph, g, f);
-        else if (SYMBOL_LAMBDA_C == gsym) commute_lambda_c_delim(graph, g, f);
+        else if (SYMBOL_GC_LAMBDA == gsym) commute_delim_gc_lambda(graph, f, g);
+        else if (SYMBOL_LAMBDA_C == gsym) commute_delim_lambda_c(graph, f, g);
         else if (SYMBOL_CELL == gsym) commute_2_1(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) commute_2_1(graph, f, g);
         else if (try_extrude(graph, f, g)) return true;
@@ -3835,7 +3844,7 @@ try_rewrite(
         else if (IS_DUPLICATOR(gsym)) {
             commute_3_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
-            if (!try_install_barrier(graph, f, g)) { //
+            if (!try_inst_barrier(graph, f, g)) { //
                 commute_3_2(graph, f, g);
             }
         } else COMPILER_UNREACHABLE();
@@ -3847,7 +3856,7 @@ try_rewrite(
         else if (IS_DUPLICATOR(gsym)) {
             commute_2_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
-            if (!try_install_barrier(graph, f, g)) { //
+            if (!try_inst_barrier(graph, f, g)) { //
                 commute_2_2(graph, f, g);
             }
         } else COMPILER_UNREACHABLE();
@@ -3859,7 +3868,7 @@ try_rewrite(
         else if (IS_DUPLICATOR(gsym)) {
             commute_3_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
-            if (!try_install_barrier(graph, f, g)) { //
+            if (!try_inst_barrier(graph, f, g)) { //
                 commute_3_2(graph, f, g);
             }
         } else COMPILER_UNREACHABLE();
@@ -3871,7 +3880,7 @@ try_rewrite(
         else if (IS_DUPLICATOR(gsym)) {
             commute_2_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
-            if (!try_install_barrier(graph, f, g)) { //
+            if (!try_inst_barrier(graph, f, g)) { //
                 commute_2_2(graph, f, g);
             }
         } else COMPILER_UNREACHABLE();
@@ -3883,7 +3892,7 @@ try_rewrite(
         else if (IS_DUPLICATOR(gsym)) {
             commute_4_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
-            if (!try_install_barrier(graph, f, g)) { //
+            if (!try_inst_barrier(graph, f, g)) { //
                 commute_4_2(graph, f, g);
             }
         } else COMPILER_UNREACHABLE();
@@ -3895,7 +3904,7 @@ try_rewrite(
         else if (IS_DUPLICATOR(gsym)) {
             commute_3_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
-            if (!try_install_barrier(graph, f, g)) { //
+            if (!try_inst_barrier(graph, f, g)) { //
                 commute_3_2(graph, f, g);
             }
         } else COMPILER_UNREACHABLE();
