@@ -3819,11 +3819,13 @@ try_rewrite(
         } else COMPILER_UNREACHABLE();
         break;
     case SYMBOL_ROOT:
-        if (IS_ANY_LAMBDA(gsym) || SYMBOL_CELL == gsym)
+        if (IS_ANY_LAMBDA(gsym) || SYMBOL_CELL == gsym) {
             graph->time_to_stop = true;
-        else if (IS_DELIMITER(gsym) && is_pointing_to(g, f))
+        } else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
             commute_1_2(graph, f, g);
-        else return false;
+        } else {
+            return false;
+        }
         break;
     case SYMBOL_BARRIER:
         if (!is_pointing_to(g, f)) {
