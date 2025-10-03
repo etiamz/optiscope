@@ -1421,18 +1421,6 @@ unfocus(struct multifocus *const restrict focus) {
     return focus->array[--focus->count];
 }
 
-COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static struct node
-unfocus_or(
-    struct multifocus *const restrict focus, //
-    const struct node fallback) {
-    MY_ASSERT(focus);
-    XASSERT(focus->count <= focus->capacity);
-    XASSERT(focus->array);
-
-    return focus->count > 0 ? unfocus(focus) : fallback;
-}
-
 #define CONSUME_MULTIFOCUS(focus, f)                                           \
     for (struct node f = {NULL};                                               \
          (focus)->count > 0 ? (f = unfocus((focus)), true) : false;            \
@@ -1491,9 +1479,6 @@ struct context {
     // The root node of the graph (always `SYMBOL_ROOT`).
     struct node root;
 
-    // Indicates whether the interface normal form has been reached.
-    bool time_to_stop;
-
     // The cache that stores already performed expansions.
     struct book book;
 
@@ -1534,7 +1519,6 @@ alloc_context(void) {
 
     struct context *const graph = xcalloc(1, sizeof *graph);
     graph->root = root;
-    graph->time_to_stop = false;
     graph->book = alloc_book();
     graph->gc_focus = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
     // The statistics counters are zeroed out by `xcalloc`.
@@ -3698,7 +3682,7 @@ RULE_DEFINITION(extrude_2_4, graph, f, g) {
 
 #undef TYPE_CHECK_RULE
 
-// Interaction Rule Dispatching
+// Weak Reduction to Interface Normal Form (WRINF)
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
@@ -3754,14 +3738,19 @@ try_extrude(
     }
 }
 
-COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
-static bool
-try_rewrite(
-    struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
+COMPILER_NONNULL(1) //
+static void
+reduce(struct context *const restrict graph) {
+    debug("%s()", __func__);
+
     MY_ASSERT(graph);
-    XASSERT(f.ports);
+
+    struct multifocus stack = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
+
+    struct node f = graph->root, g = {NULL};
+
+loop: {
+    g = follow_port(&f.ports[0]);
     XASSERT(g.ports);
 
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
@@ -3784,9 +3773,12 @@ try_rewrite(
         else if (SYMBOL_GC_LAMBDA == gsym) commute_dup_gc_lambda(graph, f, g);
         else if (SYMBOL_LAMBDA_C == gsym) commute_dup_lambda_c(graph, f, g);
         else if (SYMBOL_CELL == gsym) commute_3_1(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (!is_pointing_to(g, f)) return false;
-        else if (IS_DUPLICATOR(gsym)) {
+        else if (SYMBOL_REFERENCE == gsym) {
+            do_expand(graph, g, f);
+            goto loop;
+        } else if (!is_pointing_to(g, f)) {
+            goto push;
+        } else if (IS_DUPLICATOR(gsym)) {
             if (fsym == gsym) {
                 annihilate_dup_dup(graph, f, g);
             } else {
@@ -3799,7 +3791,7 @@ try_rewrite(
         } else {
             COMPILER_UNREACHABLE();
         }
-        return true;
+        goto pop;
     delimiter:
         if (SYMBOL_ROOT == gsym) commute_2_1(graph, f, g);
         else if (SYMBOL_LAMBDA == gsym) commute_delim_lambda(graph, f, g);
@@ -3808,8 +3800,8 @@ try_rewrite(
         else if (SYMBOL_LAMBDA_C == gsym) commute_delim_lambda_c(graph, f, g);
         else if (SYMBOL_CELL == gsym) commute_2_1(graph, f, g);
         else if (SYMBOL_REFERENCE == gsym) commute_2_1(graph, f, g);
-        else if (try_extrude(graph, f, g)) return true;
-        else if (!is_pointing_to(g, f)) return false;
+        else if (try_extrude(graph, f, g)) goto pop;
+        else if (!is_pointing_to(g, f)) goto push;
         else if (IS_DUPLICATOR(gsym)) {
             commute_dup_delim(graph, g, f);
         } else if (IS_DELIMITER(gsym)) {
@@ -3821,7 +3813,7 @@ try_rewrite(
         } else {
             COMPILER_UNREACHABLE();
         }
-        return true;
+        goto pop;
     default:
         if (IS_DUPLICATOR(fsym)) goto duplicator;
         else if (IS_DELIMITER(fsym)) goto delimiter;
@@ -3831,9 +3823,12 @@ try_rewrite(
         else if (SYMBOL_LAMBDA_C == gsym) beta_c(graph, f, g);
         else if (SYMBOL_IDENTITY_LAMBDA == gsym) identity_beta(graph, f, g);
         else if (SYMBOL_GC_LAMBDA == gsym) gc_beta(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (!is_pointing_to(g, f)) return false;
-        else if (IS_DUPLICATOR(gsym)) {
+        else if (SYMBOL_REFERENCE == gsym) {
+            do_expand(graph, g, f);
+            goto loop;
+        } else if (!is_pointing_to(g, f)) {
+            goto push;
+        } else if (IS_DUPLICATOR(gsym)) {
             commute_3_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
             if (!try_inst_barrier(graph, f, g)) { //
@@ -3842,12 +3837,15 @@ try_rewrite(
         } else {
             COMPILER_UNREACHABLE();
         }
-        return true;
+        goto pop;
     case SYMBOL_UNARY_CALL:
         if (SYMBOL_CELL == gsym) do_unary_call(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (!is_pointing_to(g, f)) return false;
-        else if (IS_DUPLICATOR(gsym)) {
+        else if (SYMBOL_REFERENCE == gsym) {
+            do_expand(graph, g, f);
+            goto loop;
+        } else if (!is_pointing_to(g, f)) {
+            goto push;
+        } else if (IS_DUPLICATOR(gsym)) {
             commute_2_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
             if (!try_inst_barrier(graph, f, g)) { //
@@ -3856,12 +3854,15 @@ try_rewrite(
         } else {
             COMPILER_UNREACHABLE();
         }
-        return true;
+        goto pop;
     case SYMBOL_BINARY_CALL:
         if (SYMBOL_CELL == gsym) do_binary_call(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (!is_pointing_to(g, f)) return false;
-        else if (IS_DUPLICATOR(gsym)) {
+        else if (SYMBOL_REFERENCE == gsym) {
+            do_expand(graph, g, f);
+            goto loop;
+        } else if (!is_pointing_to(g, f)) {
+            goto push;
+        } else if (IS_DUPLICATOR(gsym)) {
             commute_3_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
             if (!try_inst_barrier(graph, f, g)) { //
@@ -3870,12 +3871,15 @@ try_rewrite(
         } else {
             COMPILER_UNREACHABLE();
         }
-        return true;
+        goto pop;
     case SYMBOL_BINARY_CALL_AUX:
         if (SYMBOL_CELL == gsym) do_binary_call_aux(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (!is_pointing_to(g, f)) return false;
-        else if (IS_DUPLICATOR(gsym)) {
+        else if (SYMBOL_REFERENCE == gsym) {
+            do_expand(graph, g, f);
+            goto loop;
+        } else if (!is_pointing_to(g, f)) {
+            goto push;
+        } else if (IS_DUPLICATOR(gsym)) {
             commute_2_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
             if (!try_inst_barrier(graph, f, g)) { //
@@ -3884,12 +3888,15 @@ try_rewrite(
         } else {
             COMPILER_UNREACHABLE();
         }
-        return true;
+        goto pop;
     case SYMBOL_IF_THEN_ELSE:
         if (SYMBOL_CELL == gsym) do_if_then_else(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (!is_pointing_to(g, f)) return false;
-        else if (IS_DUPLICATOR(gsym)) {
+        else if (SYMBOL_REFERENCE == gsym) {
+            do_expand(graph, g, f);
+            goto loop;
+        } else if (!is_pointing_to(g, f)) {
+            goto push;
+        } else if (IS_DUPLICATOR(gsym)) {
             commute_4_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
             if (!try_inst_barrier(graph, f, g)) { //
@@ -3898,12 +3905,15 @@ try_rewrite(
         } else {
             COMPILER_UNREACHABLE();
         }
-        return true;
+        goto pop;
     case SYMBOL_PERFORM:
         if (SYMBOL_CELL == gsym) do_perform(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) do_expand(graph, g, f);
-        else if (!is_pointing_to(g, f)) return false;
-        else if (IS_DUPLICATOR(gsym)) {
+        else if (SYMBOL_REFERENCE == gsym) {
+            do_expand(graph, g, f);
+            goto loop;
+        } else if (!is_pointing_to(g, f)) {
+            goto push;
+        } else if (IS_DUPLICATOR(gsym)) {
             commute_3_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
             if (!try_inst_barrier(graph, f, g)) { //
@@ -3912,26 +3922,45 @@ try_rewrite(
         } else {
             COMPILER_UNREACHABLE();
         }
-        return true;
+        goto pop;
     case SYMBOL_BARRIER:
         if (!is_pointing_to(g, f)) {
-            return false;
+            goto push;
         } else if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) {
             barrier(graph, f, g);
         } else {
             unbarrier(graph, f, g);
         }
-        return true;
+        goto pop;
     case SYMBOL_ROOT:
         if (IS_ANY_LAMBDA(gsym) || SYMBOL_CELL == gsym) {
-            graph->time_to_stop = true;
+            goto stop;
         } else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
             commute_1_2(graph, f, g);
+            f = graph->root;
+            f.ports[0] &= PHASE_MASK;
+            goto loop;
         } else {
-            return false;
+            goto push;
         }
-        return true;
     }
+}
+
+pop: {
+    f = unfocus(&stack);
+    f.ports[0] &= PHASE_MASK;
+    goto loop;
+}
+
+push: {
+    set_phase(&f.ports[0], PHASE_IN_STACK);
+    focus_on(&stack, f);
+    f = g;
+    goto loop;
+}
+
+stop:
+    free_focus(stack);
 }
 
 // Metacircular Interpretation
@@ -4080,37 +4109,6 @@ metacode(struct lambda_term *const restrict term) {
     case LAMBDA_TERM_VAR: return term;
     default: panic("Non-LC term in metacoding!");
     }
-}
-
-// Weak Reduction to Interface Normal Form (WRINF)
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-COMPILER_NONNULL(1) //
-static void
-reduce(struct context *const restrict graph) {
-    debug("%s()", __func__);
-
-    MY_ASSERT(graph);
-
-    struct multifocus stack = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
-
-    struct node f = graph->root;
-
-    while (!graph->time_to_stop) {
-        const struct node g = follow_port(&f.ports[0]);
-        XASSERT(g.ports);
-
-        if (try_rewrite(graph, f, g)) {
-            f = unfocus_or(&stack, graph->root);
-            f.ports[0] &= PHASE_MASK;
-        } else {
-            set_phase(&f.ports[0], PHASE_IN_STACK);
-            focus_on(&stack, f);
-            f = g;
-        }
-    }
-
-    free_focus(stack);
 }
 
 // Complete Algorithm
