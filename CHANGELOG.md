@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 0.17.0 - 2025-10-03
+
 ### Added
 
  - Statistics: measure the percentage of sharing work realized by duplication interactions.
