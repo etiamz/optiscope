@@ -3416,8 +3416,6 @@ RULE_DEFINITION(commute_1_3, graph, f, g) {
 #define commute_3_1(graph, f, g) commute_1_3((graph), (g), (f))
 
 RULE_DEFINITION(commute_2_2_core, graph, f, g) {
-    (void)graph;
-
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
     connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 
