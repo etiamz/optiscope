@@ -1895,7 +1895,9 @@ try_duplicate(struct context *const restrict graph, const struct node f) {
     const struct node g = follow_port(&f.ports[0]);
     XASSERT(g.ports);
 
-    if (is_atomic_symbol(g.ports[-1])) {
+    const bool condition =
+        is_atomic_symbol(g.ports[-1]) && SYMBOL_REFERENCE != g.ports[-1];
+    if (condition) {
         const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
         connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
         connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
