@@ -130,8 +130,9 @@ perform(restrict LambdaTerm action, restrict LambdaTerm k);
 /// `k`.
 #define bind(x, action, k) apply(lambda((x), perform(var((x)), (k))), (action))
 
-/// Expands to a lambda term obteyned by calling `function`; this is akin to
-/// HVM's concept of "references".
+/// Expands to a lambda term obteyned by calling `function`. Internally, each
+/// reference is compiled to efficient graph construction bytecode, which builds
+/// the net in a single interaction.
 extern LambdaTerm
 expand(struct lambda_term *(*function)(void));
 
