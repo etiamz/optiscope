@@ -732,6 +732,9 @@ is_atomic_symbol(const uint64_t symbol) {
 #define FOR_ALL_PORTS(node, i, seed)                                           \
     for (uint8_t i = seed; i < ports_count((node).ports[-1]); i++)
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function" // may be unused
+
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
 static uint8_t
 ports_count(const uint64_t symbol) {
@@ -763,6 +766,8 @@ ports_count(const uint64_t symbol) {
         else COMPILER_UNREACHABLE();
     }
 }
+
+#pragma GCC diagnostic pop // "-Wunused-function"
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
