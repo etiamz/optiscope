@@ -325,7 +325,7 @@ xmalloc(const size_t size) {
     XASSERT(size > 0);
 
     void *const object = malloc(size);
-    if (NULL == object) { panic("Failed allocation!"); }
+    if (NULL == object) { panic("Failed `xmalloc`!"); }
 
     return object;
 }
@@ -336,7 +336,18 @@ xcalloc(const size_t n, const size_t size) {
     XASSERT(size > 0);
 
     void *const object = calloc(n, size);
-    if (NULL == object) { panic("Failed allocation!"); }
+    if (NULL == object) { panic("Failed `xcalloc`!"); }
+
+    return object;
+}
+
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
+static void *
+xrealloc(void *restrict object, const size_t size) {
+    XASSERT(size > 0);
+
+    object = realloc(object, size);
+    if (NULL == object) { panic("Failed `xrealloc`!"); }
 
     return object;
 }
@@ -1295,11 +1306,8 @@ expand_bytecode(struct bytecode *const restrict bc) {
     XASSERT(bc->count == bc->capacity);
     XASSERT(bc->instructions);
 
-    bc->instructions = realloc(
+    bc->instructions = xrealloc(
         bc->instructions, sizeof bc->instructions[0] * (bc->capacity *= 2));
-    if (NULL == bc->instructions) { //
-        panic("Failed to reallocate the bytecode!");
-    }
 }
 
 COMPILER_NONNULL(1) //
@@ -1379,10 +1387,7 @@ expand_focus(struct multifocus *const restrict focus) {
     XASSERT(focus->array);
 
     focus->array =
-        realloc(focus->array, sizeof focus->array[0] * (focus->capacity *= 2));
-    if (NULL == focus->array) { //
-        panic("Failed to reallocate the multifocus!");
-    }
+        xrealloc(focus->array, sizeof focus->array[0] * (focus->capacity *= 2));
 }
 
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
