@@ -281,10 +281,16 @@ optiscope_redirect_stream(
 
     int c;
     while (EOF != (c = fgetc(source))) {
-        if (EOF == fputc(c, destination)) { perror("fputc"), abort(); }
+        if (EOF == fputc(c, destination)) {
+            perror("fputc");
+            abort();
+        }
     }
 
-    if (ferror(source) != 0) { perror("fgetc"), abort(); }
+    if (ferror(source) != 0) {
+        perror("fgetc");
+        abort();
+    }
 }
 
 // Logging & Panicking
@@ -2248,7 +2254,10 @@ graphviz(
     MY_ASSERT(filename);
 
     FILE *fp = fopen(filename, "w");
-    if (NULL == fp) { perror("fopen"), abort(); }
+    if (NULL == fp) {
+        perror("fopen");
+        abort();
+    }
 
     fprintf(fp, "digraph {\n");
     fprintf(fp, GRAPHVIZ_INDENT "graph [nodesep=0.5, ranksep=0.8];\n");
@@ -2296,7 +2305,10 @@ wait_for_user(struct context *const restrict graph) {
 
     printf("Press ENTER to proceed...");
     fflush(stdout);
-    if (EOF == getchar()) { perror("getchar"), abort(); }
+    if (EOF == getchar()) {
+        perror("getchar");
+        abort();
+    }
 }
 
 #else
