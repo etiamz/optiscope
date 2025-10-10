@@ -152,9 +152,4 @@ optiscope_open_pools(void);
 extern void
 optiscope_close_pools(void);
 
-/// Redirect all characters from the `source` file stream to the `destination`
-/// file stream.
-extern void
-optiscope_redirect_stream(FILE *restrict source, FILE *restrict destination);
-
 #endif // OPTISCOPE_H
