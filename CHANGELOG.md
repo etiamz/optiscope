@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Miscellaneouse: extend the range of regular symbols from 16 to 64 for future use.
 
+### Fixed
+
+ - Garbage collection: huge memory leaks originated from duplicator-eraser combinations.
+
 ### Removed
 
  - User interface:

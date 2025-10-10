@@ -36,8 +36,8 @@ Description: Computes the Ackermann function with initial values _(3, 8)_.
 
 ```
 Benchmark 1: ./ackermann
-  Time (mean ± σ):      1.200 s ±  0.008 s    [User: 1.183 s, System: 0.016 s]
-  Range (min … max):    1.191 s …  1.211 s    5 runs
+  Time (mean ± σ):      1.189 s ±  0.017 s    [User: 1.179 s, System: 0.010 s]
+  Range (min … max):    1.171 s …  1.217 s    5 runs
 ```
 
 <details>
@@ -68,8 +68,8 @@ Description: Computes the Takeuchi function with initial values _(24, 9, 3)_.
 
 ```
 Benchmark 1: ./tak
-  Time (mean ± σ):      1.082 s ±  0.005 s    [User: 1.065 s, System: 0.017 s]
-  Range (min … max):    1.075 s …  1.089 s    5 runs
+  Time (mean ± σ):      1.103 s ±  0.021 s    [User: 1.094 s, System: 0.009 s]
+  Range (min … max):    1.083 s …  1.129 s    5 runs
 ```
 
 <details>
@@ -100,8 +100,8 @@ Description: Performes a bubble sort on a Scott-encoded list of 300 cells, then 
 
 ```
 Benchmark 1: ./scott-bubble-sort
-  Time (mean ± σ):      4.073 s ±  0.015 s    [User: 3.597 s, System: 0.475 s]
-  Range (min … max):    4.065 s …  4.100 s    5 runs
+  Time (mean ± σ):      2.425 s ±  0.040 s    [User: 2.421 s, System: 0.004 s]
+  Range (min … max):    2.391 s …  2.493 s    5 runs
 ```
 
 <details>
@@ -109,19 +109,19 @@ Benchmark 1: ./scott-bubble-sort
 
 ```
    Family reductions: 632709
-        Commutations: 151741682
+        Commutations: 151696832
        Annihilations: 27897016
           Expansions: 46052
      Cell operations: 271498
   Barrier operations: 14221657
-  Total interactions: 194810614
- Garbage collections: 1906453
+  Total interactions: 194765764
+ Garbage collections: 2086155
   Delimiter mergings: 362394
 Delimiter extrusions: 1528812
-      Total rewrites: 198608273
-        Sharing work: 95.68%
-    Bookkeeping work: 16.68%
-     Peak node count: 148549009
+      Total rewrites: 198743125
+        Sharing work: 95.62%
+    Bookkeeping work: 16.66%
+     Peak node count: 320056
 ```
 
 </details>
@@ -132,8 +132,8 @@ Description: Performes an insertion sort on a Scott-encoded list of 1000 cells, 
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):     841.7 ms ±   7.5 ms    [User: 832.0 ms, System: 9.4 ms]
-  Range (min … max):   829.2 ms … 847.9 ms    5 runs
+  Time (mean ± σ):     828.2 ms ±  15.3 ms    [User: 821.9 ms, System: 6.0 ms]
+  Range (min … max):   814.1 ms … 851.8 ms    5 runs
 ```
 
 <details>
@@ -164,8 +164,8 @@ Description: Performes a merge sort on a Scott-encoded list of 1000 cells, then 
 
 ```
 Benchmark 1: ./scott-merge-sort
-  Time (mean ± σ):     619.0 ms ±   1.4 ms    [User: 593.6 ms, System: 25.3 ms]
-  Range (min … max):   617.2 ms … 620.8 ms    5 runs
+  Time (mean ± σ):     569.3 ms ±   5.0 ms    [User: 559.4 ms, System: 9.6 ms]
+  Range (min … max):   564.6 ms … 577.6 ms    5 runs
 ```
 
 <details>
@@ -173,19 +173,19 @@ Benchmark 1: ./scott-merge-sort
 
 ```
    Family reductions: 223404
-        Commutations: 23750874
+        Commutations: 23727987
        Annihilations: 5503103
           Expansions: 18907
      Cell operations: 28931
   Barrier operations: 1510973
-  Total interactions: 31036192
- Garbage collections: 687208
+  Total interactions: 31013305
+ Garbage collections: 728577
   Delimiter mergings: 185063
 Delimiter extrusions: 9893731
-      Total rewrites: 41802194
-        Sharing work: 24.61%
-    Bookkeeping work: 78.94%
-     Peak node count: 7575569
+      Total rewrites: 41820676
+        Sharing work: 24.60%
+    Bookkeeping work: 78.97%
+     Peak node count: 2215851
 ```
 
 </details>
@@ -196,8 +196,8 @@ Description: Performes a quicksort on a Scott-encoded list of 500 cells, then su
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):      6.819 s ±  0.023 s    [User: 6.812 s, System: 0.006 s]
-  Range (min … max):    6.781 s …  6.842 s    5 runs
+  Time (mean ± σ):      7.033 s ±  0.045 s    [User: 7.029 s, System: 0.004 s]
+  Range (min … max):    6.982 s …  7.072 s    5 runs
 ```
 
 <details>
@@ -228,8 +228,8 @@ Description: Solves the 10-queens problem using Scott-encoded lists.
 
 ```
 Benchmark 1: ./nqueens
-  Time (mean ± σ):      4.607 s ±  0.017 s    [User: 4.585 s, System: 0.022 s]
-  Range (min … max):    4.584 s …  4.624 s    5 runs
+  Time (mean ± σ):      4.870 s ±  0.064 s    [User: 4.865 s, System: 0.005 s]
+  Range (min … max):    4.782 s …  4.930 s    5 runs
 ```
 
 <details>
@@ -243,13 +243,13 @@ Benchmark 1: ./nqueens
      Cell operations: 11692140
   Barrier operations: 18373645
   Total interactions: 225243956
- Garbage collections: 108055973
+ Garbage collections: 110178876
   Delimiter mergings: 11649817
 Delimiter extrusions: 32325233
-      Total rewrites: 377274979
-        Sharing work: 25.20%
-    Bookkeeping work: 34.40%
-     Peak node count: 6662066
+      Total rewrites: 379397882
+        Sharing work: 25.06%
+    Bookkeeping work: 34.93%
+     Peak node count: 2731355
 ```
 
 </details>

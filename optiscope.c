@@ -659,23 +659,25 @@ STATIC_ASSERT(sizeof(struct lambda_term *(*)(void)) <= sizeof(uint64_t));
 STATIC_ASSERT(UINT64_MAX == UINT64_C(18446744073709551615));
 STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
 
-#define SYMBOL_ROOT            UINT64_C(0)
-#define SYMBOL_APPLICATOR      UINT64_C(1)
-#define SYMBOL_LAMBDA          UINT64_C(2)
-#define SYMBOL_ERASER          UINT64_C(3)
-#define SYMBOL_CELL            UINT64_C(4)
-#define SYMBOL_UNARY_CALL      UINT64_C(5)
-#define SYMBOL_BINARY_CALL     UINT64_C(6)
-#define SYMBOL_BINARY_CALL_AUX UINT64_C(7)
-#define SYMBOL_IF_THEN_ELSE    UINT64_C(8)
-#define SYMBOL_PERFORM         UINT64_C(9)
-#define SYMBOL_IDENTITY_LAMBDA UINT64_C(10) // the identity lambda
-#define SYMBOL_GC_LAMBDA       UINT64_C(11) // a lambda discarding its parameter
-#define SYMBOL_LAMBDA_C        UINT64_C(12) // a closed lambda
-#define SYMBOL_REFERENCE       UINT64_C(13)
-#define SYMBOL_BARRIER         UINT64_C(14)
-#define SYMBOL_DUPLICATOR(i)   (MAX_REGULAR_SYMBOL + 1 + (i))
-#define SYMBOL_DELIMITER(i)    (MAX_DUPLICATOR_INDEX + 1 + (i))
+#define SYMBOL_ROOT                UINT64_C(0)
+#define SYMBOL_APPLICATOR          UINT64_C(1)
+#define SYMBOL_LAMBDA              UINT64_C(2)
+#define SYMBOL_ERASER              UINT64_C(3)
+#define SYMBOL_CELL                UINT64_C(4)
+#define SYMBOL_UNARY_CALL          UINT64_C(5)
+#define SYMBOL_BINARY_CALL         UINT64_C(6)
+#define SYMBOL_BINARY_CALL_AUX     UINT64_C(7)
+#define SYMBOL_IF_THEN_ELSE        UINT64_C(8)
+#define SYMBOL_PERFORM             UINT64_C(9)
+#define SYMBOL_IDENTITY_LAMBDA     UINT64_C(10) // the identity lambda
+#define SYMBOL_GC_LAMBDA           UINT64_C(11) // a lambda discarding its parameter
+#define SYMBOL_LAMBDA_C            UINT64_C(12) // a closed lambda
+#define SYMBOL_REFERENCE           UINT64_C(13)
+#define SYMBOL_BARRIER             UINT64_C(14)
+#define SYMBOL_GC_DUPLICATOR_LEFT  UINT64_C(15)
+#define SYMBOL_GC_DUPLICATOR_RIGHT UINT64_C(16)
+#define SYMBOL_DUPLICATOR(i)       (MAX_REGULAR_SYMBOL + 1 + (i))
+#define SYMBOL_DELIMITER(i)        (MAX_DUPLICATOR_INDEX + 1 + (i))
 
 #define IS_ANY_LAMBDA(symbol)                                                  \
     (SYMBOL_LAMBDA == (symbol) || SYMBOL_IDENTITY_LAMBDA == (symbol) ||        \
@@ -691,6 +693,11 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
 #define IS_DELIMITER(symbol) \
     ((symbol) >= SYMBOL_DELIMITER(UINT64_C(0)))
 // clang-format on
+
+#define IS_ANY_DUPLICATOR(symbol)                                              \
+    (IS_DUPLICATOR((symbol)) || /* */                                          \
+     SYMBOL_GC_DUPLICATOR_LEFT == (symbol) ||                                  \
+     SYMBOL_GC_DUPLICATOR_RIGHT == (symbol))
 
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
 inline static bool
@@ -724,6 +731,8 @@ ports_count(const uint64_t symbol) {
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_GC_LAMBDA:
     case SYMBOL_BARRIER:
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
     delimiter:
         return 2;
     case SYMBOL_APPLICATOR:
@@ -796,6 +805,8 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_LAMBDA_C: sprintf(buffer, "λc"); break;
     case SYMBOL_REFERENCE: sprintf(buffer, "&"); break;
     case SYMBOL_BARRIER: sprintf(buffer, "🚧"); break;
+    case SYMBOL_GC_DUPLICATOR_LEFT: sprintf(buffer, "δ◉l"); break;
+    case SYMBOL_GC_DUPLICATOR_RIGHT: sprintf(buffer, "δ◉r"); break;
     default:
         if (IS_DUPLICATOR(symbol)) goto duplicator;
         else if (IS_DELIMITER(symbol)) goto delimiter;
@@ -1447,6 +1458,9 @@ struct context {
     // The multifocus for garbage collection purposes.
     struct multifocus gc_focus;
 
+    // Whether a full rescan from the root is needed after garbage collection.
+    bool rescan;
+
 #ifdef OPTISCOPE_ENABLE_STATS
     // The numbers of proper interactions.
     uint64_t nbetas, ncommutations, nannihilations, nexpansions,
@@ -1483,6 +1497,7 @@ alloc_context(void) {
     graph->root = root;
     graph->book = alloc_book();
     graph->gc_focus = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
+    graph->rescan = false;
     // The statistics counters are zeroed out by `xcalloc`.
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
@@ -1613,6 +1628,8 @@ alloc_node_from(
         break;
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BARRIER:
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
     delimiter:
         p = ALLOC_POOL_OBJECT(u64x4_pool);
         if (prototype) { p[2] = prototype->ports[2]; }
@@ -1713,6 +1730,8 @@ free_node(struct context *const restrict graph, const struct node node) {
     case SYMBOL_UNARY_CALL:
     case SYMBOL_PERFORM:
     case SYMBOL_BARRIER:
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
     duplicator:
     delimiter:
         FREE_POOL_OBJECT(u64x4_pool, p);
@@ -1989,6 +2008,8 @@ graphviz_edge_tailport(const struct node node, const uint8_t i) {
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_BARRIER:
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
     delimiter:
         switch (i) {
         case 0: return "s";
@@ -2047,17 +2068,23 @@ graphviz_print_symbol(const struct node node) {
 
     static char buffer[MAX_SSYMBOL_SIZE + 64] = {0};
 
-    sprintf(buffer, "%s", print_symbol(node.ports[-1]));
+    const uint64_t symbol = node.ports[-1];
+
+    sprintf(buffer, "%s", print_symbol(symbol));
 
 #define SPRINTF(fmt, ...) sprintf(buffer + strlen(buffer), fmt, __VA_ARGS__)
 
-    if (SYMBOL_CELL == node.ports[-1]) {
+    if (SYMBOL_CELL == symbol) {
         SPRINTF(" %" PRIu64, node.ports[1]);
-    } else if (SYMBOL_BINARY_CALL_AUX == node.ports[-1]) {
+    } else if (SYMBOL_BINARY_CALL_AUX == symbol) {
         SPRINTF(" %" PRIu64, node.ports[3]);
-    } else if (SYMBOL_BARRIER == node.ports[-1]) {
+    } else if (SYMBOL_BARRIER == symbol) {
         SPRINTF(" %" PRIu64, node.ports[2]);
-    } else if (IS_DELIMITER(node.ports[-1])) {
+    } else if (
+        SYMBOL_GC_DUPLICATOR_LEFT == symbol ||
+        SYMBOL_GC_DUPLICATOR_RIGHT == symbol) {
+        SPRINTF("/%" PRIu64, node.ports[2])
+    } else if (IS_DELIMITER(symbol)) {
         SPRINTF(" %" PRIu64, node.ports[2]);
     }
 
@@ -2543,6 +2570,81 @@ execute_bytecode(
 // Eraser-Passing Garbage Collection
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+// When the eraser `f` faces the binder port `i` of the lambda `g`.
+COMPILER_NONNULL(1) COMPILER_HOT //
+static void
+gc_lambda_binder(
+    struct context *const restrict graph,
+    const struct node f,
+    const struct node g,
+    const ptrdiff_t i) {
+    MY_ASSERT(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(1 == i);
+    XASSERT(SYMBOL_ERASER == f.ports[-1]);
+    XASSERT(IS_RELEVANT_LAMBDA(g.ports[-1]));
+
+    const struct node replacement = alloc_node(graph, SYMBOL_GC_LAMBDA);
+
+    connect_ports(&replacement.ports[0], DECODE_ADDRESS(g.ports[0]));
+    connect_ports(&replacement.ports[1], DECODE_ADDRESS(g.ports[2]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+// When the eraser `f` faces the auxiliary port `i` of the duplicator `g`.
+COMPILER_NONNULL(1) COMPILER_HOT //
+static void
+gc_duplicator_aux(
+    struct context *const restrict graph,
+    const struct node f,
+    const struct node g,
+    const ptrdiff_t i) {
+    MY_ASSERT(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(1 == i || 2 == i);
+    XASSERT(SYMBOL_ERASER == f.ports[-1]);
+    XASSERT(IS_DUPLICATOR(g.ports[-1]));
+
+    uint64_t *const points_to = DECODE_ADDRESS(g.ports[0]), //
+        *const shares_with = DECODE_ADDRESS(g.ports[1 == i ? 2 : 1]);
+
+    const struct node h = node_of_port(shares_with),
+                      shared = node_of_port(points_to);
+
+    if (SYMBOL_ERASER == h.ports[-1]) {
+        MY_ASSERT(PHASE_GC == DECODE_PHASE_METADATA(h.ports[0]));
+        connect_ports(&f.ports[0], points_to);
+        focus_on(&graph->gc_focus, f);
+        free_node(graph, g);
+        set_phase(&h.ports[0], PHASE_GC_AUX);
+    } else if (is_atomic_symbol(shared.ports[-1])) {
+        connect_ports(&shared.ports[0], shares_with);
+        free_node(graph, f);
+        free_node(graph, g);
+    } else if (SYMBOL_DUPLICATOR(UINT64_C(0)) == g.ports[-1]) {
+        connect_ports(points_to, shares_with);
+        free_node(graph, g);
+    } else {
+        // clang-format off
+        struct node replacement = alloc_node(graph,
+            1 == i ?
+            SYMBOL_GC_DUPLICATOR_LEFT :
+            SYMBOL_GC_DUPLICATOR_RIGHT);
+        // clang-format on
+
+        replacement.ports[2] = SYMBOL_INDEX(g.ports[-1]);
+        connect_ports(&replacement.ports[0], points_to);
+        connect_ports(&replacement.ports[1], shares_with);
+
+        free_node(graph, f);
+        free_node(graph, g);
+    }
+}
+
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 gc_step(
@@ -2564,43 +2666,28 @@ gc_step(
 
         free_node(graph, g);
 
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->ngc++;
-#endif
         break;
     }
     commute_1_3: {
-        uint8_t j, k;
-        (0 == i ? (j = 1, k = 2)
-                : (1 == i ? (j = 0, k = 2)
-                          : (2 == i ? (j = 0, k = 1)
-                                    : (COMPILER_UNREACHABLE(), 0))));
+        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0 == i ? 1 : 0]));
 
-        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[j]));
-        const struct node fx = alloc_gc_node(graph, DECODE_ADDRESS(g.ports[k]));
+        const struct node fx =
+            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[2 == i ? 1 : 2]));
 
         focus_on(&graph->gc_focus, f);
         focus_on(&graph->gc_focus, fx);
 
         free_node(graph, g);
 
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->ngc++;
-#endif
         break;
     }
     commute_1_4: {
-        uint8_t j, k, l;
-        (0 == i ? (j = 1, k = 2, l = 3)
-                : (1 == i ? (j = 0, k = 2, l = 3)
-                          : (2 == i ? (j = 0, k = 1, l = 3)
-                                    : (3 == i ? (j = 0, k = 1, l = 2)
-                                              : (COMPILER_UNREACHABLE(), 0)))));
+        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0 == i ? 1 : 0]));
 
-        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[j]));
-        const struct node fx = alloc_gc_node(graph, DECODE_ADDRESS(g.ports[k]));
+        const struct node fx = alloc_gc_node(
+            graph, DECODE_ADDRESS(g.ports[(0 == i || 1 == i) ? 2 : 1]));
         const struct node fxx =
-            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[l]));
+            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[3 == i ? 2 : 3]));
 
         focus_on(&graph->gc_focus, f);
         focus_on(&graph->gc_focus, fx);
@@ -2608,83 +2695,19 @@ gc_step(
 
         free_node(graph, g);
 
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->ngc++;
-#endif
         break;
     }
-    annihilate:
+    annihilate: {
         free_node(graph, f);
         free_node(graph, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->ngc++;
-#endif
         break;
-    case SYMBOL_LAMBDA:
-    case SYMBOL_LAMBDA_C:
-        if (1 == i) {
-            const struct node gc_lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
-
-            connect_ports(&gc_lambda.ports[0], DECODE_ADDRESS(g.ports[0]));
-            connect_ports(&gc_lambda.ports[1], DECODE_ADDRESS(g.ports[2]));
-
-            free_node(graph, f);
-            free_node(graph, g);
-
-            break;
-        } else {
-            goto commute_1_3;
-        }
-    duplicator:
-        switch (i) {
-        case 1:
-        case 2: {
-            uint64_t *const points_to = DECODE_ADDRESS(g.ports[0]), //
-                *const shares_with = DECODE_ADDRESS(g.ports[1 == i ? 2 : 1]);
-
-            const struct node h = node_of_port(shares_with),
-                              shared = node_of_port(points_to);
-
-            if (SYMBOL_ERASER == h.ports[-1]) {
-                connect_ports(&f.ports[0], points_to);
-                focus_on(&graph->gc_focus, f);
-                free_node(graph, g);
-                if (PHASE_GC == DECODE_PHASE_METADATA(h.ports[0])) {
-                    set_phase(&h.ports[0], PHASE_GC_AUX);
-                } else {
-                    free_node(graph, h);
-                }
-#ifdef OPTISCOPE_ENABLE_STATS
-                graph->ngc++;
-#endif
-            } else if (is_atomic_symbol(shared.ports[-1])) {
-                connect_ports(&shared.ports[0], shares_with);
-                free_node(graph, f);
-                free_node(graph, g);
-#ifdef OPTISCOPE_ENABLE_STATS
-                graph->ngc++;
-#endif
-            } else if (SYMBOL_DUPLICATOR(UINT64_C(0)) == g.ports[-1]) {
-                connect_ports(points_to, shares_with);
-                free_node(graph, g);
-#ifdef OPTISCOPE_ENABLE_STATS
-                graph->ngc++;
-#endif
-            } else {
-                f.ports[0] &= PHASE_MASK;
-            }
-
-            break;
-        }
-        case 0: goto commute_1_3;
-        default: COMPILER_UNREACHABLE();
-        }
-        break;
+    }
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_GC_LAMBDA:
     case SYMBOL_BARRIER:
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
     delimiter:
         goto commute_1_2;
     case SYMBOL_APPLICATOR:
@@ -2695,11 +2718,30 @@ gc_step(
     case SYMBOL_CELL:
     case SYMBOL_IDENTITY_LAMBDA:
     case SYMBOL_REFERENCE: goto annihilate;
+    case SYMBOL_LAMBDA:
+    case SYMBOL_LAMBDA_C:
+        if (1 == i) {
+            gc_lambda_binder(graph, f, g, i);
+        } else {
+            goto commute_1_3;
+        }
+    duplicator:
+        switch (i) {
+        case 1:
+        case 2: gc_duplicator_aux(graph, f, g, i); break;
+        case 0: goto commute_1_3;
+        default: COMPILER_UNREACHABLE();
+        }
+        break;
     default:
         if (IS_DUPLICATOR(g.ports[-1])) goto duplicator;
         else if (IS_DELIMITER(g.ports[-1])) goto delimiter;
         else COMPILER_UNREACHABLE();
     }
+
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->ngc++;
+#endif
 }
 
 COMPILER_NONNULL(1, 2) COMPILER_HOT //
@@ -2729,8 +2771,11 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
                 free_node(graph, f);
                 set_phase(&g.ports[0], PHASE_GC_AUX);
                 break;
-            case PHASE_IN_STACK: f.ports[0] &= PHASE_MASK; break;
-            default: gc_step(graph, f, g, points_to - g.ports);
+            case PHASE_IN_STACK:
+                graph->rescan = true;
+                // fallthrough
+            default: //
+                gc_step(graph, f, g, points_to - g.ports);
             }
         }
     }
@@ -2743,10 +2788,7 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
 
 static void
 assert_annihilation(const struct node f, const struct node g) {
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(f.ports[-1] == g.ports[-1]);
 }
 
 static void
@@ -2755,8 +2797,6 @@ assert_beta(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
     MY_ASSERT(SYMBOL_LAMBDA == g.ports[-1]);
@@ -2768,8 +2808,6 @@ assert_beta_c(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
     MY_ASSERT(SYMBOL_LAMBDA_C == g.ports[-1]);
@@ -2781,8 +2819,6 @@ assert_identity_beta(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
     MY_ASSERT(SYMBOL_IDENTITY_LAMBDA == g.ports[-1]);
@@ -2794,8 +2830,6 @@ assert_gc_beta(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
     MY_ASSERT(SYMBOL_GC_LAMBDA == g.ports[-1]);
@@ -2807,8 +2841,6 @@ assert_expand(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_REFERENCE == f.ports[-1]);
     // `g` is unspecified.
@@ -2816,10 +2848,7 @@ assert_expand(
 
 static void
 assert_commutation(const struct node f, const struct node g) {
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(f.ports[-1] != g.ports[-1]);
 }
 
 static void
@@ -2828,8 +2857,6 @@ assert_unary_call(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_UNARY_CALL == f.ports[-1]);
     MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
@@ -2841,8 +2868,6 @@ assert_binary_call(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_BINARY_CALL == f.ports[-1]);
     MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
@@ -2854,8 +2879,6 @@ assert_binary_call_aux(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_BINARY_CALL_AUX == f.ports[-1]);
     MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
@@ -2867,8 +2890,6 @@ assert_if_then_else(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_IF_THEN_ELSE == f.ports[-1]);
     MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
@@ -2880,8 +2901,6 @@ assert_perform(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_PERFORM == f.ports[-1]);
     MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
@@ -2893,8 +2912,6 @@ assert_barrier(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_BARRIER == f.ports[-1]);
     MY_ASSERT(SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1]);
@@ -2906,8 +2923,6 @@ assert_unbarrier(
     const struct node f,
     const struct node g) {
     MY_ASSERT(graph);
-    MY_ASSERT(f.ports);
-    MY_ASSERT(g.ports);
     MY_ASSERT(is_interaction(f, g));
     MY_ASSERT(SYMBOL_BARRIER == f.ports[-1]);
     // `g` is unspecified.
@@ -3317,10 +3332,39 @@ RULE_DEFINITION(annihilate_dup_dup, graph, f, g) {
     free_node(graph, g);
 }
 
+RULE_DEFINITION(annihilate_gc_dup_gc_dup, graph, f, g) {
+    ANNIHILATION_PROLOGUE(graph, f, g);
+
+    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+RULE_DEFINITION(annihilate_gc_dup_l_dup, graph, f, g) {
+    ANNIHILATION_PROLOGUE(graph, f, g);
+
+    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
+    gc(graph, DECODE_ADDRESS(g.ports[1]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+RULE_DEFINITION(annihilate_gc_dup_r_dup, graph, f, g) {
+    ANNIHILATION_PROLOGUE(graph, f, g);
+
+    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
+    gc(graph, DECODE_ADDRESS(g.ports[2]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
 #undef NANNIHILATIONS_PLUS_PLUS
 #undef ANNIHILATION_PROLOGUE
 
-// Specialized Commutation Rules
+// Generic Commutation Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #define COMMUTATION_PROLOGUE(graph, f, g)                                      \
@@ -3487,6 +3531,9 @@ RULE_DEFINITION(commute_4_3, graph, f, g) {
 
 #define commute_3_4(graph, f, g) commute_4_3((graph), (g), (f))
 
+// Index-Updating Commutation Rules
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
 RULE_DEFINITION(commute_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
@@ -3495,18 +3542,6 @@ RULE_DEFINITION(commute_dup_delim, graph, f, g) {
     }
 
     commute_3_2_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_delim_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    if (f.ports[-1] > g.ports[-1]) {
-        bump_index(&f.ports[-1], g.ports[2]);
-    } else {
-        bump_index(&g.ports[-1], f.ports[2]);
-    }
-
-    commute_2_2_core(graph, f, g);
 }
 
 RULE_DEFINITION(commute_dup_lambda, graph, f, g) {
@@ -3527,6 +3562,44 @@ RULE_DEFINITION(commute_dup_lambda_c, graph, f, g) {
     commute_3_3_core(graph, f, g);
 }
 
+RULE_DEFINITION(commute_gc_dup_delim, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    if (f.ports[2] >= SYMBOL_INDEX(g.ports[-1])) { f.ports[2] += g.ports[2]; }
+
+    commute_2_2_core(graph, f, g);
+}
+
+RULE_DEFINITION(commute_gc_dup_lambda, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+    f.ports[2]++;
+    commute_2_3_core(graph, f, g);
+}
+
+RULE_DEFINITION(commute_gc_dup_gc_lambda, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+    f.ports[2]++;
+    commute_2_2_core(graph, f, g);
+}
+
+RULE_DEFINITION(commute_gc_dup_lambda_c, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+    f.ports[2]++;
+    commute_2_3_core(graph, f, g);
+}
+
+RULE_DEFINITION(commute_delim_delim, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    if (f.ports[-1] > g.ports[-1]) {
+        bump_index(&f.ports[-1], g.ports[2]);
+    } else {
+        bump_index(&g.ports[-1], f.ports[2]);
+    }
+
+    commute_2_2_core(graph, f, g);
+}
+
 RULE_DEFINITION(commute_delim_lambda, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
     bump_index(&f.ports[-1], 1);
@@ -3539,10 +3612,6 @@ RULE_DEFINITION(commute_delim_gc_lambda, graph, f, g) {
     commute_2_2_core(graph, f, g);
 }
 
-// An excerpt from "8.1. Optimal vs. efficient":
-// > For instance, extruding a scope over a closed λ-term costs time linear in
-//   the size of the term in our implementation, whereas one observes that in
-//   such cases it would be safe to simply remove the scope.
 RULE_DEFINITION(commute_delim_lambda_c, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
@@ -3553,8 +3622,6 @@ RULE_DEFINITION(commute_delim_lambda_c, graph, f, g) {
 
 #undef NCOMMUTATIONS_PLUS_PLUS
 #undef COMMUTATION_PROLOGUE
-
-#undef TYPE_CHECK_RULE
 
 // Specialized Extrusion Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -3625,8 +3692,6 @@ RULE_DEFINITION(extrude_2_4, graph, f, g) {
 #undef NEXTRUSIONS_PLUS_PLUS
 #undef EXTRUSION_PROLOGUE
 
-#undef TYPE_CHECK_RULE
-
 // Weak Reduction to Interface Normal Form (WRINF)
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -3690,6 +3755,7 @@ reduce(struct context *const restrict graph) {
 
     MY_ASSERT(graph);
 
+rescan: {
     struct multifocus stack = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
 
     struct node f = graph->root, g = {NULL};
@@ -3702,7 +3768,7 @@ loop: {
 
 #ifdef OPTISCOPE_ENABLE_STATS
     if (is_interaction(f, g)) {
-        if (IS_DUPLICATOR(fsym) || IS_DUPLICATOR(gsym)) { //
+        if (IS_ANY_DUPLICATOR(fsym) || IS_ANY_DUPLICATOR(gsym)) { //
             graph->nduplication_itrs++;
         }
         if (IS_DELIMITER(fsym) || IS_DELIMITER(gsym)) { //
@@ -3723,6 +3789,20 @@ loop: {
             goto loop;
         } else if (!is_pointing_to(g, f)) {
             goto push;
+        } else if (SYMBOL_GC_DUPLICATOR_LEFT == gsym) {
+            if (SYMBOL_INDEX(fsym) == g.ports[2]) {
+                annihilate_gc_dup_l_dup(graph, g, f);
+                goto pop_with_check;
+            } else {
+                commute_3_2(graph, f, g);
+            }
+        } else if (SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
+            if (SYMBOL_INDEX(fsym) == g.ports[2]) {
+                annihilate_gc_dup_r_dup(graph, g, f);
+                goto pop_with_check;
+            } else {
+                commute_3_2(graph, f, g);
+            }
         } else if (IS_DUPLICATOR(gsym)) {
             if (fsym == gsym) {
                 annihilate_dup_dup(graph, f, g);
@@ -3747,7 +3827,11 @@ loop: {
         else if (SYMBOL_REFERENCE == gsym) commute_2_1(graph, f, g);
         else if (try_extrude(graph, f, g)) goto pop;
         else if (!is_pointing_to(g, f)) goto push;
-        else if (IS_DUPLICATOR(gsym)) {
+        else if (
+            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
+            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
+            commute_gc_dup_delim(graph, g, f);
+        } else if (IS_DUPLICATOR(gsym)) {
             commute_dup_delim(graph, g, f);
         } else if (IS_DELIMITER(gsym)) {
             if (fsym == gsym) {
@@ -3767,12 +3851,18 @@ loop: {
         if (SYMBOL_LAMBDA == gsym) beta(graph, f, g);
         else if (SYMBOL_LAMBDA_C == gsym) beta_c(graph, f, g);
         else if (SYMBOL_IDENTITY_LAMBDA == gsym) identity_beta(graph, f, g);
-        else if (SYMBOL_GC_LAMBDA == gsym) gc_beta(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) {
+        else if (SYMBOL_GC_LAMBDA == gsym) {
+            gc_beta(graph, f, g);
+            goto pop_with_check;
+        } else if (SYMBOL_REFERENCE == gsym) {
             do_expand(graph, g, f);
             goto loop;
         } else if (!is_pointing_to(g, f)) {
             goto push;
+        } else if (
+            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
+            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
+            commute_3_2(graph, f, g);
         } else if (IS_DUPLICATOR(gsym)) {
             commute_3_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
@@ -3790,6 +3880,10 @@ loop: {
             goto loop;
         } else if (!is_pointing_to(g, f)) {
             goto push;
+        } else if (
+            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
+            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
+            commute_2_2(graph, f, g);
         } else if (IS_DUPLICATOR(gsym)) {
             commute_2_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
@@ -3807,6 +3901,10 @@ loop: {
             goto loop;
         } else if (!is_pointing_to(g, f)) {
             goto push;
+        } else if (
+            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
+            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
+            commute_3_2(graph, f, g);
         } else if (IS_DUPLICATOR(gsym)) {
             commute_3_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
@@ -3824,6 +3922,10 @@ loop: {
             goto loop;
         } else if (!is_pointing_to(g, f)) {
             goto push;
+        } else if (
+            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
+            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
+            commute_2_2(graph, f, g);
         } else if (IS_DUPLICATOR(gsym)) {
             commute_2_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
@@ -3835,12 +3937,18 @@ loop: {
         }
         goto pop;
     case SYMBOL_IF_THEN_ELSE:
-        if (SYMBOL_CELL == gsym) do_if_then_else(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) {
+        if (SYMBOL_CELL == gsym) {
+            do_if_then_else(graph, f, g);
+            goto pop_with_check;
+        } else if (SYMBOL_REFERENCE == gsym) {
             do_expand(graph, g, f);
             goto loop;
         } else if (!is_pointing_to(g, f)) {
             goto push;
+        } else if (
+            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
+            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
+            commute_4_2(graph, f, g);
         } else if (IS_DUPLICATOR(gsym)) {
             commute_4_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
@@ -3858,11 +3966,87 @@ loop: {
             goto loop;
         } else if (!is_pointing_to(g, f)) {
             goto push;
+        } else if (
+            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
+            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
+            commute_3_2(graph, f, g);
         } else if (IS_DUPLICATOR(gsym)) {
             commute_3_3(graph, f, g);
         } else if (IS_DELIMITER(gsym)) {
             if (!try_inst_barrier(graph, f, g)) { //
                 commute_3_2(graph, f, g);
+            }
+        } else {
+            COMPILER_UNREACHABLE();
+        }
+        goto pop;
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+        if (SYMBOL_LAMBDA == gsym) commute_gc_dup_lambda(graph, f, g);
+        else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_2_1(graph, f, g);
+        else if (SYMBOL_GC_LAMBDA == gsym)
+            commute_gc_dup_gc_lambda(graph, f, g);
+        else if (SYMBOL_LAMBDA_C == gsym) commute_gc_dup_lambda_c(graph, f, g);
+        else if (SYMBOL_CELL == gsym) commute_2_1(graph, f, g);
+        else if (SYMBOL_REFERENCE == gsym) {
+            do_expand(graph, g, f);
+            goto loop;
+        } else if (!is_pointing_to(g, f)) {
+            goto push;
+        } else if (SYMBOL_GC_DUPLICATOR_LEFT == gsym) {
+            if (f.ports[2] == g.ports[2]) {
+                annihilate_gc_dup_gc_dup(graph, f, g);
+            } else {
+                commute_2_2(graph, f, g);
+            }
+        } else if (SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
+            // TODO: is annihilation possible here?
+            commute_2_2(graph, f, g);
+        } else if (IS_DUPLICATOR(gsym)) {
+            if (f.ports[2] == SYMBOL_INDEX(gsym)) {
+                annihilate_gc_dup_l_dup(graph, f, g);
+                goto pop_with_check;
+            } else {
+                commute_2_3(graph, f, g);
+            }
+        } else if (IS_DELIMITER(gsym)) {
+            if (!try_inst_barrier(graph, f, g)) {
+                commute_gc_dup_delim(graph, f, g);
+            }
+        } else {
+            COMPILER_UNREACHABLE();
+        }
+        goto pop;
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
+        if (SYMBOL_LAMBDA == gsym) commute_gc_dup_lambda(graph, f, g);
+        else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_2_1(graph, f, g);
+        else if (SYMBOL_GC_LAMBDA == gsym)
+            commute_gc_dup_gc_lambda(graph, f, g);
+        else if (SYMBOL_LAMBDA_C == gsym) commute_gc_dup_lambda_c(graph, f, g);
+        else if (SYMBOL_CELL == gsym) commute_2_1(graph, f, g);
+        else if (SYMBOL_REFERENCE == gsym) {
+            do_expand(graph, g, f);
+            goto loop;
+        } else if (!is_pointing_to(g, f)) {
+            goto push;
+        } else if (SYMBOL_GC_DUPLICATOR_LEFT == gsym) {
+            // TODO: is annihilation possible here as well?
+            commute_2_2(graph, f, g);
+        } else if (SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
+            if (f.ports[2] == g.ports[2]) {
+                annihilate_gc_dup_gc_dup(graph, f, g);
+            } else {
+                commute_2_2(graph, f, g);
+            }
+        } else if (IS_DUPLICATOR(gsym)) {
+            if (f.ports[2] == SYMBOL_INDEX(gsym)) {
+                annihilate_gc_dup_r_dup(graph, f, g);
+                goto pop_with_check;
+            } else {
+                commute_2_3(graph, f, g);
+            }
+        } else if (IS_DELIMITER(gsym)) {
+            if (!try_inst_barrier(graph, f, g)) {
+                commute_gc_dup_delim(graph, f, g);
             }
         } else {
             COMPILER_UNREACHABLE();
@@ -3891,12 +4075,6 @@ loop: {
     }
 }
 
-pop: {
-    f = unfocus(&stack);
-    f.ports[0] &= PHASE_MASK;
-    goto loop;
-}
-
 push: {
     set_phase(&f.ports[0], PHASE_IN_STACK);
     focus_on(&stack, f);
@@ -3904,8 +4082,25 @@ push: {
     goto loop;
 }
 
+pop: {
+    f = unfocus(&stack);
+    f.ports[0] &= PHASE_MASK;
+    goto loop;
+}
+
+pop_with_check: {
+    if (graph->rescan) {
+        graph->rescan = false;
+        free_focus(stack);
+        goto rescan;
+    } else {
+        goto pop;
+    }
+}
+
 stop:
     free_focus(stack);
+}
 }
 
 // Metacircular Interpretation
