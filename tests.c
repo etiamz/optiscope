@@ -296,9 +296,7 @@ conditionals(void) {
 }
 
 static struct lambda_term *
-fibonacci_function(
-    struct lambda_term *const restrict rec,
-    struct lambda_term *const restrict recx) {
+fibonacci_term(void) {
     struct lambda_term *n;
 
     return lambda(
@@ -311,25 +309,12 @@ fibonacci_function(
                 cell(1),
                 binary_call(
                     add,
-                    apply(rec, binary_call(subtract, var(n), cell(1))),
-                    apply(recx, binary_call(subtract, var(n), cell(2)))))));
-}
-
-static struct lambda_term *
-fix_fibonacci_term(void) {
-    struct lambda_term *rec;
-
-    return fix(lambda(rec, fibonacci_function(var(rec), var(rec))));
-}
-
-static struct lambda_term *
-fibonacci_term(void) {
-    return fibonacci_function(expand(fibonacci_term), expand(fibonacci_term));
-}
-
-static struct lambda_term *
-fix_fibonacci_test(void) {
-    return apply(fix_fibonacci_term(), cell(10));
+                    apply(
+                        expand(fibonacci_term),
+                        binary_call(subtract, var(n), cell(1))),
+                    apply(
+                        expand(fibonacci_term),
+                        binary_call(subtract, var(n), cell(2)))))));
 }
 
 static struct lambda_term *
@@ -1591,45 +1576,25 @@ scott_tree_map_and_sum_test(void) {
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
-ackermann_function(
-    struct lambda_term *const restrict rec,
-    struct lambda_term *const restrict recx,
-    struct lambda_term *const restrict recxx) {
+ackermann_term(void) {
     struct lambda_term *m, *n;
 
-    return lambda(
-        m,
-        lambda(
-            n,
-            if_then_else(
-                unary_call(is_zero, var(m)),
-                unary_call(plus_one, var(n)),
-                if_then_else(
-                    unary_call(is_zero, var(n)),
-                    apply(apply(rec, unary_call(minus_one, var(m))), cell(1)),
-                    apply(
-                        apply(recx, unary_call(minus_one, var(m))),
-                        apply(
-                            apply(recxx, var(m)),
-                            unary_call(minus_one, var(n))))))));
-}
-
-static struct lambda_term *
-fix_ackermann_term(void) {
-    struct lambda_term *rec;
-
-    return fix(lambda(rec, ackermann_function(var(rec), var(rec), var(rec))));
-}
-
-static struct lambda_term *
-ackermann_term(void) {
-    return ackermann_function(
-        expand(ackermann_term), expand(ackermann_term), expand(ackermann_term));
-}
-
-static struct lambda_term *
-fix_ackermann_test(void) {
-    return apply(apply(fix_ackermann_term(), cell(3)), cell(3));
+    // clang-format off
+    return lambda(m, lambda(n, if_then_else(
+        unary_call(is_zero, var(m)),
+        unary_call(plus_one, var(n)),
+        if_then_else(
+            unary_call(is_zero, var(n)),
+            apply(
+                apply(expand(ackermann_term), unary_call(minus_one, var(m))),
+                cell(1)),
+            apply(
+                apply(
+                    expand(ackermann_term), unary_call(minus_one, var(m))),
+                apply(
+                    apply(expand(ackermann_term), var(m)),
+                    unary_call(minus_one, var(n))))))));
+    // clang-format on
 }
 
 static struct lambda_term *
@@ -1641,11 +1606,7 @@ ackermann_test(void) {
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static struct lambda_term *
-tak_function(
-    struct lambda_term *const restrict rec,
-    struct lambda_term *const restrict recx,
-    struct lambda_term *const restrict recxx,
-    struct lambda_term *const restrict recxxx) {
+tak_term(void) {
     struct lambda_term *x, *y, *z;
 
     // clang-format off
@@ -1656,42 +1617,23 @@ tak_function(
             apply(
                 apply(
                     apply(
-                        rec,
+                        expand(tak_term),
                         apply(
                             apply(
-                                apply(recx, unary_call(minus_one, var(x))),
+                                apply(expand(tak_term), unary_call(minus_one, var(x))),
                                 var(y)),
                             var(z))),
                     apply(
                         apply(
-                            apply(recxx, unary_call(minus_one, var(y))),
+                            apply(expand(tak_term), unary_call(minus_one, var(y))),
                             var(z)),
                         var(x))),
                 apply(
                     apply(
-                        apply(recxxx, unary_call(minus_one, var(z))),
+                        apply(expand(tak_term), unary_call(minus_one, var(z))),
                         var(x)),
                     var(y)))))));
     // clang-format on
-}
-
-static struct lambda_term *
-fix_tak_term(void) {
-    struct lambda_term *rec;
-
-    return fix(
-        lambda(rec, tak_function(var(rec), var(rec), var(rec), var(rec))));
-}
-
-static struct lambda_term *
-tak_term(void) {
-    return tak_function(
-        expand(tak_term), expand(tak_term), expand(tak_term), expand(tak_term));
-}
-
-static struct lambda_term *
-fix_tak_test(void) {
-    return apply(apply(apply(fix_tak_term(), cell(12)), cell(6)), cell(3));
 }
 
 static struct lambda_term *
@@ -1789,7 +1731,6 @@ main(void) {
     TEST_CASE_WHNF(unary_arithmetic, 2048);
     TEST_CASE_WHNF(binary_arithmetic, 11);
     TEST_CASE_WHNF(conditionals, 10);
-    TEST_CASE_WHNF(fix_fibonacci_test, 55);
     TEST_CASE_WHNF(fibonacci_test, 55);
     TEST_CASE(boolean_test, "(λ (λ 1))");
     TEST_CASE(church_two_two_test, "(λ (λ (1 (1 (1 (1 0))))))");
@@ -1822,9 +1763,7 @@ main(void) {
     TEST_CASE_WHNF(scott_nqueens_test, 4);
     TEST_CASE_WHNF(scott_tree_sum_test, 10);
     TEST_CASE_WHNF(scott_tree_map_and_sum_test, 20);
-    TEST_CASE_WHNF(fix_ackermann_test, 61);
     TEST_CASE_WHNF(ackermann_test, 61);
-    TEST_CASE_WHNF(fix_tak_test, 4);
     TEST_CASE_WHNF(tak_test, 4);
     TEST_CASE(lamping_example, "(λ 0)");
     TEST_CASE(lamping_example_2, "(λ 0)");

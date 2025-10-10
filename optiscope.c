@@ -369,7 +369,6 @@ enum lambda_term_type {
     LAMBDA_TERM_UNARY_CALL,
     LAMBDA_TERM_BINARY_CALL,
     LAMBDA_TERM_IF_THEN_ELSE,
-    LAMBDA_TERM_FIX,
     LAMBDA_TERM_PERFORM,
     LAMBDA_TERM_REFERENCE,
 };
@@ -402,10 +401,6 @@ struct if_then_else_data {
     struct lambda_term *if_then, *if_else;
 };
 
-struct fix_data {
-    struct lambda_term *f;
-};
-
 struct perform_data {
     struct lambda_term *action, *k;
 };
@@ -422,7 +417,6 @@ union lambda_term_data {
     struct unary_call_data u_call;
     struct binary_call_data b_call;
     struct if_then_else_data ite;
-    struct fix_data fix;
     struct perform_data perform;
     struct reference_data ref;
 };
@@ -553,18 +547,6 @@ if_then_else(
 }
 
 extern LambdaTerm
-fix(const restrict LambdaTerm f) {
-    MY_ASSERT(f);
-
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_FIX;
-    term->data.fix.f = f;
-    term->fv_count = f->fv_count;
-
-    return term;
-}
-
-extern LambdaTerm
 perform(const restrict LambdaTerm action, const restrict LambdaTerm k) {
     MY_ASSERT(action);
     MY_ASSERT(k);
@@ -616,9 +598,6 @@ free_lambda_term(struct lambda_term *const restrict term) {
         free_lambda_term(term->data.ite.condition);
         free_lambda_term(term->data.ite.if_then);
         free_lambda_term(term->data.ite.if_else);
-        break;
-    case LAMBDA_TERM_FIX: //
-        free_lambda_term(term->data.fix.f);
         break;
     case LAMBDA_TERM_PERFORM:
         free_lambda_term(term->data.perform.action);
@@ -1242,7 +1221,6 @@ enum bc_instruction_type {
     INSTRUCTION_CONNECT,
     INSTRUCTION_DELIMIT,
     INSTRUCTION_TREE,
-    INSTRUCTION_FIX,
 };
 
 struct bc_attach_node_data {
@@ -1270,17 +1248,12 @@ struct bc_tree_data {
     uint64_t **locations;
 };
 
-struct bc_fix_data {
-    uint64_t **connect_to;
-};
-
 union bc_instruction_data {
     struct bc_attach_node_data attach_node;
     struct bc_save_port_data save_port;
     struct bc_connect_data connect;
     struct bc_delimit_data delimit;
     struct bc_tree_data tree;
-    struct bc_fix_data fix;
 };
 
 struct bc_instruction {
@@ -1359,12 +1332,6 @@ emit_instruction(
         (bc),                                                                  \
         (struct bc_instruction){.ty = INSTRUCTION_TREE,                        \
                                 .data.tree = {__VA_ARGS__}})
-
-#define BC_FIX(bc, ...)                                                        \
-    emit_instruction(                                                          \
-        (bc),                                                                  \
-        (struct bc_instruction){.ty = INSTRUCTION_FIX,                         \
-                                .data.fix = {__VA_ARGS__}})
 
 // Multifocuses Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -2471,15 +2438,6 @@ emit_bytecode(
 
         break;
     }
-    case LAMBDA_TERM_FIX: {
-        struct lambda_term *const f = term->data.fix.f;
-
-        BC_FIX(bc, &term->connect_to);
-        BC_SAVE_PORT(bc, &f->connect_to, 0);
-        emit_bytecode(graph, bc, f, lvl);
-
-        break;
-    }
     case LAMBDA_TERM_PERFORM: {
         struct lambda_term *const action = term->data.perform.action, //
             *const k = term->data.perform.k;
@@ -2598,20 +2556,6 @@ execute_bytecode(
                 instr.data.tree.n,
                 instr.data.tree.locations);
             break;
-        case INSTRUCTION_FIX: {
-            uint64_t **const connect_to = instr.data.fix.connect_to;
-
-            const struct node dup = alloc_node(graph, SYMBOL_DUPLICATOR(0));
-            const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
-
-            connect_ports(&dup.ports[0], &applicator.ports[1]);
-            connect_ports(&dup.ports[1], *connect_to);
-            connect_ports(&dup.ports[2], &applicator.ports[2]);
-
-            current = applicator;
-
-            break;
-        }
         default: COMPILER_UNREACHABLE();
         }
     }

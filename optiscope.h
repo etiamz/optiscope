@@ -117,10 +117,6 @@ if_then_else(
     restrict LambdaTerm if_then,
     restrict LambdaTerm if_else);
 
-/// Construct an efficient fixed-point application for a given term.
-extern LambdaTerm
-fix(restrict LambdaTerm f);
-
 /// Construct a performe operation that runs `action`, discards its result, &
 /// continues with `k`.
 extern LambdaTerm

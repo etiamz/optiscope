@@ -46,9 +46,8 @@ is_palindrome(uint64_t s) {
 }
 
 // Step by step:
-//  1. We enclose the whole program in `fix`, which is our built-in fixed-point
-//     combinator. The `rec` parameter stands for the current lambda function to
-//     be invoked recursively.
+//  1. We define the C function `program`, which expands to a lambda term
+//     representing our main loop.
 //  2. Next, we accept the parameter `token`, which stands for an _effect
 //     token_. This token is threaded through all side-effectfull operations to
 //     force re-evaluation of side effects.
@@ -68,10 +67,10 @@ is_palindrome(uint64_t s) {
 //     with a recursive call.
 static struct lambda_term *
 program(void) {
-    struct lambda_term *rec, *token, *s;
+    struct lambda_term *token, *s;
 
     // clang-format off
-    return fix(lambda(rec, lambda(token, perform(
+    return lambda(token, perform(
         binary_call(my_puts,
           cell((uint64_t)"Enter your palindrome or type 'quit':"), var(token)),
         bind(s,
@@ -88,7 +87,7 @@ program(void) {
                   cell((uint64_t)"This isn't a palindrome."), var(token))),
               perform(
                 binary_call(my_free, var(s), var(token)),
-                apply(var(rec), var(token))))))))));
+                apply(expand(program), var(token))))))));
     // clang-format on
 }
 
