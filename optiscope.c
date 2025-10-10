@@ -2669,10 +2669,13 @@ gc_step(
         break;
     }
     commute_1_3: {
-        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0 == i ? 1 : 0]));
+        const uint8_t indices[] = {1, 2, 0};
+        uint8_t j = i;
+
+        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[indices[j++ % 3]]));
 
         const struct node fx =
-            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[2 == i ? 1 : 2]));
+            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[indices[j % 3]]));
 
         focus_on(&graph->gc_focus, f);
         focus_on(&graph->gc_focus, fx);
@@ -2682,12 +2685,15 @@ gc_step(
         break;
     }
     commute_1_4: {
-        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0 == i ? 1 : 0]));
+        const uint8_t indices[] = {1, 2, 3, 0};
+        uint8_t j = i;
 
-        const struct node fx = alloc_gc_node(
-            graph, DECODE_ADDRESS(g.ports[(0 == i || 1 == i) ? 2 : 1]));
+        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[indices[j++ % 4]]));
+
+        const struct node fx =
+            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[indices[j++ % 4]]));
         const struct node fxx =
-            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[3 == i ? 2 : 3]));
+            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[indices[j % 4]]));
 
         focus_on(&graph->gc_focus, f);
         focus_on(&graph->gc_focus, fx);
