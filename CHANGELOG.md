@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
-### Changed
-
- - Miscellaneouse: extend the range of regular symbols from 16 to 32 for future use.
-
 ### Removed
 
  - User interface:
