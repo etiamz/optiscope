@@ -11,13 +11,32 @@
 
 static int exit_code = EXIT_SUCCESS;
 
+static void
+redirect_stream(FILE *const restrict source, FILE *const restrict destination) {
+    assert(source);
+    assert(destination);
+
+    int c;
+    while (EOF != (c = fgetc(source))) {
+        if (EOF == fputc(c, destination)) {
+            perror("fputc");
+            abort();
+        }
+    }
+
+    if (ferror(source) != 0) {
+        perror("fgetc");
+        abort();
+    }
+}
+
 #define TEST_CASE(f, expected) test_case(#f, f, expected)
 
 static void
 test_case(
-    const char test_case_name[const restrict],
+    const char *const restrict test_case_name,
     struct lambda_term *(*const f)(void),
-    const char expected[const restrict]) {
+    const char *const restrict expected) {
     assert(f);
     assert(expected);
     assert(strlen(expected) > 0);
@@ -46,7 +65,7 @@ test_case(
         fprintf(stderr, "%s\n", expected);
         fprintf(stderr, "Received:\n" TAB);
         rewind(fp);
-        optiscope_redirect_stream(fp, stderr);
+        redirect_stream(fp, stderr);
         fprintf(stderr, "\n");
 
 #undef TAB
@@ -66,7 +85,7 @@ close_fp:
 
 static void
 test_case_whnf(
-    const char test_case_name[const restrict],
+    const char *const restrict test_case_name,
     struct lambda_term *(*const f)(void),
     const uint64_t expected) {
     assert(f);

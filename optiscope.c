@@ -273,26 +273,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define IO_CALL_ASSIGN(x, f, ...)                                              \
     ((x = f(__VA_ARGS__)) < 0 ? (perror(#f), abort()) : (void)0)
 
-extern void
-optiscope_redirect_stream(
-    FILE *const restrict source, FILE *const restrict destination) {
-    MY_ASSERT(source);
-    MY_ASSERT(destination);
-
-    int c;
-    while (EOF != (c = fgetc(source))) {
-        if (EOF == fputc(c, destination)) {
-            perror("fputc");
-            abort();
-        }
-    }
-
-    if (ferror(source) != 0) {
-        perror("fgetc");
-        abort();
-    }
-}
-
 // Logging & Panicking
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
