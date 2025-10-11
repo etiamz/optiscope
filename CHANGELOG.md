@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - User interface:
    - The `optiscope_redirect_stream` function.
    - The built-in fixed-point operator.
-     - (1) it is uselesse with references; (2) its cooperation with garbage collection is possibly dangerouse.
+     - (1) it is uselesse with references; (2) its cooperation with garbage collection is unclear.
 
 ## 0.18.0 - 2025-10-08
 
