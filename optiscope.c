@@ -4155,7 +4155,7 @@ self_var(void) {
 static struct lambda_term *
 self_denote(void) {
     struct lambda_term *input, *f, *fx, *rator, *ratorx, *ratorxx, *rand,
-        *randx, *v, *vx, *argument;
+        *randx, *v, *vx, *argument, *non_lambda_case;
 
     // clang-format off
     return lambda(input,
@@ -4167,18 +4167,16 @@ self_denote(void) {
                         apply(expand(self_denote), apply(var(f), var(argument))))))),
             lambda(rator, lambda(rand,
                 apply(
-                    lambda(
-                        ratorx,
-                        apply(apply(apply(var(ratorx),
-                            lambda(fx, apply(var(fx), var(rand)))),
-                            lambda(ratorxx, lambda(randx,
-                                apply(
-                                    apply(self_apply(), var(ratorx)),
-                                    apply(expand(self_denote), var(rand)))))),
-                            lambda(vx,
-                                apply(
-                                    apply(self_apply(), var(ratorx)),
-                                    apply(expand(self_denote), var(rand)))))),
+                    lambda(ratorx,
+                        apply(
+                            lambda(non_lambda_case,
+                                apply(apply(apply(var(ratorx),
+                                    lambda(fx, apply(var(fx), var(rand)))),
+                                    lambda(ratorxx, lambda(randx, var(non_lambda_case)))),
+                                    lambda(vx, var(non_lambda_case)))),
+                            apply(
+                                apply(self_apply(), var(ratorx)),
+                                apply(expand(self_denote), var(rand))))),
                     apply(expand(self_denote), var(rator)))))),
             lambda(v, var(input))));
     // clang-format on
