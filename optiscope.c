@@ -4255,6 +4255,20 @@ metacode(struct lambda_term *const restrict term) {
     }
 }
 
+COMPILER_RETURNS_NONNULL COMPILER_NONNULL(1, 2) //
+static struct lambda_term *
+full_reduction(
+    FILE *const restrict stream, struct lambda_term *const restrict term) {
+    MY_ASSERT(stream);
+    MY_ASSERT(term);
+
+    return apply(
+        apply(
+            apply(expand(self_pp), cell((uint64_t)stream)),
+            apply(expand(self_denote), metacode(term))),
+        cell(0));
+}
+
 // Complete Algorithm
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -4269,13 +4283,7 @@ optiscope_algorithm(
 
     struct context *const graph = alloc_context();
 
-    if (stream) {
-        term = apply(
-            apply(
-                apply(expand(self_pp), cell((uint64_t)stream)),
-                apply(expand(self_denote), metacode(term))),
-            cell(0));
-    }
+    if (stream) { term = full_reduction(stream, term); }
     struct bytecode bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
     emit_bytecode(graph, &bc, term, 0);
     term->connect_to = &graph->root.ports[0];
