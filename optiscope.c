@@ -2728,6 +2728,7 @@ gc_step(
     case SYMBOL_LAMBDA_C:
         if (1 == i) {
             gc_lambda_binder(graph, f, g, i);
+            break;
         } else {
             goto commute_1_3;
         }

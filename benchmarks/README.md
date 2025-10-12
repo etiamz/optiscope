@@ -107,7 +107,6 @@ Benchmark 1: ./scott-bubble-sort
 <details>
 <summary>Statistics profile</summary>
 
-```
    Family reductions: 632709
         Commutations: 151696832
        Annihilations: 27897016
@@ -121,7 +120,7 @@ Delimiter extrusions: 1528812
       Total rewrites: 198743125
         Sharing work: 95.62%
     Bookkeeping work: 16.66%
-     Peak node count: 320056
+     Peak node count: 320355
 ```
 
 </details>
@@ -153,7 +152,7 @@ Delimiter extrusions: 4998999
       Total rewrites: 56067030
         Sharing work: 5.35%
     Bookkeeping work: 42.84%
-     Peak node count: 1014249
+     Peak node count: 1015215
 ```
 
 </details>
@@ -217,7 +216,7 @@ Delimiter extrusions: 173031257
       Total rewrites: 621743336
         Sharing work: 0.56%
     Bookkeeping work: 84.20%
-     Peak node count: 1064615
+     Peak node count: 1064779
 ```
 
 </details>
@@ -249,7 +248,7 @@ Delimiter extrusions: 32325233
       Total rewrites: 379397882
         Sharing work: 25.06%
     Bookkeeping work: 34.93%
-     Peak node count: 2731355
+     Peak node count: 2383964
 ```
 
 </details>
