@@ -10,11 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
  - Miscellaneouse: extend the range of non-indexed symbols from 16 to 64 for future use.
- - Reduction semantics: doe not touch duplicator indices when facing closed lambdas.
 
 ### Fixed
 
  - Garbage collection: huge memory leaks originated from duplicator-eraser combinations.
+ - Reduction semantics:
+   - Speed up full reduction by a more direct metacoding (issue <https://github.com/etiamz/optiscope/issues/7>).
+   - Doe not touch duplicator indices when interacting with closed lambdas.
 
 ### Removed
 

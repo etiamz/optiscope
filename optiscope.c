@@ -4145,36 +4145,6 @@ self_var(void) {
             lambda(my_apply, lambda(my_var, apply(var(my_var), var(lvl))))));
 }
 
-static struct lambda_term *
-self_denote(void) {
-    struct lambda_term *input, *f, *fx, *rator, *ratorx, *ratorxx, *rand,
-        *randx, *v, *vx, *argument, *non_lambda_case;
-
-    // clang-format off
-    return lambda(input,
-        apply(apply(apply(var(input),
-            lambda(f,
-                apply(
-                    self_lambda(),
-                    lambda(argument,
-                        apply(expand(self_denote), apply(var(f), var(argument))))))),
-            lambda(rator, lambda(rand,
-                apply(
-                    lambda(ratorx,
-                        apply(
-                            lambda(non_lambda_case,
-                                apply(apply(apply(var(ratorx),
-                                    lambda(fx, apply(var(fx), var(rand)))),
-                                    lambda(ratorxx, lambda(randx, var(non_lambda_case)))),
-                                    lambda(vx, var(non_lambda_case)))),
-                            apply(
-                                apply(self_apply(), var(ratorx)),
-                                apply(expand(self_denote), var(rand))))),
-                    apply(expand(self_denote), var(rator)))))),
-            lambda(v, var(input))));
-    // clang-format on
-}
-
 static uint64_t
 print_string(const uint64_t s, const uint64_t stream) {
     fprintf((FILE *)stream, "%s", (const char *)s);
@@ -4196,9 +4166,9 @@ plus_one(const uint64_t x) {
     binary_call(print_string, cell((uint64_t)(s)), (stream))
 
 static struct lambda_term *
-self_pp(void) {
+print_out(void) {
     // The stream is passed as an effect token here.
-    struct lambda_term *stream, *input, *lvl, *f, *rator, *rand, *v;
+    struct lambda_term *stream, *input, *lvl, *f, *m, *n, *v;
 
     // clang-format off
     return lambda(stream, lambda(input, lambda(lvl,
@@ -4206,21 +4176,38 @@ self_pp(void) {
             lambda(f, perform(
                 PRINT_STRING("(λ ", var(stream)),
                 perform(
-                    apply(apply(apply(expand(self_pp),
+                    apply(apply(apply(expand(print_out),
                         var(stream)), apply(var(f), apply(self_var(), var(lvl)))), unary_call(plus_one, var(lvl))),
                     PRINT_STRING(")", var(stream)))))),
-            lambda(rator, lambda(rand, perform(
+            lambda(m, lambda(n, perform(
                 PRINT_STRING("(", var(stream)),
                 perform(
-                    apply(apply(apply(expand(self_pp), var(stream)), var(rator)), var(lvl)),
+                    apply(apply(apply(expand(print_out), var(stream)), var(m)), var(lvl)),
                     perform(
                         PRINT_STRING(" ", var(stream)),
                         perform(
-                            apply(apply(apply(expand(self_pp), var(stream)), var(rand)), var(lvl)),
+                            apply(apply(apply(expand(print_out), var(stream)), var(n)), var(lvl)),
                             PRINT_STRING(")", var(stream))))))))),
             lambda(v, binary_call(print_int,
                 binary_call(de_bruijn_level_to_index, var(lvl), var(v)),
                 var(stream)))))));
+    // clang-format on
+}
+
+static struct lambda_term *
+applying(void) {
+    struct lambda_term *m, *n, *mx, *nx, *f, *v, *non_lambda_case;
+
+    // clang-format off
+    return lambda(m, lambda(n,
+        apply(
+            lambda(
+                non_lambda_case,
+                apply(apply(apply(var(m),
+                    lambda(f, apply(var(f), var(n)))),
+                    lambda(mx, lambda(nx, var(non_lambda_case)))),
+                    lambda(v, var(non_lambda_case)))),
+            apply(apply(self_apply(), var(m)), var(n)))));
     // clang-format on
 }
 
@@ -4233,9 +4220,11 @@ metacode(struct lambda_term *const restrict term) {
     case LAMBDA_TERM_APPLY: {
         term->data.apply.rator = metacode(term->data.apply.rator);
         term->data.apply.rand = metacode(term->data.apply.rand);
-        struct lambda_term *const result = apply(
-            apply(expand(self_apply), term->data.apply.rator),
+        // clang-format off
+        struct lambda_term *const result = apply(apply(expand(applying),
+            term->data.apply.rator),
             term->data.apply.rand);
+        // clang-format on
         free(term);
         return result;
     }
@@ -4255,11 +4244,12 @@ full_reduction(
     MY_ASSERT(stream);
     MY_ASSERT(term);
 
-    return apply(
-        apply(
-            apply(expand(self_pp), cell((uint64_t)stream)),
-            apply(expand(self_denote), metacode(term))),
+    // clang-format off
+    return apply(apply(apply(expand(print_out),
+        cell((uint64_t)stream)),
+        metacode(term)),
         cell(0));
+    // clang-format on
 }
 
 // Complete Algorithm
