@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
  - Miscellaneouse: extend the range of non-indexed symbols from 16 to 64 for future use.
+ - Reduction semantics: doe not touch duplicator indices when facing closed lambdas.
 
 ### Fixed
 

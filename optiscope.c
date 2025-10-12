@@ -3563,11 +3563,7 @@ RULE_DEFINITION(commute_dup_gc_lambda, graph, f, g) {
     commute_3_2_core(graph, f, g);
 }
 
-RULE_DEFINITION(commute_dup_lambda_c, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    bump_index(&f.ports[-1], 1);
-    commute_3_3_core(graph, f, g);
-}
+#define commute_dup_lambda_c commute_3_3
 
 RULE_DEFINITION(commute_gc_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
@@ -3589,11 +3585,7 @@ RULE_DEFINITION(commute_gc_dup_gc_lambda, graph, f, g) {
     commute_2_2_core(graph, f, g);
 }
 
-RULE_DEFINITION(commute_gc_dup_lambda_c, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    f.ports[2]++;
-    commute_2_3_core(graph, f, g);
-}
+#define commute_gc_dup_lambda_c commute_2_3
 
 RULE_DEFINITION(commute_delim_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
