@@ -17,6 +17,5 @@ int
 main(void) {
     optiscope_open_pools();
     optiscope_algorithm(NULL, lamping_example());
-    puts("");
     optiscope_close_pools();
 }

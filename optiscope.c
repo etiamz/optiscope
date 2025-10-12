@@ -302,6 +302,20 @@ PRINTER(panic, stderr, abort())
 
 #undef PRINTER
 
+COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
+inline static void
+checked_add(uint64_t *const restrict p, const uint64_t offset) {
+    MY_ASSERT(p);
+
+    const uint64_t value = *p;
+
+    if (value > UINT64_MAX - offset) {
+        panic("Maximum `uint64_t` value is reached!");
+    }
+
+    *p += offset;
+}
+
 // Checked Memory Allocation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -1809,7 +1823,7 @@ inst_delimiter(
                            1 == DECODE_OFFSET_METADATA(*template.points_to) &&
                            SYMBOL_DELIMITER(template.idx) == g.ports[-1];
     if (condition) {
-        g.ports[2] += count;
+        checked_add(&g.ports[2], count);
         connect_ports(&g.ports[1], template.goes_from);
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nmergings++;
@@ -1836,7 +1850,7 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
                            1 == DECODE_OFFSET_METADATA(*points_to) &&
                            f.ports[-1] == g.ports[-1];
     if (condition) {
-        g.ports[2] += f.ports[2];
+        checked_add(&g.ports[2], f.ports[2]);
         connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nmergings++;
@@ -2083,7 +2097,7 @@ graphviz_print_symbol(const struct node node) {
     } else if (
         SYMBOL_GC_DUPLICATOR_LEFT == symbol ||
         SYMBOL_GC_DUPLICATOR_RIGHT == symbol) {
-        SPRINTF("/%" PRIu64, node.ports[2])
+        SPRINTF("/%" PRIu64, node.ports[2]);
     } else if (IS_DELIMITER(symbol)) {
         SPRINTF(" %" PRIu64, node.ports[2]);
     }
@@ -3095,7 +3109,7 @@ RULE_DEFINITION(barrier, graph, f, g) {
 #endif
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-    f.ports[2] += g.ports[2];
+    checked_add(&f.ports[2], g.ports[2]);
 
     free_node(graph, g);
 }
@@ -3563,29 +3577,39 @@ RULE_DEFINITION(commute_dup_gc_lambda, graph, f, g) {
     commute_3_2_core(graph, f, g);
 }
 
-#define commute_dup_lambda_c commute_3_3
+RULE_DEFINITION(commute_dup_lambda_c, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+    bump_index(&f.ports[-1], 1);
+    commute_3_3_core(graph, f, g);
+}
 
 RULE_DEFINITION(commute_gc_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
-    if (f.ports[2] >= SYMBOL_INDEX(g.ports[-1])) { f.ports[2] += g.ports[2]; }
+    if (f.ports[2] >= SYMBOL_INDEX(g.ports[-1])) {
+        checked_add(&f.ports[2], g.ports[2]);
+    }
 
     commute_2_2_core(graph, f, g);
 }
 
 RULE_DEFINITION(commute_gc_dup_lambda, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    f.ports[2]++;
+    checked_add(&f.ports[2], 1);
     commute_2_3_core(graph, f, g);
 }
 
 RULE_DEFINITION(commute_gc_dup_gc_lambda, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    f.ports[2]++;
+    checked_add(&f.ports[2], 1);
     commute_2_2_core(graph, f, g);
 }
 
-#define commute_gc_dup_lambda_c commute_2_3
+RULE_DEFINITION(commute_gc_dup_lambda_c, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+    checked_add(&f.ports[2], 1);
+    commute_2_3_core(graph, f, g);
+}
 
 RULE_DEFINITION(commute_delim_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
@@ -3754,9 +3778,9 @@ reduce(struct context *const restrict graph) {
 
     MY_ASSERT(graph);
 
-rescan: {
     struct multifocus stack = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
 
+rescan: {
     struct node f = graph->root, g = {NULL};
 
 loop: {
@@ -4089,17 +4113,28 @@ pop: {
 
 pop_with_check: {
     if (graph->rescan) {
+        // Proceed with resetting the phases of nodes from the stack.
+        CONSUME_MULTIFOCUS (&stack, node) {
+#ifdef COMPILER_ASAN_AVAILABLE
+            if (!COMPILER_IS_POISONED_ADDRESS(node.ports)) {
+#endif
+                if (PHASE_IN_STACK == DECODE_PHASE_METADATA(node.ports[0])) {
+                    node.ports[0] &= PHASE_MASK;
+                }
+#ifdef COMPILER_ASAN_AVAILABLE
+            }
+#endif
+        }
         graph->rescan = false;
-        free_focus(stack);
         goto rescan;
     } else {
         goto pop;
     }
 }
+}
 
 stop:
     free_focus(stack);
-}
 }
 
 // Metacircular Interpretation
