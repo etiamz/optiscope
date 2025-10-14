@@ -173,18 +173,18 @@ Benchmark 1: ./scott-merge-sort
 
 ```
    Family reductions: 223404
-        Commutations: 23741973
-       Annihilations: 5505101
+        Commutations: 23727987
+       Annihilations: 5503103
           Expansions: 18907
      Cell operations: 28931
   Barrier operations: 1510973
-  Total interactions: 31029289
+  Total interactions: 31013305
  Garbage collections: 728577
   Delimiter mergings: 185063
 Delimiter extrusions: 9893731
-      Total rewrites: 41836660
-        Sharing work: 24.63%
-    Bookkeeping work: 78.94%
+      Total rewrites: 41820676
+        Sharing work: 24.60%
+    Bookkeeping work: 78.97%
      Peak node count: 2215851
 ```
 
