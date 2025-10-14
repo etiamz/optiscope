@@ -2684,7 +2684,7 @@ gc_step(
     }
     commute_1_3: {
         const uint8_t indices[] = {1, 2, 0};
-        uint8_t j = i;
+        ptrdiff_t j = i;
 
         connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[indices[j++ % 3]]));
 
@@ -2700,7 +2700,7 @@ gc_step(
     }
     commute_1_4: {
         const uint8_t indices[] = {1, 2, 3, 0};
-        uint8_t j = i;
+        ptrdiff_t j = i;
 
         connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[indices[j++ % 4]]));
 
