@@ -4144,40 +4144,33 @@ static struct lambda_term *
 self_lambda(void) {
     struct lambda_term *body, *my_lambda, *my_apply, *my_var;
 
-    return lambda(
-        body,
-        lambda(
-            my_lambda,
-            lambda(
-                my_apply, lambda(my_var, apply(var(my_lambda), var(body))))));
+    // clang-format off
+    return lambda(body,
+        lambda(my_lambda, lambda(my_apply, lambda(my_var,
+            apply(var(my_lambda), var(body))))));
+    // clang-format on
 }
 
 static struct lambda_term *
 self_apply(void) {
     struct lambda_term *rator, *rand, *my_lambda, *my_apply, *my_var;
 
-    return lambda(
-        rator,
-        lambda(
-            rand,
-            lambda(
-                my_lambda,
-                lambda(
-                    my_apply,
-                    lambda(
-                        my_var,
-                        apply(apply(var(my_apply), var(rator)), var(rand)))))));
+    // clang-format off
+    return lambda(rator, lambda(rand,
+        lambda(my_lambda, lambda(my_apply, lambda(my_var,
+            apply(apply(var(my_apply), var(rator)), var(rand)))))));
+    // clang-format on
 }
 
 static struct lambda_term *
 self_var(void) {
     struct lambda_term *lvl, *my_lambda, *my_apply, *my_var;
 
-    return lambda(
-        lvl,
-        lambda(
-            my_lambda,
-            lambda(my_apply, lambda(my_var, apply(var(my_var), var(lvl))))));
+    // clang-format off
+    return lambda(lvl,
+        lambda(my_lambda, lambda(my_apply, lambda(my_var,
+            apply(var(my_var), var(lvl))))));
+    // clang-format on
 }
 
 static uint64_t
@@ -4236,8 +4229,7 @@ applying(void) {
     // clang-format off
     return lambda(m, lambda(n,
         apply(
-            lambda(
-                non_lambda_case,
+            lambda(non_lambda_case,
                 apply(apply(apply(var(m),
                     lambda(f, apply(var(f), var(n)))),
                     lambda(mx, lambda(nx, var(non_lambda_case)))),
