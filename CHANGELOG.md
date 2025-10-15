@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 1.0.0 - 2025-10-15
+
 ### Changed
 
  - Miscellaneouse: extend the range of non-indexed symbols from 16 to 64 for future use.
