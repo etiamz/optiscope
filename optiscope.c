@@ -888,9 +888,6 @@ set_phase(uint64_t *const restrict port, const uint64_t phase) {
 #define BINARY_FUNCTION_OF_U64(function)                                       \
     ((uint64_t (*)(uint64_t, uint64_t))(void *)(function))
 
-#define USER_FUNCTION_OF_U64(function)                                         \
-    ((struct lambda_term * (*)(void))(void *)(function))
-
 // O(1) Pool Allocation & Deallocation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -1416,12 +1413,10 @@ unfocus(struct multifocus *const restrict focus) {
 // Dynamic Book of Expansions
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-#ifndef OPTISCOPE_BOOK_SIZE
-#define OPTISCOPE_BOOK_SIZE 4096
-#endif
+#define INITIAL_BOOK_CAPACITY 64
 
 struct expansion {
-    // A pointer to a user-provided function for lookup purposes.
+    // A pointer to a user-provided function for expansion.
     struct lambda_term *(*function)(void);
 
     // It is crucial to store an expansion itself, as the bytecode will use
@@ -1433,12 +1428,15 @@ struct expansion {
 };
 
 struct book {
+    size_t count, capacity;
     struct expansion *array;
 };
 
-#define alloc_book()                                                           \
+#define alloc_book(initial_capacity)                                           \
     ((struct book){                                                            \
-        .array = xcalloc(OPTISCOPE_BOOK_SIZE, sizeof(struct expansion)),       \
+        .count = 0,                                                            \
+        .capacity = (initial_capacity),                                        \
+        .array = xcalloc((initial_capacity), sizeof(struct expansion)),        \
     })
 
 COMPILER_COLD //
@@ -1446,17 +1444,52 @@ static void
 free_book(const struct book book) {
     XASSERT(book.array);
 
-    for (size_t i = 0; i < OPTISCOPE_BOOK_SIZE; i++) {
+    for (size_t i = 0; i < book.count; i++) {
         const struct expansion entry = book.array[i];
 
-        if (entry.expansion) {
-            MY_ASSERT(entry.function);
-            free_lambda_term(entry.expansion);
-            free_bytecode(entry.bc);
-        }
+        if (entry.expansion) { free_lambda_term(entry.expansion); }
+        free_bytecode(entry.bc);
     }
 
     free(book.array);
+}
+
+COMPILER_NONNULL(1) COMPILER_COLD //
+static void
+expand_book(struct book *const restrict book) {
+    MY_ASSERT(book);
+    XASSERT(book->count == book->capacity);
+    XASSERT(book->array);
+
+    book->array =
+        xrealloc(book->array, sizeof book->array[0] * (book->capacity *= 2));
+}
+
+// Returns the index a `function` entry occurring in `book`, creating a new
+// entry if there is no such function yet.
+COMPILER_NONNULL(1) COMPILER_COLD //
+static size_t
+lookup_in_book(
+    struct book *const restrict book,
+    struct lambda_term *(*const function)(void)) {
+    MY_ASSERT(book);
+    XASSERT(book->array);
+    MY_ASSERT(function);
+
+    for (size_t i = 0; i < book->count; i++) {
+        if (function == book->array[i].function) { return i; }
+    }
+
+    if (book->count == book->capacity) { expand_book(book); }
+
+    const size_t index = book->count++;
+    book->array[index] = (struct expansion){
+        .function = function,
+        .expansion = NULL,
+        .bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY),
+    };
+
+    return index;
 }
 
 // Main Context Functionality
@@ -1509,7 +1542,7 @@ alloc_context(void) {
 
     struct context *const graph = xcalloc(1, sizeof *graph);
     graph->root = root;
-    graph->book = alloc_book();
+    graph->book = alloc_book(INITIAL_BOOK_CAPACITY);
     graph->gc_focus = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
     graph->rescan = false;
     // The statistics counters are zeroed out by `xcalloc`.
@@ -2476,10 +2509,7 @@ emit_bytecode(
         struct lambda_term *(*const function)(void) = term->data.ref.function;
 
         const struct node ref = alloc_node(graph, SYMBOL_REFERENCE);
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-        ref.ports[1] = U64_OF_FUNCTION(function);
-#pragma GCC diagnostic pop
+        ref.ports[1] = lookup_in_book(&graph->book, function);
 
         BC_ATTACH_NODE(bc, ref, 0, &term->connect_to);
 
@@ -3144,59 +3174,24 @@ RULE_DEFINITION(do_expand, graph, f, g) {
     graph->nexpansions++;
 #endif
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-    // clang-format off
-    struct lambda_term *(*const function)(void) = USER_FUNCTION_OF_U64(f.ports[1]);
-    const size_t idx = U64_OF_FUNCTION(function) % OPTISCOPE_BOOK_SIZE;
-    // clang-format on
-#pragma GCC diagnostic pop
+    const size_t index = f.ports[1];
+    XASSERT(index < graph->book.count);
+
+    struct expansion *const entry = &graph->book.array[index];
+    XASSERT(entry->function);
 
     free_node(graph, f);
 
-    struct expansion *expansion = NULL;
-    struct lambda_term *term = NULL;
-
-    size_t i = idx, limit = OPTISCOPE_BOOK_SIZE;
-    while (i < limit) {
-        struct expansion *const entry = &graph->book.array[i];
-
-        if (function == entry->function) {
-            expansion = entry;
-            goto execute;
-        } else if (NULL == entry->function) {
-            expansion = entry;
-            goto emit;
-        } else if (OPTISCOPE_BOOK_SIZE - 1 == i) {
-            i = 0, limit = idx;
-        } else {
-            i++;
-        }
+    // Emit bytecode on first expansion.
+    if (NULL == entry->expansion) {
+        struct lambda_term *const term = entry->function();
+        entry->expansion = term;
+        emit_bytecode(graph, &entry->bc, term, 0);
     }
 
-    if (NULL == expansion) {
-        // Evict an old entry from the book.
-        struct expansion *const victim = &graph->book.array[idx];
-        free_lambda_term(victim->expansion);
-        free_bytecode(victim->bc);
-        expansion = victim;
-    }
-
-emit:;
-    {
-        term = function();
-        expansion->function = function;
-        expansion->expansion = term;
-        expansion->bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
-        emit_bytecode(graph, &expansion->bc, term, 0);
-    }
-
-execute:;
-    {
-        term = expansion->expansion;
-        term->connect_to = &g.ports[0];
-        execute_bytecode(graph, expansion->bc);
-    }
+    // Execute bytecode.
+    entry->expansion->connect_to = &g.ports[0];
+    execute_bytecode(graph, entry->bc);
 }
 
 RULE_DEFINITION(do_unary_call, graph, f, g) {
