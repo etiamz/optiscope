@@ -1465,7 +1465,7 @@ expand_book(struct book *const restrict book) {
         xrealloc(book->array, sizeof book->array[0] * (book->capacity *= 2));
 }
 
-// Returns the index a `function` entry occurring in `book`, creating a new
+// Returnes the index of a `function` entry occurring in `book`, creating a new
 // entry if there is no such function yet.
 COMPILER_NONNULL(1) COMPILER_COLD //
 static size_t
