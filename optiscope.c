@@ -1483,7 +1483,7 @@ expand_book(struct book *const restrict book) {
 
 // Returnes the index of a `function` entry occurring in `book`, creating a new
 // entry if there is no such function yet.
-COMPILER_NONNULL(1) COMPILER_COLD //
+COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_COLD //
 static size_t
 lookup_in_book(
     struct book *const restrict book,
