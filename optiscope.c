@@ -1432,6 +1432,13 @@ struct book {
     struct expansion *array;
 };
 
+#define alloc_expansion(user_function)                                         \
+    ((struct expansion){                                                       \
+        .function = (user_function),                                           \
+        .expansion = NULL,                                                     \
+        .bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY),                       \
+    })
+
 #define alloc_book(initial_capacity)                                           \
     ((struct book){                                                            \
         .count = 0,                                                            \
@@ -1441,15 +1448,24 @@ struct book {
 
 COMPILER_COLD //
 static void
+free_expansion(const struct expansion entry) {
+    XASSERT(entry.function);
+
+    if (entry.expansion) {
+        // The function was actually called; free the term it generated.
+        free_lambda_term(entry.expansion);
+    }
+
+    // The bytecode is allocated unconditionally.
+    free_bytecode(entry.bc);
+}
+
+COMPILER_COLD //
+static void
 free_book(const struct book book) {
     XASSERT(book.array);
 
-    for (size_t i = 0; i < book.count; i++) {
-        const struct expansion entry = book.array[i];
-
-        if (entry.expansion) { free_lambda_term(entry.expansion); }
-        free_bytecode(entry.bc);
-    }
+    for (size_t i = 0; i < book.count; i++) { free_expansion(book.array[i]); }
 
     free(book.array);
 }
@@ -1483,13 +1499,7 @@ lookup_in_book(
     if (book->count == book->capacity) { expand_book(book); }
 
     const size_t index = book->count++;
-
-    book->array[index] = (struct expansion){
-        .function = function,
-        .expansion = NULL,
-        .bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY),
-    };
-
+    book->array[index] = alloc_expansion(function);
     return index;
 }
 
