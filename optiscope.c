@@ -352,6 +352,24 @@ xrealloc(void *restrict object, const size_t size) {
     return object;
 }
 
+COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL COMPILER_NONNULL(1)
+COMPILER_FORMAT(printf, 1, 2) //
+static const char *
+format_string(const char *const format, ...) {
+    MY_ASSERT(format);
+
+    va_list args, args_copy;
+    va_start(args, format);
+    va_copy(args_copy, args);
+    const int len = vsnprintf(NULL, 0, format, args);
+    va_end(args);
+    char *const result = xmalloc(len + 1);
+    vsprintf(result, format, args_copy);
+    va_end(args_copy);
+
+    return result;
+}
+
 // Lambda Term Interface
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -1341,27 +1359,27 @@ emit_instruction(
 
 struct multifocus {
     size_t count, capacity;
-    struct node *array;
+    struct node *nodes;
 };
 
 #define alloc_focus(initial_capacity)                                          \
     ((struct multifocus){                                                      \
         .count = 0,                                                            \
         .capacity = (initial_capacity),                                        \
-        .array = xmalloc(sizeof(struct node) * (initial_capacity)),            \
+        .nodes = xmalloc(sizeof(struct node) * (initial_capacity)),            \
     })
 
-#define free_focus(focus) free((focus).array)
+#define free_focus(focus) free((focus).nodes)
 
 COMPILER_NONNULL(1) COMPILER_COLD //
 static void
 expand_focus(struct multifocus *const restrict focus) {
     MY_ASSERT(focus);
     XASSERT(focus->count == focus->capacity);
-    XASSERT(focus->array);
+    XASSERT(focus->nodes);
 
-    focus->array =
-        xrealloc(focus->array, sizeof focus->array[0] * (focus->capacity *= 2));
+    focus->nodes =
+        xrealloc(focus->nodes, sizeof focus->nodes[0] * (focus->capacity *= 2));
 }
 
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
@@ -1370,11 +1388,11 @@ focus_on(struct multifocus *const restrict focus, const struct node node) {
     MY_ASSERT(focus);
     XASSERT(node.ports);
     XASSERT(focus->count <= focus->capacity);
-    XASSERT(focus->array);
+    XASSERT(focus->nodes);
 
     if (focus->count == focus->capacity) { expand_focus(focus); }
 
-    focus->array[focus->count++] = node;
+    focus->nodes[focus->count++] = node;
 }
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
@@ -1383,10 +1401,10 @@ COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
 static bool
 is_focused_on(const struct multifocus focus, const struct node node) {
     XASSERT(node.ports);
-    XASSERT(focus.array);
+    XASSERT(focus.nodes);
 
     for (size_t i = 0; i < focus.count; i++) {
-        if (focus.array[i].ports == node.ports) { return true; }
+        if (focus.nodes[i].ports == node.ports) { return true; }
     }
 
     return false;
@@ -1400,9 +1418,9 @@ unfocus(struct multifocus *const restrict focus) {
     MY_ASSERT(focus);
     XASSERT(focus->count > 0);
     XASSERT(focus->count <= focus->capacity);
-    XASSERT(focus->array);
+    XASSERT(focus->nodes);
 
-    return focus->array[--focus->count];
+    return focus->nodes[--focus->count];
 }
 
 #define CONSUME_MULTIFOCUS(focus, f)                                           \
@@ -1429,7 +1447,7 @@ struct expansion {
 
 struct book {
     size_t count, capacity;
-    struct expansion *array;
+    struct expansion *entries;
 };
 
 #define alloc_expansion(user_function)                                         \
@@ -1443,7 +1461,7 @@ struct book {
     ((struct book){                                                            \
         .count = 0,                                                            \
         .capacity = (initial_capacity),                                        \
-        .array = xcalloc((initial_capacity), sizeof(struct expansion)),        \
+        .entries = xcalloc((initial_capacity), sizeof(struct expansion)),      \
     })
 
 COMPILER_COLD //
@@ -1463,11 +1481,11 @@ free_expansion(const struct expansion entry) {
 COMPILER_COLD //
 static void
 free_book(const struct book book) {
-    XASSERT(book.array);
+    XASSERT(book.entries);
 
-    for (size_t i = 0; i < book.count; i++) { free_expansion(book.array[i]); }
+    for (size_t i = 0; i < book.count; i++) { free_expansion(book.entries[i]); }
 
-    free(book.array);
+    free(book.entries);
 }
 
 COMPILER_NONNULL(1) COMPILER_COLD //
@@ -1475,31 +1493,31 @@ static void
 expand_book(struct book *const restrict book) {
     MY_ASSERT(book);
     XASSERT(book->count == book->capacity);
-    XASSERT(book->array);
+    XASSERT(book->entries);
 
-    book->array =
-        xrealloc(book->array, sizeof book->array[0] * (book->capacity *= 2));
+    book->entries = xrealloc(
+        book->entries, sizeof book->entries[0] * (book->capacity *= 2));
 }
 
 // Returnes the index of a `function` entry occurring in `book`, creating a new
 // entry if there is no such function yet.
-COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_COLD //
+COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) COMPILER_COLD //
 static size_t
-lookup_in_book(
+lookup_function(
     struct book *const restrict book,
     struct lambda_term *(*const function)(void)) {
     MY_ASSERT(book);
-    XASSERT(book->array);
+    XASSERT(book->entries);
     MY_ASSERT(function);
 
     for (size_t i = 0; i < book->count; i++) {
-        if (function == book->array[i].function) { return i; }
+        if (function == book->entries[i].function) { return i; }
     }
 
     if (book->count == book->capacity) { expand_book(book); }
 
     const size_t index = book->count++;
-    book->array[index] = alloc_expansion(function);
+    book->entries[index] = alloc_expansion(function);
     return index;
 }
 
@@ -2520,7 +2538,7 @@ emit_bytecode(
         struct lambda_term *(*const function)(void) = term->data.ref.function;
 
         const struct node ref = alloc_node(graph, SYMBOL_REFERENCE);
-        ref.ports[1] = lookup_in_book(&graph->book, function);
+        ref.ports[1] = lookup_function(&graph->book, function);
 
         BC_ATTACH_NODE(bc, ref, 0, &term->connect_to);
 
@@ -3188,7 +3206,7 @@ RULE_DEFINITION(do_expand, graph, f, g) {
     const size_t index = f.ports[1];
     XASSERT(index < graph->book.count);
 
-    struct expansion *const entry = &graph->book.array[index];
+    struct expansion *const entry = &graph->book.entries[index];
     XASSERT(entry->function);
 
     free_node(graph, f);
@@ -4179,23 +4197,6 @@ self_var(void) {
     // clang-format on
 }
 
-COMPILER_NONNULL(1) COMPILER_FORMAT(printf, 1, 2) //
-static const char *
-format_string(const char *const format, ...) {
-    MY_ASSERT(format);
-
-    va_list args, args_copy;
-    va_start(args, format);
-    va_copy(args_copy, args);
-    const int len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-    char *const result = malloc(len + 1);
-    vsprintf(result, format, args_copy);
-    va_end(args_copy);
-
-    return result;
-}
-
 static uint64_t
 print_lambda(const uint64_t body) {
     const char *const result = format_string("(λ %s)", (const char *)body);
@@ -4215,13 +4216,6 @@ print_apply(const uint64_t m, const uint64_t n) {
 static uint64_t
 print_var(const uint64_t lvl, const uint64_t var) {
     return (uint64_t)format_string("%" PRIu64, lvl - var - 1);
-}
-
-static uint64_t
-output_string(const uint64_t s, const uint64_t stream) {
-    IO_CALL(fputs, (const char *)s, (FILE *)stream);
-    free((void *)s);
-    return 0;
 }
 
 static uint64_t
@@ -4293,20 +4287,6 @@ metacode(struct lambda_term *const restrict term) {
     }
 }
 
-COMPILER_RETURNS_NONNULL COMPILER_NONNULL(1, 2) //
-static struct lambda_term *
-full_reduction(
-    FILE *const restrict stream, struct lambda_term *const restrict term) {
-    MY_ASSERT(stream);
-    MY_ASSERT(term);
-
-    // clang-format off
-    return binary_call(output_string,
-        apply(apply(expand(print_out), metacode(term)), cell(0)),
-        cell((uint64_t)stream));
-    // clang-format on
-}
-
 // Complete Algorithm
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -4321,7 +4301,9 @@ optiscope_algorithm(
 
     struct context *const graph = alloc_context();
 
-    if (stream) { term = full_reduction(stream, term); }
+    if (stream) {
+        term = apply(apply(expand(print_out), metacode(term)), cell(0));
+    }
     struct bytecode bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
     emit_bytecode(graph, &bc, term, 0);
     term->connect_to = &graph->root.ports[0];
@@ -4332,7 +4314,12 @@ optiscope_algorithm(
     const struct node result = follow_port(&graph->root.ports[0]);
     const uint64_t value =
         SYMBOL_CELL == result.ports[-1] ? result.ports[1] : 0;
+    if (stream) {
+        char *const s = (char *)value;
+        IO_CALL(fputs, s, stream);
+        free(s);
+    }
     print_stats(graph);
     free_context(graph);
-    return value;
+    return stream ? 0 : value;
 }
