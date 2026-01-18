@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 1.0.3 - 2026-01-18
+
 ### Fixed
 
  - Miscellaneouse: rule out nonsensical combinations of compile-time configurations:
