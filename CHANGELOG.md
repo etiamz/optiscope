@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Fixed
+
+ - Miscellaneouse: rule out nonsensical combinations of compile-time configurations:
+   - `OPTISCOPE_ENABLE_TRACING`, `OPTISCOPE_ENABLE_STEP_BY_STEP`, & `OPTISCOPE_ENABLE_GRAPHVIZ` cannot be combined with `NDEBUG`.
+   - `OPTISCOPE_ENABLE_STEP_BY_STEP` requires `OPTISCOPE_ENABLE_TRACING`.
+   - `OPTISCOPE_ENABLE_GRAPHVIZ` requires `OPTISCOPE_ENABLE_STEP_BY_STEP`.
+
 ## 1.0.2 - 2026-01-14
 
 ### Changed

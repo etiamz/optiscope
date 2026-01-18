@@ -51,12 +51,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //   Use 2 MB huge pages for the memory pools (improves performance; requires
 //   Linux).
 
-#if defined(OPTISCOPE_ENABLE_GRAPHVIZ) && defined(NDEBUG)
-#error `OPTISCOPE_ENABLE_GRAPHVIZ` is not compatible with `NDEBUG`!
+#if (                                                                          \
+    defined(OPTISCOPE_ENABLE_TRACING) ||                                       \
+    defined(OPTISCOPE_ENABLE_STEP_BY_STEP) ||                                  \
+    defined(OPTISCOPE_ENABLE_GRAPHVIZ)) &&                                     \
+    defined(NDEBUG)
+#error `NDEBUG` is only for release builds!
 #endif
 
 #if defined(OPTISCOPE_ENABLE_STEP_BY_STEP) && !defined(OPTISCOPE_ENABLE_TRACING)
 #error `OPTISCOPE_ENABLE_STEP_BY_STEP` requires `OPTISCOPE_ENABLE_TRACING`!
+#endif
+
+#if defined(OPTISCOPE_ENABLE_GRAPHVIZ) &&                                      \
+    !defined(OPTISCOPE_ENABLE_STEP_BY_STEP)
+#error `OPTISCOPE_ENABLE_GRAPHVIZ` requires `OPTISCOPE_ENABLE_STEP_BY_STEP`!
 #endif
 
 #ifdef __GNUC__
