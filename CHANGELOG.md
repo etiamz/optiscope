@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Fixed
+
+ - Miscellaneouse: limit the index range of GC duplicators to the standard one.
+
 ## 1.0.3 - 2026-01-18
 
 ### Fixed

@@ -302,18 +302,14 @@ PRINTER(panic, stderr, abort())
 
 #undef PRINTER
 
-COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static void
-checked_add(uint64_t *const restrict p, const uint64_t offset) {
-    MY_ASSERT(p);
-
-    const uint64_t value = *p;
-
+COMPILER_HOT COMPILER_ALWAYS_INLINE COMPILER_CONST //
+inline static uint64_t
+checked_add(const uint64_t value, const uint64_t offset) {
     if (value > UINT64_MAX - offset) {
         panic("Maximum `uint64_t` value is reached!");
     }
 
-    *p += offset;
+    return value + offset;
 }
 
 // Checked Memory Allocation
@@ -837,8 +833,8 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_LAMBDA_C: sprintf(buffer, "λc"); break;
     case SYMBOL_REFERENCE: sprintf(buffer, "&"); break;
     case SYMBOL_BARRIER: sprintf(buffer, "🚧"); break;
-    case SYMBOL_GC_DUPLICATOR_LEFT: sprintf(buffer, "δ◉l"); break;
-    case SYMBOL_GC_DUPLICATOR_RIGHT: sprintf(buffer, "δ◉r"); break;
+    case SYMBOL_GC_DUPLICATOR_LEFT: sprintf(buffer, "◉δ"); break;
+    case SYMBOL_GC_DUPLICATOR_RIGHT: sprintf(buffer, "δ◉"); break;
     default:
         if (IS_DUPLICATOR(symbol)) goto duplicator;
         else if (IS_DELIMITER(symbol)) goto delimiter;
@@ -856,22 +852,33 @@ print_symbol(const uint64_t symbol) {
 
 #endif
 
-COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static void
-bump_index(uint64_t *const restrict port, const uint64_t offset) {
-    MY_ASSERT(port);
+#define INDEX_OVERFLOW()                                                       \
+    panic("Maximum index of %" PRIu64 " is reached!", INDEX_RANGE - 1)
 
-    const uint64_t symbol = *port;
-
-    MY_ASSERT(symbol > MAX_REGULAR_SYMBOL);
+COMPILER_HOT COMPILER_ALWAYS_INLINE //
+inline static uint64_t
+bump_index(const uint64_t symbol, const uint64_t offset) {
+    XASSERT(symbol > MAX_REGULAR_SYMBOL);
 
     if ((IS_DUPLICATOR(symbol) && offset > MAX_DUPLICATOR_INDEX - symbol) ||
         (IS_DELIMITER(symbol) && offset > MAX_DELIMITER_INDEX - symbol)) {
-        panic("Maximum index of %" PRIu64 " is reached!", INDEX_RANGE);
+        INDEX_OVERFLOW();
     }
 
-    *port += offset;
+    return symbol + offset;
 }
+
+COMPILER_HOT COMPILER_ALWAYS_INLINE //
+inline static uint64_t
+bump_raw_index(const uint64_t index, const uint64_t offset) {
+    XASSERT(index < INDEX_RANGE);
+
+    if (offset > INDEX_RANGE - 1 - index) { INDEX_OVERFLOW(); }
+
+    return index + offset;
+}
+
+#undef INDEX_OVERFLOW
 
 #define PHASE_REDUCTION UINT64_C(0)
 #define PHASE_GC        UINT64_C(1)
@@ -1218,18 +1225,6 @@ print_node(const struct node node) {
 }
 
 #endif // OPTISCOPE_ENABLE_TRACING
-
-#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
-
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
-inline static bool
-is_active(const struct node node) {
-    XASSERT(node.ports);
-
-    return is_pointing_to(follow_port(&node.ports[0]), node);
-}
-
-#endif // OPTISCOPE_ENABLE_GRAPHVIZ
 
 // Bytecode Definitions
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -1885,7 +1880,7 @@ inst_delimiter(
                            1 == DECODE_OFFSET_METADATA(*template.points_to) &&
                            SYMBOL_DELIMITER(template.idx) == g.ports[-1];
     if (condition) {
-        checked_add(&g.ports[2], count);
+        g.ports[2] = checked_add(g.ports[2], count);
         connect_ports(&g.ports[1], template.goes_from);
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nmergings++;
@@ -1912,7 +1907,7 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
                            1 == DECODE_OFFSET_METADATA(*points_to) &&
                            f.ports[-1] == g.ports[-1];
     if (condition) {
-        checked_add(&g.ports[2], f.ports[2]);
+        g.ports[2] = checked_add(g.ports[2], f.ports[2]);
         connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nmergings++;
@@ -1990,10 +1985,7 @@ graphviz_node_xlabel(const struct node node) {
     switch (ports_count(p[-1])) {
     case 1: SPRINTF("<BR/>| %p |<BR/>", (void *)&p[0]); break;
     case 2:
-        SPRINTF(
-            "<BR/>| %p |<BR/>| %p |<BR/>", //
-            (void *)&p[0],
-            (void *)&p[1]);
+        SPRINTF("<BR/>| %p |<BR/>| %p |<BR/>", (void *)&p[0], (void *)&p[1]);
         break;
     case 3:
         SPRINTF(
@@ -3168,7 +3160,7 @@ RULE_DEFINITION(barrier, graph, f, g) {
 #endif
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-    checked_add(&f.ports[2], g.ports[2]);
+    f.ports[2] = checked_add(f.ports[2], g.ports[2]);
 
     free_node(graph, g);
 }
@@ -3583,7 +3575,7 @@ RULE_DEFINITION(commute_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
     if (SYMBOL_INDEX(f.ports[-1]) >= SYMBOL_INDEX(g.ports[-1])) {
-        bump_index(&f.ports[-1], g.ports[2]);
+        f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
     }
 
     commute_3_2_core(graph, f, g);
@@ -3591,19 +3583,19 @@ RULE_DEFINITION(commute_dup_delim, graph, f, g) {
 
 RULE_DEFINITION(commute_dup_lambda, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    bump_index(&f.ports[-1], 1);
+    f.ports[-1] = bump_index(f.ports[-1], 1);
     commute_3_3_core(graph, f, g);
 }
 
 RULE_DEFINITION(commute_dup_gc_lambda, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    bump_index(&f.ports[-1], 1);
+    f.ports[-1] = bump_index(f.ports[-1], 1);
     commute_3_2_core(graph, f, g);
 }
 
 RULE_DEFINITION(commute_dup_lambda_c, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    bump_index(&f.ports[-1], 1);
+    f.ports[-1] = bump_index(f.ports[-1], 1);
     commute_3_3_core(graph, f, g);
 }
 
@@ -3611,7 +3603,7 @@ RULE_DEFINITION(commute_gc_dup_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
     if (f.ports[2] >= SYMBOL_INDEX(g.ports[-1])) {
-        checked_add(&f.ports[2], g.ports[2]);
+        f.ports[2] = bump_raw_index(f.ports[2], g.ports[2]);
     }
 
     commute_2_2_core(graph, f, g);
@@ -3619,19 +3611,19 @@ RULE_DEFINITION(commute_gc_dup_delim, graph, f, g) {
 
 RULE_DEFINITION(commute_gc_dup_lambda, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    checked_add(&f.ports[2], 1);
+    f.ports[2] = bump_raw_index(f.ports[2], 1);
     commute_2_3_core(graph, f, g);
 }
 
 RULE_DEFINITION(commute_gc_dup_gc_lambda, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    checked_add(&f.ports[2], 1);
+    f.ports[2] = bump_raw_index(f.ports[2], 1);
     commute_2_2_core(graph, f, g);
 }
 
 RULE_DEFINITION(commute_gc_dup_lambda_c, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    checked_add(&f.ports[2], 1);
+    f.ports[2] = bump_raw_index(f.ports[2], 1);
     commute_2_3_core(graph, f, g);
 }
 
@@ -3639,9 +3631,9 @@ RULE_DEFINITION(commute_delim_delim, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
     if (f.ports[-1] > g.ports[-1]) {
-        bump_index(&f.ports[-1], g.ports[2]);
+        f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
     } else {
-        bump_index(&g.ports[-1], f.ports[2]);
+        g.ports[-1] = bump_index(g.ports[-1], f.ports[2]);
     }
 
     commute_2_2_core(graph, f, g);
@@ -3649,13 +3641,13 @@ RULE_DEFINITION(commute_delim_delim, graph, f, g) {
 
 RULE_DEFINITION(commute_delim_lambda, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    bump_index(&f.ports[-1], 1);
+    f.ports[-1] = bump_index(f.ports[-1], 1);
     commute_2_3_core(graph, f, g);
 }
 
 RULE_DEFINITION(commute_delim_gc_lambda, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    bump_index(&f.ports[-1], 1);
+    f.ports[-1] = bump_index(f.ports[-1], 1);
     commute_2_2_core(graph, f, g);
 }
 
@@ -4113,8 +4105,6 @@ loop: {
             goto stop;
         } else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
             commute_1_2(graph, f, g);
-            f = graph->root;
-            f.ports[0] &= PHASE_MASK;
             goto loop;
         } else {
             goto push;
