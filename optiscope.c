@@ -4096,10 +4096,11 @@ loop: {
             goto push;
         } else if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) {
             barrier(graph, f, g);
+            goto loop;
         } else {
             unbarrier(graph, f, g);
+            goto pop;
         }
-        goto pop;
     case SYMBOL_ROOT:
         if (IS_ANY_LAMBDA(gsym) || SYMBOL_CELL == gsym) {
             goto stop;
