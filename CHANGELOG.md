@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Statistics: keep onely total rewrites, total interactions, sharing work, bookkeeping work, GC work, & peak node count, inasmuch as all the other metrics provided very little value.
+
 ### Fixed
 
+ - Statistics: count commutation of a delimiter with an atom as a bookkeeping interaction.
  - Miscellaneouse: limit the index range of GC duplicators to the standard one.
 
 ## 1.0.3 - 2026-01-18
@@ -42,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
  - Garbage collection: huge memory leaks originated from duplicator-eraser combinations.
- - Reduction semantics: speed up full reduction by a more direct metacoding (issue <https://github.com/etiamz/optiscope/issues/7>).
+ - Reduction semantics: speed up full reduction by better metacoding (issue <https://github.com/etiamz/optiscope/issues/7>).
 
 ### Removed
 

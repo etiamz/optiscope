@@ -141,7 +141,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #else
 
-#define COMPILER_UNREACHABLE() MY_ASSERT(false)
+#define COMPILER_UNREACHABLE() assert(false)
 #define COMPILER_NONNULL(...)  /* checked by `assert` */
 #define COMPILER_CONST         /* may invoke side-effecting `assert` */
 #define COMPILER_PURE          /* may invoke side-effecting `assert` */
@@ -239,18 +239,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Debugging Assertions
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-// Assertions that are checked at program run-time.
-#ifndef NDEBUG
-#define MY_ASSERT assert
-#else
-#define MY_ASSERT(condition) ((void)(condition))
-#endif
-
 // Used for communicating logic invariants to the compiler.
 #if defined(__GNUC__) && defined(NDEBUG)
 #define XASSERT(condition) (!(condition) ? __builtin_unreachable() : (void)0)
 #else
-#define XASSERT MY_ASSERT
+#define XASSERT assert
 #endif
 
 // Assertions that are checked at compile-time.
@@ -280,7 +273,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     COMPILER_NONNULL(1) COMPILER_FORMAT(printf, 1, 2) /* */                    \
     static void                                                                \
     name(const char *const restrict format, ...) {                             \
-        MY_ASSERT(format);                                                     \
+        assert(format);                                                        \
                                                                                \
         va_list args;                                                          \
         va_start(args, format);                                                \
@@ -302,7 +295,7 @@ PRINTER(panic, stderr, abort())
 
 #undef PRINTER
 
-COMPILER_HOT COMPILER_ALWAYS_INLINE COMPILER_CONST //
+COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static uint64_t
 checked_add(const uint64_t value, const uint64_t offset) {
     if (value > UINT64_MAX - offset) {
@@ -350,16 +343,16 @@ xrealloc(void *restrict object, const size_t size) {
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL COMPILER_NONNULL(1)
 COMPILER_FORMAT(printf, 1, 2) //
-static const char *
+static char *
 format_string(const char *const format, ...) {
-    MY_ASSERT(format);
+    assert(format);
 
     va_list args, args_copy;
     va_start(args, format);
     va_copy(args_copy, args);
-    const int len = vsnprintf(NULL, 0, format, args);
+    const int length = vsnprintf(NULL, 0, format, args);
     va_end(args);
-    char *const result = xmalloc(len + 1);
+    char *const result = xmalloc(length + 1);
     vsprintf(result, format, args_copy);
     va_end(args_copy);
 
@@ -418,14 +411,14 @@ struct reference_data {
 };
 
 union lambda_term_data {
-    struct apply_data apply;
-    struct lambda_data *lambda;
+    struct apply_data app;
+    struct lambda_data *lam;
     struct lambda_data **var;
     uint64_t cell;
-    struct unary_call_data u_call;
-    struct binary_call_data b_call;
+    struct unary_call_data ucall;
+    struct binary_call_data bcall;
     struct if_then_else_data ite;
-    struct perform_data perform;
+    struct perform_data perf;
     struct reference_data ref;
 };
 
@@ -440,13 +433,13 @@ struct lambda_term {
 
 extern LambdaTerm
 apply(const restrict LambdaTerm rator, const restrict LambdaTerm rand) {
-    MY_ASSERT(rator);
-    MY_ASSERT(rand);
+    assert(rator);
+    assert(rand);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_APPLY;
-    term->data.apply.rator = rator;
-    term->data.apply.rand = rand;
+    term->data.app.rator = rator;
+    term->data.app.rand = rand;
     term->fv_count = rator->fv_count + rand->fv_count;
 
     return term;
@@ -456,7 +449,7 @@ extern LambdaTerm
 prelambda(void) {
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_LAMBDA;
-    term->data.lambda = xcalloc(1, sizeof *term->data.lambda);
+    term->data.lam = xcalloc(1, sizeof *term->data.lam);
     // All the data fields are zeroed out.
 
     return term;
@@ -465,27 +458,27 @@ prelambda(void) {
 extern LambdaTerm
 link_lambda_body(
     const restrict LambdaTerm binder, const restrict LambdaTerm body) {
-    MY_ASSERT(binder);
-    MY_ASSERT(body);
-    MY_ASSERT(LAMBDA_TERM_LAMBDA == binder->ty);
+    assert(binder);
+    assert(body);
+    assert(LAMBDA_TERM_LAMBDA == binder->ty);
 
-    binder->data.lambda->body = body;
-    binder->fv_count = body->fv_count - binder->data.lambda->nusages;
+    binder->data.lam->body = body;
+    binder->fv_count = body->fv_count - binder->data.lam->nusages;
 
     return binder;
 }
 
 extern LambdaTerm
 var(const restrict LambdaTerm binder) {
-    MY_ASSERT(binder);
-    MY_ASSERT(LAMBDA_TERM_LAMBDA == binder->ty);
+    assert(binder);
+    assert(LAMBDA_TERM_LAMBDA == binder->ty);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_VAR;
-    term->data.var = &binder->data.lambda;
+    term->data.var = &binder->data.lam;
     term->fv_count = 1;
 
-    binder->data.lambda->nusages++;
+    binder->data.lam->nusages++;
 
     return term;
 }
@@ -503,13 +496,13 @@ cell(const uint64_t value) {
 extern LambdaTerm
 unary_call(
     uint64_t (*const function)(uint64_t), const restrict LambdaTerm rand) {
-    MY_ASSERT(function);
-    MY_ASSERT(rand);
+    assert(function);
+    assert(rand);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_UNARY_CALL;
-    term->data.u_call.function = function;
-    term->data.u_call.rand = rand;
+    term->data.ucall.function = function;
+    term->data.ucall.rand = rand;
     term->fv_count = rand->fv_count;
 
     return term;
@@ -520,15 +513,15 @@ binary_call(
     uint64_t (*const function)(uint64_t, uint64_t),
     const restrict LambdaTerm lhs,
     const restrict LambdaTerm rhs) {
-    MY_ASSERT(function);
-    MY_ASSERT(lhs);
-    MY_ASSERT(rhs);
+    assert(function);
+    assert(lhs);
+    assert(rhs);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_BINARY_CALL;
-    term->data.b_call.function = function;
-    term->data.b_call.lhs = lhs;
-    term->data.b_call.rhs = rhs;
+    term->data.bcall.function = function;
+    term->data.bcall.lhs = lhs;
+    term->data.bcall.rhs = rhs;
     term->fv_count = lhs->fv_count + rhs->fv_count;
 
     return term;
@@ -539,9 +532,9 @@ if_then_else(
     const restrict LambdaTerm condition,
     const restrict LambdaTerm if_then,
     const restrict LambdaTerm if_else) {
-    MY_ASSERT(condition);
-    MY_ASSERT(if_then);
-    MY_ASSERT(if_else);
+    assert(condition);
+    assert(if_then);
+    assert(if_else);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_IF_THEN_ELSE;
@@ -556,13 +549,13 @@ if_then_else(
 
 extern LambdaTerm
 perform(const restrict LambdaTerm action, const restrict LambdaTerm k) {
-    MY_ASSERT(action);
-    MY_ASSERT(k);
+    assert(action);
+    assert(k);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_PERFORM;
-    term->data.perform.action = action;
-    term->data.perform.k = k;
+    term->data.perf.action = action;
+    term->data.perf.k = k;
     term->fv_count = action->fv_count + k->fv_count;
 
     return term;
@@ -570,7 +563,7 @@ perform(const restrict LambdaTerm action, const restrict LambdaTerm k) {
 
 extern LambdaTerm
 expand(struct lambda_term *(*const function)(void)) {
-    MY_ASSERT(function);
+    assert(function);
 
     struct lambda_term *const term = xmalloc(sizeof *term);
     term->ty = LAMBDA_TERM_REFERENCE;
@@ -583,24 +576,22 @@ expand(struct lambda_term *(*const function)(void)) {
 COMPILER_NONNULL(1) COMPILER_COLD //
 static void
 free_lambda_term(struct lambda_term *const restrict term) {
-    MY_ASSERT(term);
+    assert(term);
 
     switch (term->ty) {
     case LAMBDA_TERM_APPLY:
-        free_lambda_term(term->data.apply.rator);
-        free_lambda_term(term->data.apply.rand);
+        free_lambda_term(term->data.app.rator);
+        free_lambda_term(term->data.app.rand);
         break;
     case LAMBDA_TERM_LAMBDA:
-        free_lambda_term(term->data.lambda->body);
-        free(term->data.lambda->binder_ports);
-        free(term->data.lambda);
+        free_lambda_term(term->data.lam->body);
+        free(term->data.lam->binder_ports);
+        free(term->data.lam);
         break;
-    case LAMBDA_TERM_UNARY_CALL:
-        free_lambda_term(term->data.u_call.rand);
-        break;
+    case LAMBDA_TERM_UNARY_CALL: free_lambda_term(term->data.ucall.rand); break;
     case LAMBDA_TERM_BINARY_CALL:
-        free_lambda_term(term->data.b_call.lhs);
-        free_lambda_term(term->data.b_call.rhs);
+        free_lambda_term(term->data.bcall.lhs);
+        free_lambda_term(term->data.bcall.rhs);
         break;
     case LAMBDA_TERM_IF_THEN_ELSE:
         free_lambda_term(term->data.ite.condition);
@@ -608,8 +599,8 @@ free_lambda_term(struct lambda_term *const restrict term) {
         free_lambda_term(term->data.ite.if_else);
         break;
     case LAMBDA_TERM_PERFORM:
-        free_lambda_term(term->data.perform.action);
-        free_lambda_term(term->data.perform.k);
+        free_lambda_term(term->data.perf.action);
+        free_lambda_term(term->data.perf.k);
         break;
     case LAMBDA_TERM_VAR:
     case LAMBDA_TERM_CELL:
@@ -648,7 +639,7 @@ free_lambda_term(struct lambda_term *const restrict term) {
 // zeroes, so they will not corrupt our metadata.
 // Source:
 // <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/arch/x86/x86_64/mm.rst>.
-// Workes with both 4- and 5-level page tables.
+// Workes with both 4- & 5-level page tables.
 #define ENCODE_ADDRESS(metadata, address) ((address) | (metadata))
 
 #define DECODE_ADDRESS(address) ((uint64_t *)((address) & ADDRESS_MASK))
@@ -722,10 +713,15 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
     ((symbol) >= SYMBOL_DELIMITER(UINT64_C(0)))
 // clang-format on
 
-#define IS_ANY_DUPLICATOR(symbol)                                              \
-    (IS_DUPLICATOR((symbol)) || /* */                                          \
-     SYMBOL_GC_DUPLICATOR_LEFT == (symbol) ||                                  \
+#define IS_GC_DUPLICATOR(symbol)                                               \
+    (SYMBOL_GC_DUPLICATOR_LEFT == (symbol) ||                                  \
      SYMBOL_GC_DUPLICATOR_RIGHT == (symbol))
+
+#define IS_ANY_DUPLICATOR(symbol)                                              \
+    (IS_DUPLICATOR((symbol)) || IS_GC_DUPLICATOR((symbol)))
+
+#define IS_INTERFACE_SYMBOL(symbol)                                            \
+    (IS_ANY_LAMBDA((symbol)) || SYMBOL_CELL == (symbol))
 
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
 inline static bool
@@ -785,7 +781,7 @@ COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static uint64_t *
 get_principal_port(uint64_t *const restrict port) {
-    MY_ASSERT(port);
+    assert(port);
 
     return (port - DECODE_OFFSET_METADATA(port[0]));
 }
@@ -795,8 +791,8 @@ inline static void
 connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
     debug("%p 🔗 %p", (void *)lhs, (void *)rhs);
 
-    MY_ASSERT(lhs);
-    MY_ASSERT(rhs);
+    assert(lhs);
+    assert(rhs);
     XASSERT(lhs != rhs);
 
     *lhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*lhs), (uint64_t)rhs);
@@ -810,44 +806,36 @@ connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
 
 #if defined(OPTISCOPE_ENABLE_TRACING) || defined(OPTISCOPE_ENABLE_GRAPHVIZ)
 
-#define MAX_SSYMBOL_SIZE 64
-
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL //
-static const char *
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
+static char *
 print_symbol(const uint64_t symbol) {
-    static char buffer[MAX_SSYMBOL_SIZE] = {0};
-
     switch (symbol) {
-    case SYMBOL_ROOT: sprintf(buffer, "root"); break;
-    case SYMBOL_APPLICATOR: sprintf(buffer, "@"); break;
-    case SYMBOL_LAMBDA: sprintf(buffer, "λ"); break;
-    case SYMBOL_ERASER: sprintf(buffer, "◉"); break;
-    case SYMBOL_CELL: sprintf(buffer, "cell"); break;
-    case SYMBOL_UNARY_CALL: sprintf(buffer, "unary-call"); break;
-    case SYMBOL_BINARY_CALL: sprintf(buffer, "binary-call"); break;
-    case SYMBOL_BINARY_CALL_AUX: sprintf(buffer, "binary-call-aux"); break;
-    case SYMBOL_IF_THEN_ELSE: sprintf(buffer, "if-then-else"); break;
-    case SYMBOL_PERFORM: sprintf(buffer, "perform"); break;
-    case SYMBOL_IDENTITY_LAMBDA: sprintf(buffer, "identity"); break;
-    case SYMBOL_GC_LAMBDA: sprintf(buffer, "λ◉"); break;
-    case SYMBOL_LAMBDA_C: sprintf(buffer, "λc"); break;
-    case SYMBOL_REFERENCE: sprintf(buffer, "&"); break;
-    case SYMBOL_BARRIER: sprintf(buffer, "🚧"); break;
-    case SYMBOL_GC_DUPLICATOR_LEFT: sprintf(buffer, "◉δ"); break;
-    case SYMBOL_GC_DUPLICATOR_RIGHT: sprintf(buffer, "δ◉"); break;
+    case SYMBOL_ROOT: return format_string("root");
+    case SYMBOL_APPLICATOR: return format_string("@");
+    case SYMBOL_LAMBDA: return format_string("λ");
+    case SYMBOL_ERASER: return format_string("◉");
+    case SYMBOL_CELL: return format_string("cell");
+    case SYMBOL_UNARY_CALL: return format_string("unary-call");
+    case SYMBOL_BINARY_CALL: return format_string("binary-call");
+    case SYMBOL_BINARY_CALL_AUX: return format_string("binary-call-aux");
+    case SYMBOL_IF_THEN_ELSE: return format_string("if-then-else");
+    case SYMBOL_PERFORM: return format_string("perform");
+    case SYMBOL_IDENTITY_LAMBDA: return format_string("identity");
+    case SYMBOL_GC_LAMBDA: return format_string("λ◉");
+    case SYMBOL_LAMBDA_C: return format_string("λc");
+    case SYMBOL_REFERENCE: return format_string("&");
+    case SYMBOL_BARRIER: return format_string("🚧");
+    case SYMBOL_GC_DUPLICATOR_LEFT: return format_string("◉δ");
+    case SYMBOL_GC_DUPLICATOR_RIGHT: return format_string("δ◉");
     default:
         if (IS_DUPLICATOR(symbol)) goto duplicator;
         else if (IS_DELIMITER(symbol)) goto delimiter;
         else COMPILER_UNREACHABLE();
     duplicator:
-        sprintf(buffer, "δ/%" PRIi64, SYMBOL_INDEX(symbol));
-        break;
+        return format_string("δ/%" PRIi64, SYMBOL_INDEX(symbol));
     delimiter:
-        sprintf(buffer, "⊔/%" PRIi64, SYMBOL_INDEX(symbol));
-        break;
+        return format_string("⊔/%" PRIi64, SYMBOL_INDEX(symbol));
     }
-
-    return buffer;
 }
 
 #endif
@@ -880,10 +868,14 @@ bump_raw_index(const uint64_t index, const uint64_t offset) {
 
 #undef INDEX_OVERFLOW
 
-#define PHASE_REDUCTION UINT64_C(0)
-#define PHASE_GC        UINT64_C(1)
-#define PHASE_GC_AUX    UINT64_C(2)
-#define PHASE_IN_STACK  UINT64_C(3)
+#define PHASE_DEFAULT  UINT64_C(0) // all nodes not in the reduction stack
+#define PHASE_GC       UINT64_C(1) // active GC erasers
+#define PHASE_GC_AUX   UINT64_C(2) // GC erasers scheduled for deletion
+#define PHASE_IN_STACK UINT64_C(3) // operators in the reduction stack
+
+#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
+#define PHASE_CURRENT_PAIR UINT64_C(4) // Grapdhviz: the current active pair
+#endif
 
 #define PHASE_MASK                                                             \
     UINT64_C(0xC3FFFFFFFFFFFFFF) /* clear the phase bits (61-58) */
@@ -891,12 +883,12 @@ bump_raw_index(const uint64_t index, const uint64_t offset) {
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
 set_phase(uint64_t *const restrict port, const uint64_t phase) {
-    MY_ASSERT(port);
-    MY_ASSERT(IS_PRINCIPAL_PORT(*port));
+    assert(port);
+    assert(IS_PRINCIPAL_PORT(*port));
 
     *port = (*port & PHASE_MASK) | (phase << EFFECTIVE_ADDRESS_BITS);
 
-    MY_ASSERT(DECODE_PHASE_METADATA(*port) == phase);
+    assert(DECODE_PHASE_METADATA(*port) == phase);
 }
 
 // Native Function Pointers
@@ -931,7 +923,7 @@ COMPILER_WARN_UNUSED_RESULT COMPILER_MALLOC(free_chunk, 1) COMPILER_COLD
 // clang-format on
 static void *
 alloc_chunk(const size_t size) {
-    MY_ASSERT(size <= HUGE_PAGE_SIZE_2MB);
+    assert(size <= HUGE_PAGE_SIZE_2MB);
 
     const int prot = PROT_READ | PROT_WRITE,
               flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB;
@@ -948,7 +940,7 @@ alloc_chunk(const size_t size) {
 COMPILER_NONNULL(1) COMPILER_COLD //
 void
 free_chunk(void *const memory) {
-    MY_ASSERT(memory);
+    assert(memory);
 
     if (munmap(memory, HUGE_PAGE_SIZE_2MB) < 0) {
         if (EINVAL == errno) {
@@ -1014,7 +1006,7 @@ free_chunk(void *const memory) {
     COMPILER_NONNULL(1) COMPILER_COLD /* */                                    \
     static void                                                                \
     prefix##_pool_close(struct prefix##_pool *const restrict self) {           \
-        MY_ASSERT(self);                                                       \
+        assert(self);                                                          \
         XASSERT(self->buckets);                                                \
                                                                                \
         struct prefix##_chunks_bucket *iter = self->buckets;                   \
@@ -1032,7 +1024,7 @@ free_chunk(void *const memory) {
     COMPILER_NONNULL(1) COMPILER_COLD /* */                                    \
     static void                                                                \
     prefix##_pool_expand(struct prefix##_pool *const restrict self) {          \
-        MY_ASSERT(self);                                                       \
+        assert(self);                                                          \
         XASSERT(self->buckets);                                                \
                                                                                \
         union prefix##_chunk *const extra_chunks =                             \
@@ -1059,7 +1051,7 @@ free_chunk(void *const memory) {
     COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT /* */         \
     static uint64_t *                                                          \
     prefix##_pool_alloc(struct prefix##_pool *const restrict self) {           \
-        MY_ASSERT(self);                                                       \
+        assert(self);                                                          \
         XASSERT(self->buckets);                                                \
                                                                                \
         if (NULL == self->next_free_chunk) { prefix##_pool_expand(self); }     \
@@ -1077,9 +1069,9 @@ free_chunk(void *const memory) {
     prefix##_pool_free(                                                        \
         struct prefix##_pool *const restrict self,                             \
         uint64_t *restrict object) {                                           \
-        MY_ASSERT(self);                                                       \
+        assert(self);                                                          \
         XASSERT(self->buckets);                                                \
-        MY_ASSERT(object);                                                     \
+        assert(object);                                                        \
                                                                                \
         object--; /* back to the symbol addresse */                            \
         union prefix##_chunk *const freed = (union prefix##_chunk *)object;    \
@@ -1144,35 +1136,14 @@ struct node {
 
 STATIC_ASSERT(sizeof(struct node) == sizeof(uint64_t *));
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT
-COMPILER_ALWAYS_INLINE //
-inline static struct node
-node_of_port(uint64_t *const restrict port) {
-    MY_ASSERT(port);
+#define node_of_port(port) ((struct node){get_principal_port((port))})
 
-    const struct node node = {get_principal_port(port)};
-    XASSERT(node.ports);
+#define follow_port(node, i) (node_of_port(DECODE_ADDRESS((node).ports[(i)])))
 
-    return node;
-}
+#define points_to(f, g) (DECODE_ADDRESS((f).ports[0]) == &(g).ports[0])
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT
-COMPILER_ALWAYS_INLINE //
-inline static struct node
-follow_port(uint64_t *const restrict port) {
-    MY_ASSERT(port);
-
-    return node_of_port(DECODE_ADDRESS(*port));
-}
-
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static bool
-is_pointing_to(const struct node f, const struct node g) {
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-
-    return DECODE_ADDRESS(f.ports[0]) == &g.ports[0];
-}
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function" // may be unused
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
 inline static bool
@@ -1180,48 +1151,53 @@ is_interaction(const struct node f, const struct node g) {
     XASSERT(f.ports);
     XASSERT(g.ports);
 
-    return is_pointing_to(f, g) && is_pointing_to(g, f);
+    return points_to(f, g) && points_to(g, f);
 }
+
+#pragma GCC diagnostic pop // "-Wunused-function"
 
 #ifdef OPTISCOPE_ENABLE_TRACING
 
-#define MAX_SNODE_SIZE 256
-
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL //
-static const char *
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
+static char *
 print_node(const struct node node) {
     XASSERT(node.ports);
 
-    static char buffer[MAX_SNODE_SIZE] = {0};
-
     const uint64_t *const p = node.ports;
-    const char *const ssymbol = print_symbol(p[-1]);
+
+    char *const ssymbol = print_symbol(p[-1]);
+
+    char *result = NULL;
 
     switch (ports_count(p[-1])) {
-    case 1: sprintf(buffer, "%s [%p]", ssymbol, (void *)&p[0]); break;
+    case 1: result = format_string("%s [%p]", ssymbol, (void *)&p[0]); break;
     case 2:
-        sprintf(buffer, "%s [%p, %p]", ssymbol, (void *)&p[0], (void *)&p[1]);
+        result =
+            format_string("%s [%p, %p]", ssymbol, (void *)&p[0], (void *)&p[1]);
         break;
     case 3:
-        // clang-format off
-        sprintf(
-            buffer, "%s [%p, %p, %p]", ssymbol,
-            (void *)&p[0], (void *)&p[1], (void *)&p[2]
-        );
-        // clang-format on
+        result = format_string(
+            "%s [%p, %p, %p]",
+            ssymbol,
+            (void *)&p[0],
+            (void *)&p[1],
+            (void *)&p[2]);
         break;
     case 4:
-        // clang-format off
-        sprintf(
-            buffer, "%s [%p, %p, %p, %p]", ssymbol,
-            (void *)&p[0], (void *)&p[1], (void *)&p[2], (void *)&p[3]
-        );
-        // clang-format on
+        result = format_string(
+            "%s [%p, %p, %p, %p]",
+            ssymbol,
+            (void *)&p[0],
+            (void *)&p[1],
+            (void *)&p[2],
+            (void *)&p[3]);
         break;
     default: COMPILER_UNREACHABLE();
     }
 
-    return buffer;
+    free(ssymbol);
+
+    return result;
 }
 
 #endif // OPTISCOPE_ENABLE_TRACING
@@ -1295,7 +1271,7 @@ struct bytecode {
 COMPILER_NONNULL(1) //
 static void
 expand_bytecode(struct bytecode *const restrict bc) {
-    MY_ASSERT(bc);
+    assert(bc);
     XASSERT(bc->count == bc->capacity);
     XASSERT(bc->instructions);
 
@@ -1308,7 +1284,7 @@ inline static void
 emit_instruction(
     struct bytecode *const restrict bc,
     const struct bc_instruction instruction) {
-    MY_ASSERT(bc);
+    assert(bc);
     XASSERT(bc->count <= bc->capacity);
     XASSERT(bc->instructions);
 
@@ -1369,7 +1345,7 @@ struct multifocus {
 COMPILER_NONNULL(1) COMPILER_COLD //
 static void
 expand_focus(struct multifocus *const restrict focus) {
-    MY_ASSERT(focus);
+    assert(focus);
     XASSERT(focus->count == focus->capacity);
     XASSERT(focus->nodes);
 
@@ -1380,7 +1356,7 @@ expand_focus(struct multifocus *const restrict focus) {
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
 focus_on(struct multifocus *const restrict focus, const struct node node) {
-    MY_ASSERT(focus);
+    assert(focus);
     XASSERT(node.ports);
     XASSERT(focus->count <= focus->capacity);
     XASSERT(focus->nodes);
@@ -1410,7 +1386,7 @@ is_focused_on(const struct multifocus focus, const struct node node) {
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static struct node
 unfocus(struct multifocus *const restrict focus) {
-    MY_ASSERT(focus);
+    assert(focus);
     XASSERT(focus->count > 0);
     XASSERT(focus->count <= focus->capacity);
     XASSERT(focus->nodes);
@@ -1486,7 +1462,7 @@ free_book(const struct book book) {
 COMPILER_NONNULL(1) COMPILER_COLD //
 static void
 expand_book(struct book *const restrict book) {
-    MY_ASSERT(book);
+    assert(book);
     XASSERT(book->count == book->capacity);
     XASSERT(book->entries);
 
@@ -1501,9 +1477,9 @@ static size_t
 lookup_function(
     struct book *const restrict book,
     struct lambda_term *(*const function)(void)) {
-    MY_ASSERT(book);
+    assert(book);
     XASSERT(book->entries);
-    MY_ASSERT(function);
+    assert(function);
 
     for (size_t i = 0; i < book->count; i++) {
         if (function == book->entries[i].function) { return i; }
@@ -1533,20 +1509,14 @@ struct context {
     bool rescan;
 
 #ifdef OPTISCOPE_ENABLE_STATS
-    // The numbers of proper interactions.
-    uint64_t nbetas, ncommutations, nannihilations, nexpansions,
-        ncell_operations, nbarrier_operations;
-    // The numbers of duplication & delimiter interactions.
-    uint64_t nduplication_itrs, ndelimiter_itrs;
-    // The numbers of non-interaction graph rewrites.
+    // The number of all proper interactions.
+    uint64_t ninteractions;
+    // The numbers of all interactions involving duplicators/delimiters.
+    uint64_t nduplicator_itrs, ndelimiter_itrs;
+    // The numbers of all non-interaction graph rewrites.
     uint64_t nmergings, nextrusions, ngc;
     // The memory usage statistics.
     uint64_t ntotal, nmax_total;
-#endif
-
-#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
-    // The active pair to be reduced next (Graphviz onely).
-    struct node current_pair[2];
 #endif
 };
 
@@ -1562,18 +1532,14 @@ static struct context *
 alloc_context(void) {
     const struct node root = {(uint64_t *)xcalloc(2, sizeof(uint64_t)) + 1};
     root.ports[-1] = SYMBOL_ROOT;
-    root.ports[0] = PORT_VALUE(UINT64_C(0), PHASE_REDUCTION, UINT64_C(0));
+    root.ports[0] = PORT_VALUE(UINT64_C(0), PHASE_DEFAULT, UINT64_C(0));
 
     struct context *const graph = xcalloc(1, sizeof *graph);
     graph->root = root;
     graph->book = alloc_book(INITIAL_BOOK_CAPACITY);
     graph->gc_focus = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
     graph->rescan = false;
-    // The statistics counters are zeroed out by `xcalloc`.
-
-#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
-    CLEAR_MEMORY(graph->current_pair);
-#endif
+    // The rest of the fields are zeroed out by `xcalloc`.
 
     return graph;
 }
@@ -1583,7 +1549,7 @@ static void
 free_context(struct context *const restrict graph) {
     debug("%s()", __func__);
 
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(graph->root.ports);
 
     free(graph->root.ports - 1 /* back to the symbol */);
@@ -1597,40 +1563,29 @@ free_context(struct context *const restrict graph) {
 COMPILER_NONNULL(1) //
 static void
 print_stats(const struct context *const restrict graph) {
-    MY_ASSERT(graph);
+    assert(graph);
 
-    const uint64_t ntotal_interactions = //
-        graph->nbetas + graph->ncommutations + graph->nannihilations +
-        graph->nexpansions + graph->ncell_operations +
-        graph->nbarrier_operations;
+    const uint64_t ntotal_rewrites = graph->ninteractions + graph->nmergings +
+                                     graph->nextrusions + graph->ngc;
 
-    const uint64_t ntotal_rewrites = //
-        ntotal_interactions + graph->nmergings + graph->nextrusions +
-        graph->ngc;
-
-    const uint64_t nbookkeeping_rewrites = //
+    const uint64_t nbookkeeping_rewrites =
         graph->ndelimiter_itrs + graph->nmergings + graph->nextrusions;
 
-    const double sharing_work = //
-        ((double)graph->nduplication_itrs / (double)ntotal_rewrites) * 100.0;
+    const double sharing_work =
+        ((double)graph->nduplicator_itrs / (double)ntotal_rewrites) * 100.0;
 
-    const double bookkeeping_work = //
+    const double bookkeeping_work =
         ((double)nbookkeeping_rewrites / (double)ntotal_rewrites) * 100.0;
 
-    printf("   Family reductions: %" PRIu64 "\n", graph->nbetas);
-    printf("        Commutations: %" PRIu64 "\n", graph->ncommutations);
-    printf("       Annihilations: %" PRIu64 "\n", graph->nannihilations);
-    printf("          Expansions: %" PRIu64 "\n", graph->nexpansions);
-    printf("     Cell operations: %" PRIu64 "\n", graph->ncell_operations);
-    printf("  Barrier operations: %" PRIu64 "\n", graph->nbarrier_operations);
-    printf("  Total interactions: %" PRIu64 "\n", ntotal_interactions);
-    printf(" Garbage collections: %" PRIu64 "\n", graph->ngc);
-    printf("  Delimiter mergings: %" PRIu64 "\n", graph->nmergings);
-    printf("Delimiter extrusions: %" PRIu64 "\n", graph->nextrusions);
-    printf("      Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
-    printf("        Sharing work: %.2f%%\n", sharing_work);
-    printf("    Bookkeeping work: %.2f%%\n", bookkeeping_work);
-    printf("     Peak node count: %" PRIu64 "\n", graph->nmax_total);
+    const double gc_work =
+        ((double)graph->ngc / (double)ntotal_rewrites) * 100.0;
+
+    printf("    Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
+    printf("Total interactions: %" PRIu64 "\n", graph->ninteractions);
+    printf("      Sharing work: %.2f%%\n", sharing_work);
+    printf("  Bookkeeping work: %.2f%%\n", bookkeeping_work);
+    printf("           GC work: %.2f%%\n", gc_work);
+    printf("   Peak node count: %" PRIu64 "\n", graph->nmax_total);
 }
 
 #else
@@ -1645,18 +1600,18 @@ alloc_node_from(
     struct context *const restrict graph,
     const uint64_t symbol,
     const struct node *const restrict prototype) {
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(SYMBOL_ROOT != symbol);
     if (prototype) { XASSERT(prototype->ports); }
 
 #ifndef NDEBUG
     if (prototype) {
         if (IS_DUPLICATOR(symbol)) {
-            MY_ASSERT(IS_DUPLICATOR(prototype->ports[-1]));
+            assert(IS_DUPLICATOR(prototype->ports[-1]));
         } else if (IS_DELIMITER(symbol)) {
-            MY_ASSERT(IS_DELIMITER(prototype->ports[-1]));
+            assert(IS_DELIMITER(prototype->ports[-1]));
         } else {
-            MY_ASSERT(symbol == prototype->ports[-1]);
+            assert(symbol == prototype->ports[-1]);
         }
     }
 #endif
@@ -1665,7 +1620,7 @@ alloc_node_from(
 
 #define SET_SYMBOL() (p[-1] = symbol)
 #define SET_PORTS_0()                                                          \
-    (SET_SYMBOL(), p[0] = PORT_VALUE(UINT64_C(0), PHASE_REDUCTION, UINT64_C(0)))
+    (SET_SYMBOL(), p[0] = PORT_VALUE(UINT64_C(0), PHASE_DEFAULT, UINT64_C(0)))
 #define SET_PORTS_1()                                                          \
     (SET_PORTS_0(), p[1] = PORT_VALUE(UINT64_C(1), UINT64_C(0), UINT64_C(0)))
 #define SET_PORTS_2()                                                          \
@@ -1742,7 +1697,11 @@ alloc_node_from(
     }
 #endif
 
-    debug("🔨 %s", print_node((struct node){p}));
+#ifdef OPTISCOPE_ENABLE_TRACING
+    char *const snode = print_node((struct node){p});
+    debug("🔨 %s", snode);
+    free(snode);
+#endif
 
     return (struct node){p};
 }
@@ -1753,16 +1712,16 @@ COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1, 2) COMPILER_HOT //
 static struct node
 alloc_gc_node(
     struct context *const restrict graph, uint64_t *const restrict points_to) {
-    MY_ASSERT(graph);
-    MY_ASSERT(points_to);
+    assert(graph);
+    assert(points_to);
 
-    const struct node eraser = alloc_node(graph, SYMBOL_ERASER);
+    const struct node node = alloc_node(graph, SYMBOL_ERASER);
     // Mark this eraser as garbage-collecting, which is necessary for
     // successfull operation of the garbage collector.
-    set_phase(&eraser.ports[0], PHASE_GC);
-    connect_ports(&eraser.ports[0], points_to);
+    set_phase(&node.ports[0], PHASE_GC);
+    connect_ports(&node.ports[0], points_to);
 
-    return eraser;
+    return node;
 }
 
 COMPILER_NONNULL(1) COMPILER_HOT //
@@ -1770,7 +1729,7 @@ static void
 free_node(struct context *const restrict graph, const struct node node) {
     debug("🧹 %p", (void *)node.ports);
 
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(node.ports);
 
     const uint64_t symbol = node.ports[-1];
@@ -1780,11 +1739,9 @@ free_node(struct context *const restrict graph, const struct node node) {
 
 #ifdef COMPILER_ASAN_AVAILABLE
     {
-        const size_t region_size = sizeof *p * (ports_count(symbol) + 1);
-
-        if (COMPILER_IS_POISONED_MEMORY(p - 1, region_size)) {
+        if (COMPILER_IS_POISONED_ADDRESS(p - 1)) {
             // Invoke AddressSanitizer's use-after-poison report.
-            memset(p - 1, '\0', region_size);
+            p[-1] = 666;
         }
     }
 #endif
@@ -1833,9 +1790,9 @@ struct delimiter {
 
 static void
 assert_delimiter_template(const struct delimiter template) {
-    MY_ASSERT(template.idx < INDEX_RANGE);
-    MY_ASSERT(template.points_to);
-    MY_ASSERT(template.goes_from);
+    assert(template.idx < INDEX_RANGE);
+    assert(template.points_to);
+    assert(template.goes_from);
 }
 
 #else
@@ -1850,13 +1807,13 @@ inst_delimiter_as_is(
     struct context *const restrict graph,
     const struct delimiter template,
     const uint64_t count) {
-    MY_ASSERT(graph);
+    assert(graph);
     assert_delimiter_template(template);
 
-    const struct node delim = alloc_node(graph, SYMBOL_DELIMITER(template.idx));
-    delim.ports[2] = count;
-    connect_ports(&delim.ports[0], template.points_to);
-    connect_ports(&delim.ports[1], template.goes_from);
+    const struct node node = alloc_node(graph, SYMBOL_DELIMITER(template.idx));
+    node.ports[2] = count;
+    connect_ports(&node.ports[0], template.points_to);
+    connect_ports(&node.ports[1], template.goes_from);
 }
 
 COMPILER_NONNULL(1) COMPILER_HOT //
@@ -1865,7 +1822,7 @@ inst_delimiter(
     struct context *const restrict graph,
     const struct delimiter template,
     const uint64_t count) {
-    MY_ASSERT(graph);
+    assert(graph);
     assert_delimiter_template(template);
 
     if (0 == count) {
@@ -1893,7 +1850,7 @@ inst_delimiter(
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 try_merge_delimiter(struct context *const restrict graph, const struct node f) {
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(IS_DELIMITER(f.ports[-1]));
 
@@ -1915,7 +1872,8 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
     } else if (is_atomic_symbol(g.ports[-1])) {
         connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 #ifdef OPTISCOPE_ENABLE_STATS
-        graph->ncommutations++;
+        graph->ninteractions++;
+        graph->ndelimiter_itrs++;
 #endif
     } else {
         return;
@@ -1928,7 +1886,7 @@ COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 try_merge_if_delimiter(
     struct context *const restrict graph, const struct node f) {
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(f.ports);
 
     if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(graph, f); }
@@ -1940,11 +1898,11 @@ try_merge_if_delimiter(
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 try_duplicate(struct context *const restrict graph, const struct node f) {
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(IS_DUPLICATOR(f.ports[-1]));
 
-    const struct node g = follow_port(&f.ports[0]);
+    const struct node g = follow_port(f, 0);
     XASSERT(g.ports);
 
     const bool condition =
@@ -1955,8 +1913,8 @@ try_duplicate(struct context *const restrict graph, const struct node f) {
         connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
         free_node(graph, f);
 #ifdef OPTISCOPE_ENABLE_STATS
-        graph->ncommutations++;
-        graph->nduplication_itrs++;
+        graph->ninteractions++;
+        graph->nduplicator_itrs++;
 #endif
     }
 }
@@ -1968,84 +1926,71 @@ try_duplicate(struct context *const restrict graph, const struct node f) {
 
 #define GRAPHVIZ_INDENT "    "
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL //
-static const char *
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
+static char *
 graphviz_node_xlabel(const struct node node) {
     XASSERT(node.ports);
 
     static const char address_line[] = "+----------------+";
 
-    static char buffer[256] = {0};
-
     const uint64_t *const p = node.ports;
 
-#define SPRINTF(fmt, ...)                                                      \
-    sprintf(buffer, "%s" fmt "%s", address_line, __VA_ARGS__, address_line)
+#define FORMAT_BLOCK(fmt, ...)                                                 \
+    format_string("%s" fmt "%s", address_line, __VA_ARGS__, address_line)
 
     switch (ports_count(p[-1])) {
-    case 1: SPRINTF("<BR/>| %p |<BR/>", (void *)&p[0]); break;
+    case 1: return FORMAT_BLOCK("<BR/>| %p |<BR/>", (void *)&p[0]);
     case 2:
-        SPRINTF("<BR/>| %p |<BR/>| %p |<BR/>", (void *)&p[0], (void *)&p[1]);
-        break;
+        return FORMAT_BLOCK(
+            "<BR/>| %p |<BR/>| %p |<BR/>", (void *)&p[0], (void *)&p[1]);
     case 3:
-        SPRINTF(
+        return FORMAT_BLOCK(
             "<BR/>| %p |<BR/>| %p |<BR/>| %p |<BR/>",
             (void *)&p[0],
             (void *)&p[1],
             (void *)&p[2]);
-        break;
     case 4:
-        SPRINTF(
+        return FORMAT_BLOCK(
             "<BR/>| %p |<BR/>| %p |<BR/>| %p |<BR/>| %p |<BR/>",
             (void *)&p[0],
             (void *)&p[1],
             (void *)&p[2],
             (void *)&p[3]);
-        break;
     default: COMPILER_UNREACHABLE();
     }
 
-#undef SPRINTF
-
-    return buffer;
+#undef FORMAT_BLOCK
 }
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL //
-static const char *
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
+static char *
 graphviz_edge_label(const struct node node, const uint8_t i) {
     XASSERT(node.ports);
-
-    static char buffer[16] = {0};
 
     switch (node.ports[-1]) {
     case SYMBOL_APPLICATOR:
         switch (i) {
-        case 0: sprintf(buffer, "rator (\\#%" PRIu8 ")", i); break;
-        case 1: sprintf(buffer, "\\#%" PRIu8, i); break;
-        case 2: sprintf(buffer, "rand (\\#%" PRIu8 ")", i); break;
+        case 0: return format_string("rator (\\#%" PRIu8 ")", i); break;
+        case 1: return format_string("\\#%" PRIu8, i); break;
+        case 2: return format_string("rand (\\#%" PRIu8 ")", i); break;
         default: COMPILER_UNREACHABLE();
         }
-        break;
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
         switch (i) {
-        case 0: sprintf(buffer, "\\#%" PRIu8, i); break;
-        case 1: sprintf(buffer, "binder (\\#%" PRIu8 ")", i); break;
-        case 2: sprintf(buffer, "body (\\#%" PRIu8 ")", i); break;
+        case 0: return format_string("\\#%" PRIu8, i); break;
+        case 1: return format_string("binder (\\#%" PRIu8 ")", i); break;
+        case 2: return format_string("body (\\#%" PRIu8 ")", i); break;
         default: COMPILER_UNREACHABLE();
         }
-        break;
     case SYMBOL_GC_LAMBDA:
         switch (i) {
-        case 0: sprintf(buffer, "\\#%" PRIu8, i); break;
-        case 1: sprintf(buffer, "body (\\#%" PRIu8 ")", i); break;
+        case 0: return format_string("\\#%" PRIu8, i); break;
+        case 1: return format_string("body (\\#%" PRIu8 ")", i); break;
         default: COMPILER_UNREACHABLE();
         }
-        break;
-    default: sprintf(buffer, "\\#%" PRIu8, i);
+    default: return format_string("\\#%" PRIu8, i);
     }
-
-    return buffer;
 }
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL //
@@ -2129,36 +2074,34 @@ graphviz_edge_tailport(const struct node node, const uint8_t i) {
     }
 }
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL //
-static const char *
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
+static char *
 graphviz_print_symbol(const struct node node) {
     XASSERT(node.ports);
 
-    static char buffer[MAX_SSYMBOL_SIZE + 64] = {0};
+    const uint64_t *const p = node.ports;
 
-    const uint64_t symbol = node.ports[-1];
+    char *const ssymbol = print_symbol(p[-1]);
 
-    sprintf(buffer, "%s", print_symbol(symbol));
+    char *result = NULL;
 
-#define SPRINTF(fmt, ...) sprintf(buffer + strlen(buffer), fmt, __VA_ARGS__)
-
-    if (SYMBOL_CELL == symbol) {
-        SPRINTF(" %" PRIu64, node.ports[1]);
-    } else if (SYMBOL_BINARY_CALL_AUX == symbol) {
-        SPRINTF(" %" PRIu64, node.ports[3]);
-    } else if (SYMBOL_BARRIER == symbol) {
-        SPRINTF(" %" PRIu64, node.ports[2]);
-    } else if (
-        SYMBOL_GC_DUPLICATOR_LEFT == symbol ||
-        SYMBOL_GC_DUPLICATOR_RIGHT == symbol) {
-        SPRINTF("/%" PRIu64, node.ports[2]);
-    } else if (IS_DELIMITER(symbol)) {
-        SPRINTF(" %" PRIu64, node.ports[2]);
+    if (SYMBOL_CELL == p[-1]) {
+        result = format_string("%s %" PRIu64, ssymbol, p[1]);
+    } else if (SYMBOL_BINARY_CALL_AUX == p[-1]) {
+        result = format_string("%s %" PRIu64, ssymbol, p[3]);
+    } else if (SYMBOL_BARRIER == p[-1]) {
+        result = format_string("%s %" PRIu64, ssymbol, p[2]);
+    } else if (IS_GC_DUPLICATOR(p[-1])) {
+        result = format_string("%s/%" PRIu64, ssymbol, p[2]);
+    } else if (IS_DELIMITER(p[-1])) {
+        result = format_string("%s %" PRIu64, ssymbol, p[2]);
+    } else {
+        result = format_string("%s", ssymbol);
     }
 
-#undef SPRINTF
+    free(ssymbol);
 
-    return buffer;
+    return result;
 }
 
 struct graphviz_context {
@@ -2167,15 +2110,12 @@ struct graphviz_context {
     FILE *stream;
 };
 
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) //
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
 inline static bool
-graphviz_is_current_node(
-    struct graphviz_context *const restrict ctx, const struct node node) {
-    MY_ASSERT(ctx);
+graphviz_is_current_node(const struct node node) {
     XASSERT(node.ports);
 
-    return ctx->graph->current_pair[0].ports == node.ports ||
-           ctx->graph->current_pair[1].ports == node.ports;
+    return PHASE_CURRENT_PAIR == DECODE_PHASE_METADATA(node.ports[0]);
 }
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
@@ -2183,9 +2123,9 @@ inline static bool
 graphviz_is_active_node(const struct node node) {
     XASSERT(node.ports);
 
-    const struct node f = node, g = follow_port(&node.ports[0]);
+    const struct node f = node, g = follow_port(node, 0);
 
-    return is_pointing_to(g, f) && SYMBOL_ROOT != node.ports[-1];
+    return points_to(g, f) && SYMBOL_ROOT != node.ports[-1];
 }
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
@@ -2193,7 +2133,7 @@ inline static bool
 graphviz_is_active_edge(const struct node node, const uint8_t i) {
     XASSERT(node.ports);
 
-    const struct node f = node, g = follow_port(&node.ports[i]);
+    const struct node f = node, g = follow_port(node, i);
 
     return is_interaction(f, g);
 }
@@ -2202,15 +2142,18 @@ COMPILER_NONNULL(1) //
 static void
 graphviz_draw_node(
     struct graphviz_context *const restrict ctx, const struct node node) {
-    MY_ASSERT(ctx);
+    assert(ctx);
     XASSERT(ctx->stream);
     XASSERT(node.ports);
 
     const uint64_t *const p = node.ports;
 
     const bool is_active = graphviz_is_active_node(node),
-               is_current = graphviz_is_current_node(ctx, node),
+               is_current = graphviz_is_current_node(node),
                is_root = SYMBOL_ROOT == p[-1];
+
+    char *const ssymbol = graphviz_print_symbol(node);
+    char *const xlabel = graphviz_node_xlabel(node);
 
     fprintf(
         ctx->stream,
@@ -2221,13 +2164,16 @@ graphviz_draw_node(
         "%s%s%s];\n",
         // clang-format on
         (void *)p,
-        graphviz_print_symbol(node),
-        graphviz_node_xlabel(node),
+        ssymbol,
+        xlabel,
         (is_current && !is_root
              ? ", color=darkred"
              : (is_active && !is_root ? ", color=darkgreen" : "")),
         (is_active ? ", penwidth=2.3" : ""),
         (is_root ? ", style=filled" : ""));
+
+    free(ssymbol);
+    free(xlabel);
 }
 
 COMPILER_NONNULL(1) //
@@ -2236,13 +2182,13 @@ graphviz_draw_edge(
     struct graphviz_context *const restrict ctx,
     const struct node source,
     const uint8_t i) {
-    MY_ASSERT(ctx);
+    assert(ctx);
     XASSERT(source.ports);
 
     uint64_t *const target_port = DECODE_ADDRESS(source.ports[i]);
     const struct node target = node_of_port(target_port);
-
     const bool is_active = graphviz_is_active_edge(source, i);
+    char *const edge_label = graphviz_edge_label(source, i);
 
     fprintf(
         ctx->stream,
@@ -2251,14 +2197,16 @@ graphviz_draw_edge(
         // clang-format on
         (void *)source.ports,
         (void *)target.ports,
-        graphviz_edge_label(source, i),
+        edge_label,
         graphviz_edge_tailport(source, i),
-        (is_active && graphviz_is_current_node(ctx, source)
+        (is_active && graphviz_is_current_node(source)
              ? ", color=darkred"
              : (is_active ? ", color=darkgreen" : "")),
         (is_active ? ", penwidth=1.5" : ""),
         (IS_PRINCIPAL_PORT(*target_port) ? ", arrowhead=dot" : ""),
         (0 == i ? ", style=dashed" : ""));
+
+    free(edge_label);
 }
 
 COMPILER_NONNULL(1) //
@@ -2267,11 +2215,11 @@ go_graphviz(
     struct graphviz_context *const restrict ctx,
     const struct node source,
     const uint8_t i) {
-    MY_ASSERT(ctx);
+    assert(ctx);
     XASSERT(ctx->stream);
     XASSERT(source.ports);
 
-    const struct node node = follow_port(&source.ports[i]);
+    const struct node node = follow_port(source, i);
 
     if (is_focused_on(ctx->history, node)) { return; }
 
@@ -2291,8 +2239,8 @@ graphviz(
     const char *const restrict filename) {
     debug("%s(\"%s\")", __func__, filename);
 
-    MY_ASSERT(graph);
-    MY_ASSERT(filename);
+    assert(graph);
+    assert(filename);
 
     FILE *fp = fopen(filename, "w");
     if (NULL == fp) {
@@ -2315,7 +2263,6 @@ graphviz(
         .stream = fp,
     };
     go_graphviz(&ctx, graph->root, 0);
-    CLEAR_MEMORY(ctx.graph->current_pair);
     free_focus(ctx.history);
     fprintf(fp, "}\n");
 
@@ -2334,11 +2281,18 @@ graphviz(
 
 COMPILER_NONNULL(1) //
 static void
-wait_for_user(struct context *const restrict graph) {
-    MY_ASSERT(graph);
+wait_for_user(
+    struct context *const restrict graph,
+    const struct node f,
+    const struct node g) {
+    assert(graph);
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
+    set_phase(&f.ports[0], PHASE_CURRENT_PAIR);
+    set_phase(&g.ports[0], PHASE_CURRENT_PAIR);
     graphviz(graph, "target/state.dot");
+    set_phase(&f.ports[0], PHASE_DEFAULT);
+    set_phase(&g.ports[0], PHASE_DEFAULT);
     if (system("./command/graphviz-state.sh") != 0) {
         panic("Failed to run `./command/graphviz-state.sh`!");
     }
@@ -2374,41 +2328,39 @@ emit_bytecode(
     struct bytecode *const restrict bc,
     struct lambda_term *const restrict term,
     const uint64_t lvl) {
-    MY_ASSERT(graph);
-    MY_ASSERT(term);
+    assert(graph);
+    assert(term);
 
     switch (term->ty) {
     case LAMBDA_TERM_LAMBDA: {
-        struct lambda_data *const binder = term->data.lambda;
-        struct lambda_term *const body = term->data.lambda->body;
+        struct lambda_data *const binder = term->data.lam;
+        struct lambda_term *const body = term->data.lam->body;
         XASSERT(binder);
         XASSERT(body);
 
         const bool is_identity =
             LAMBDA_TERM_VAR == body->ty && binder == *body->data.var;
         if (is_identity) {
-            // clang-format off
-            const struct node lambda = alloc_node(graph, SYMBOL_IDENTITY_LAMBDA);
-            // clang-format on
-            BC_ATTACH_NODE(bc, lambda, 0, &term->connect_to);
+            const struct node lam = alloc_node(graph, SYMBOL_IDENTITY_LAMBDA);
+            BC_ATTACH_NODE(bc, lam, 0, &term->connect_to);
             break;
         }
 
         if (0 == binder->nusages) {
             // This is a lambda that "garbage-collects" its argument.
-            const struct node lambda = alloc_node(graph, SYMBOL_GC_LAMBDA);
-            BC_ATTACH_NODE(bc, lambda, 0, &term->connect_to);
+            const struct node lam = alloc_node(graph, SYMBOL_GC_LAMBDA);
+            BC_ATTACH_NODE(bc, lam, 0, &term->connect_to);
             BC_SAVE_PORT(bc, &body->connect_to, 1);
             emit_bytecode(graph, bc, body, lvl + 1);
             break;
         }
 
-        const struct node lambda = alloc_node(
+        const struct node lam = alloc_node(
             graph, term->fv_count > 0 ? SYMBOL_LAMBDA : SYMBOL_LAMBDA_C);
 
         binder->binder_ports = xmalloc(sizeof(uint64_t *) * binder->nusages);
         binder->lvl = lvl;
-        BC_ATTACH_NODE(bc, lambda, 0, &term->connect_to);
+        BC_ATTACH_NODE(bc, lam, 0, &term->connect_to);
         if (1 == binder->nusages) {
             // This is a linear non-self-referential lambda.
             BC_SAVE_PORT(bc, &binder->binder_ports[0], 1);
@@ -2438,12 +2390,12 @@ emit_bytecode(
         break;
     }
     case LAMBDA_TERM_APPLY: {
-        struct lambda_term *const rator = term->data.apply.rator, //
-            *const rand = term->data.apply.rand;
+        struct lambda_term *const rator = term->data.app.rator, //
+            *const rand = term->data.app.rand;
 
-        const struct node applicator = alloc_node(graph, SYMBOL_APPLICATOR);
+        const struct node app = alloc_node(graph, SYMBOL_APPLICATOR);
 
-        BC_ATTACH_NODE(bc, applicator, 1, &term->connect_to);
+        BC_ATTACH_NODE(bc, app, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &rator->connect_to, 0);
         BC_SAVE_PORT(bc, &rand->connect_to, 2);
         emit_bytecode(graph, bc, rator, lvl);
@@ -2460,16 +2412,16 @@ emit_bytecode(
         break;
     }
     case LAMBDA_TERM_UNARY_CALL: {
-        uint64_t (*const function)(uint64_t) = term->data.u_call.function;
-        struct lambda_term *const rand = term->data.u_call.rand;
+        uint64_t (*const function)(uint64_t) = term->data.ucall.function;
+        struct lambda_term *const rand = term->data.ucall.rand;
 
-        const struct node call = alloc_node(graph, SYMBOL_UNARY_CALL);
+        const struct node ucall = alloc_node(graph, SYMBOL_UNARY_CALL);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-        call.ports[2] = U64_OF_FUNCTION(function);
+        ucall.ports[2] = U64_OF_FUNCTION(function);
 #pragma GCC diagnostic pop
 
-        BC_ATTACH_NODE(bc, call, 1, &term->connect_to);
+        BC_ATTACH_NODE(bc, ucall, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &rand->connect_to, 0);
         emit_bytecode(graph, bc, rand, lvl);
 
@@ -2477,17 +2429,17 @@ emit_bytecode(
     }
     case LAMBDA_TERM_BINARY_CALL: {
         uint64_t (*const function)(uint64_t, uint64_t) = //
-            term->data.b_call.function;
-        struct lambda_term *const lhs = term->data.b_call.lhs, //
-            *const rhs = term->data.b_call.rhs;
+            term->data.bcall.function;
+        struct lambda_term *const lhs = term->data.bcall.lhs, //
+            *const rhs = term->data.bcall.rhs;
 
-        const struct node call = alloc_node(graph, SYMBOL_BINARY_CALL);
+        const struct node bcall = alloc_node(graph, SYMBOL_BINARY_CALL);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-        call.ports[3] = U64_OF_FUNCTION(function);
+        bcall.ports[3] = U64_OF_FUNCTION(function);
 #pragma GCC diagnostic pop
 
-        BC_ATTACH_NODE(bc, call, 1, &term->connect_to);
+        BC_ATTACH_NODE(bc, bcall, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &lhs->connect_to, 0);
         BC_SAVE_PORT(bc, &rhs->connect_to, 2);
         emit_bytecode(graph, bc, lhs, lvl);
@@ -2513,12 +2465,12 @@ emit_bytecode(
         break;
     }
     case LAMBDA_TERM_PERFORM: {
-        struct lambda_term *const action = term->data.perform.action, //
-            *const k = term->data.perform.k;
+        struct lambda_term *const action = term->data.perf.action, //
+            *const k = term->data.perf.k;
 
-        const struct node perform = alloc_node(graph, SYMBOL_PERFORM);
+        const struct node perf = alloc_node(graph, SYMBOL_PERFORM);
 
-        BC_ATTACH_NODE(bc, perform, 1, &term->connect_to);
+        BC_ATTACH_NODE(bc, perf, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &action->connect_to, 0);
         BC_SAVE_PORT(bc, &k->connect_to, 2);
         emit_bytecode(graph, bc, action, lvl);
@@ -2543,6 +2495,9 @@ emit_bytecode(
 // Bytecode Execution
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+// Connect the interface of an expanded net to `target`.
+#define plug_into(entry, target) ((entry)->expansion->connect_to = (target))
+
 COMPILER_NONNULL(1, 2, 4) //
 static void
 build_duplicator_tree(
@@ -2550,9 +2505,9 @@ build_duplicator_tree(
     uint64_t *const restrict binder_port,
     const uint64_t n,
     uint64_t **const restrict ports) {
-    MY_ASSERT(graph);
-    MY_ASSERT(binder_port);
-    MY_ASSERT(ports);
+    assert(graph);
+    assert(binder_port);
+    assert(ports);
     XASSERT(n >= 2);
 
     struct node current = alloc_node(graph, SYMBOL_DUPLICATOR(0));
@@ -2573,7 +2528,7 @@ COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 execute_bytecode(
     struct context *const restrict graph, const struct bytecode bc) {
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(bc.instructions);
 
     struct node current = {NULL};
@@ -2643,7 +2598,7 @@ gc_lambda_binder(
     const struct node f,
     const struct node g,
     const ptrdiff_t i) {
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
     XASSERT(1 == i);
@@ -2667,7 +2622,7 @@ gc_duplicator_aux(
     const struct node f,
     const struct node g,
     const ptrdiff_t i) {
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
     XASSERT(1 == i || 2 == i);
@@ -2681,7 +2636,7 @@ gc_duplicator_aux(
                       shared = node_of_port(points_to);
 
     if (SYMBOL_ERASER == h.ports[-1]) {
-        MY_ASSERT(PHASE_GC == DECODE_PHASE_METADATA(h.ports[0]));
+        assert(PHASE_GC == DECODE_PHASE_METADATA(h.ports[0]));
         connect_ports(&f.ports[0], points_to);
         focus_on(&graph->gc_focus, f);
         free_node(graph, g);
@@ -2717,7 +2672,7 @@ gc_step(
     const struct node f,
     const struct node g,
     const ptrdiff_t i) {
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
     XASSERT(i >= 0 && (uint64_t)i < MAX_PORTS);
@@ -2821,8 +2776,8 @@ static void
 gc(struct context *const restrict graph, uint64_t *const restrict port) {
     debug("%s(%p)", __func__, (void *)port);
 
-    MY_ASSERT(graph);
-    MY_ASSERT(port);
+    assert(graph);
+    assert(port);
 
     const struct node launch = alloc_gc_node(graph, port);
     focus_on(&graph->gc_focus, launch);
@@ -2853,225 +2808,23 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
     }
 }
 
-// Core Interaction Rules
+// Computational Interaction Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-#ifndef NDEBUG
-
-static void
-assert_annihilation(const struct node f, const struct node g) {
-    MY_ASSERT(is_interaction(f, g));
-}
-
-static void
-assert_beta(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
-    MY_ASSERT(SYMBOL_LAMBDA == g.ports[-1]);
-}
-
-static void
-assert_beta_c(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
-    MY_ASSERT(SYMBOL_LAMBDA_C == g.ports[-1]);
-}
-
-static void
-assert_identity_beta(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
-    MY_ASSERT(SYMBOL_IDENTITY_LAMBDA == g.ports[-1]);
-}
-
-static void
-assert_gc_beta(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
-    MY_ASSERT(SYMBOL_GC_LAMBDA == g.ports[-1]);
-}
-
-static void
-assert_expand(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_REFERENCE == f.ports[-1]);
-    // `g` is unspecified.
-}
-
-static void
-assert_commutation(const struct node f, const struct node g) {
-    MY_ASSERT(is_interaction(f, g));
-}
-
-static void
-assert_unary_call(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_UNARY_CALL == f.ports[-1]);
-    MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
-}
-
-static void
-assert_binary_call(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_BINARY_CALL == f.ports[-1]);
-    MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
-}
-
-static void
-assert_binary_call_aux(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_BINARY_CALL_AUX == f.ports[-1]);
-    MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
-}
-
-static void
-assert_if_then_else(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_IF_THEN_ELSE == f.ports[-1]);
-    MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
-}
-
-static void
-assert_perform(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_PERFORM == f.ports[-1]);
-    MY_ASSERT(SYMBOL_CELL == g.ports[-1]);
-}
-
-static void
-assert_barrier(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_BARRIER == f.ports[-1]);
-    MY_ASSERT(SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1]);
-}
-
-static void
-assert_unbarrier(
-    const struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(graph);
-    MY_ASSERT(is_interaction(f, g));
-    MY_ASSERT(SYMBOL_BARRIER == f.ports[-1]);
-    // `g` is unspecified.
-}
-
-#else
-
-#define assert_annihilation(f, g)           ((void)0)
-#define assert_beta(graph, f, g)            ((void)0)
-#define assert_beta_c(graph, f, g)          ((void)0)
-#define assert_identity_beta(graph, f, g)   ((void)0)
-#define assert_gc_beta(graph, f, g)         ((void)0)
-#define assert_expand(graph, f, g)          ((void)0)
-#define assert_commutation(f, g)            ((void)0)
-#define assert_unary_call(graph, f, g)      ((void)0)
-#define assert_binary_call(graph, f, g)     ((void)0)
-#define assert_binary_call_aux(graph, f, g) ((void)0)
-#define assert_if_then_else(graph, f, g)    ((void)0)
-#define assert_perform(graph, f, g)         ((void)0)
-#define assert_barrier(graph, f, g)         ((void)0)
-#define assert_unbarrier(graph, f, g)       ((void)0)
-
-#endif // NDEBUG
-
-#ifdef OPTISCOPE_ENABLE_TRACING
-
-COMPILER_NONNULL(1, 2) //
-static void
-debug_interaction(
-    const char *const restrict caller,
-    struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    MY_ASSERT(caller);
-    MY_ASSERT(graph);
-
-#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
-    graph->current_pair[0] = f;
-    graph->current_pair[1] = g;
-#endif
-
-    char f_ssymbol[MAX_SSYMBOL_SIZE] = {0}, g_ssymbol[MAX_SSYMBOL_SIZE] = {0};
-    strcpy(f_ssymbol, print_symbol(f.ports[-1]));
-    strcpy(g_ssymbol, print_symbol(g.ports[-1]));
-    debug(
-        "%s(%p %s, %p %s)",
-        caller,
-        (void *)f.ports,
-        f_ssymbol,
-        (void *)g.ports,
-        g_ssymbol);
-    wait_for_user(graph);
-}
-
-#else
-
-#define debug_interaction(caller, graph, f, g) ((void)0)
-
-#endif // OPTISCOPE_ENABLE_TRACING
-
 // clang-format off
-#define RULE_DEFINITION(name, graph, f, g) \
+#define COMPUTATION_RULE(name, graph, f, g) \
     COMPILER_NONNULL(1) COMPILER_HOT \
     static void \
     name(struct context *const restrict graph, const struct node f, const struct node g)
 // clang-format on
 
-RULE_DEFINITION(beta, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(beta, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_beta(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nbetas++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+    XASSERT(SYMBOL_LAMBDA == g.ports[-1]);
 
     inst_delimiter(
         graph,
@@ -3088,16 +2841,13 @@ RULE_DEFINITION(beta, graph, f, g) {
     free_node(graph, g);
 }
 
-RULE_DEFINITION(beta_c, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(beta_c, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_beta_c(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nbetas++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+    XASSERT(SYMBOL_LAMBDA_C == g.ports[-1]);
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
     connect_ports(DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[1]));
@@ -3106,16 +2856,13 @@ RULE_DEFINITION(beta_c, graph, f, g) {
     free_node(graph, g);
 }
 
-RULE_DEFINITION(identity_beta, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(identity_beta, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_identity_beta(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nbetas++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+    XASSERT(SYMBOL_IDENTITY_LAMBDA == g.ports[-1]);
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
@@ -3123,16 +2870,13 @@ RULE_DEFINITION(identity_beta, graph, f, g) {
     free_node(graph, g);
 }
 
-RULE_DEFINITION(gc_beta, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(gc_beta, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_gc_beta(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nbetas++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+    XASSERT(SYMBOL_GC_LAMBDA == g.ports[-1]);
 
     inst_delimiter(
         graph,
@@ -3148,16 +2892,13 @@ RULE_DEFINITION(gc_beta, graph, f, g) {
     free_node(graph, g);
 }
 
-RULE_DEFINITION(barrier, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(barrier, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_barrier(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nbarrier_operations++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_BARRIER == f.ports[-1]);
+    XASSERT(SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1]);
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
     f.ports[2] = checked_add(f.ports[2], g.ports[2]);
@@ -3165,16 +2906,13 @@ RULE_DEFINITION(barrier, graph, f, g) {
     free_node(graph, g);
 }
 
-RULE_DEFINITION(unbarrier, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(unbarrier, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_unbarrier(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nbarrier_operations++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_BARRIER == f.ports[-1]);
+    // `g` is unspecified.
 
     inst_delimiter(
         graph,
@@ -3184,16 +2922,13 @@ RULE_DEFINITION(unbarrier, graph, f, g) {
     free_node(graph, f);
 }
 
-RULE_DEFINITION(do_expand, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(do_expand, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_expand(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nexpansions++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_REFERENCE == f.ports[-1]);
+    // `g` is unspecified.
 
     const size_t index = f.ports[1];
     XASSERT(index < graph->book.count);
@@ -3210,21 +2945,17 @@ RULE_DEFINITION(do_expand, graph, f, g) {
         emit_bytecode(graph, &entry->bc, term, 0);
     }
 
-    // Execute bytecode.
-    entry->expansion->connect_to = &g.ports[0];
+    plug_into(entry, &g.ports[0]);
     execute_bytecode(graph, entry->bc);
 }
 
-RULE_DEFINITION(do_unary_call, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(do_unary_call, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_unary_call(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->ncell_operations++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_UNARY_CALL == f.ports[-1]);
+    XASSERT(SYMBOL_CELL == g.ports[-1]);
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -3235,16 +2966,13 @@ RULE_DEFINITION(do_unary_call, graph, f, g) {
     free_node(graph, f);
 }
 
-RULE_DEFINITION(do_binary_call, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(do_binary_call, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_binary_call(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->ncell_operations++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_BINARY_CALL == f.ports[-1]);
+    XASSERT(SYMBOL_CELL == g.ports[-1]);
 
     const struct node aux = alloc_node(graph, SYMBOL_BINARY_CALL_AUX);
     connect_ports(&aux.ports[1], DECODE_ADDRESS(f.ports[1]));
@@ -3256,16 +2984,13 @@ RULE_DEFINITION(do_binary_call, graph, f, g) {
     free_node(graph, g);
 }
 
-RULE_DEFINITION(do_binary_call_aux, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(do_binary_call_aux, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_binary_call_aux(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->ncell_operations++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_BINARY_CALL_AUX == f.ports[-1]);
+    XASSERT(SYMBOL_CELL == g.ports[-1]);
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -3276,16 +3001,13 @@ RULE_DEFINITION(do_binary_call_aux, graph, f, g) {
     free_node(graph, f);
 }
 
-RULE_DEFINITION(do_if_then_else, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(do_if_then_else, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_if_then_else(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->ncell_operations++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_IF_THEN_ELSE == f.ports[-1]);
+    XASSERT(SYMBOL_CELL == g.ports[-1]);
 
     uint64_t *const if_then = DECODE_ADDRESS(f.ports[3]), //
         *const if_else = DECODE_ADDRESS(f.ports[2]);
@@ -3301,16 +3023,13 @@ RULE_DEFINITION(do_if_then_else, graph, f, g) {
     free_node(graph, g);
 }
 
-RULE_DEFINITION(do_perform, graph, f, g) {
-    MY_ASSERT(graph);
+COMPUTATION_RULE(do_perform, graph, f, g) {
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert_perform(graph, f, g);
-    debug_interaction(__func__, graph, f, g);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->ncell_operations++;
-#endif
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_PERFORM == f.ports[-1]);
+    XASSERT(SYMBOL_CELL == g.ports[-1]);
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
@@ -3318,48 +3037,35 @@ RULE_DEFINITION(do_perform, graph, f, g) {
     free_node(graph, g);
 }
 
-// Specialized Annihilation Rules
+#undef COMPUTATION_RULE
+
+// Generic Annihilation Helpers
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+// clang-format off
+#define ANNIHILATION_HELPER(name, graph, f, g) \
+    COMPILER_NONNULL(1) COMPILER_HOT \
+    static void \
+    name(struct context *const restrict graph, const struct node f, const struct node g)
+// clang-format on
 
 #define ANNIHILATION_PROLOGUE(graph, f, g)                                     \
     do {                                                                       \
-        MY_ASSERT(graph);                                                      \
+        assert(graph);                                                         \
         XASSERT(f.ports);                                                      \
         XASSERT(g.ports);                                                      \
-        assert_annihilation(f, g);                                             \
-        debug_interaction(__func__, graph, f, g);                              \
-        NANNIHILATIONS_PLUS_PLUS(graph);                                       \
     } while (false)
 
-#ifdef OPTISCOPE_ENABLE_STATS
-#define NANNIHILATIONS_PLUS_PLUS(graph) ((graph)->nannihilations++)
-#else
-#define NANNIHILATIONS_PLUS_PLUS(graph) ((void)0)
-#endif
-
-RULE_DEFINITION(annihilate_delim_delim, graph, f, g) {
+ANNIHILATION_HELPER(annihilate_2_2_helper, graph, f, g) {
     ANNIHILATION_PROLOGUE(graph, f, g);
-    XASSERT(f.ports[2] > 0);
-    XASSERT(g.ports[2] > 0);
 
-    if (f.ports[2] == g.ports[2]) {
-        connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
-        free_node(graph, f);
-        free_node(graph, g);
-    } else if (f.ports[2] > g.ports[2]) {
-        f.ports[2] -= g.ports[2];
-        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-        try_merge_delimiter(graph, f);
-        free_node(graph, g);
-    } else {
-        g.ports[2] -= f.ports[2];
-        connect_ports(DECODE_ADDRESS(f.ports[1]), &g.ports[0]);
-        try_merge_delimiter(graph, g);
-        free_node(graph, f);
-    }
+    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
+
+    free_node(graph, f);
+    free_node(graph, g);
 }
 
-RULE_DEFINITION(annihilate_dup_dup, graph, f, g) {
+ANNIHILATION_HELPER(annihilate_3_3_helper, graph, f, g) {
     ANNIHILATION_PROLOGUE(graph, f, g);
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
@@ -3369,58 +3075,27 @@ RULE_DEFINITION(annihilate_dup_dup, graph, f, g) {
     free_node(graph, g);
 }
 
-RULE_DEFINITION(annihilate_gc_dup_gc_dup, graph, f, g) {
-    ANNIHILATION_PROLOGUE(graph, f, g);
-
-    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
-
-    free_node(graph, f);
-    free_node(graph, g);
-}
-
-RULE_DEFINITION(annihilate_gc_dup_l_dup, graph, f, g) {
-    ANNIHILATION_PROLOGUE(graph, f, g);
-
-    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
-    gc(graph, DECODE_ADDRESS(g.ports[1]));
-
-    free_node(graph, f);
-    free_node(graph, g);
-}
-
-RULE_DEFINITION(annihilate_gc_dup_r_dup, graph, f, g) {
-    ANNIHILATION_PROLOGUE(graph, f, g);
-
-    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
-    gc(graph, DECODE_ADDRESS(g.ports[2]));
-
-    free_node(graph, f);
-    free_node(graph, g);
-}
-
-#undef NANNIHILATIONS_PLUS_PLUS
 #undef ANNIHILATION_PROLOGUE
+#undef ANNIHILATION_HELPER
 
-// Generic Commutation Rules
+// Generic Commutation Helpers
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+// clang-format off
+#define COMMUTATION_HELPER(name, graph, f, g) \
+    COMPILER_NONNULL(1) COMPILER_HOT \
+    static void \
+    name(struct context *const restrict graph, const struct node f, const struct node g)
+// clang-format on
 
 #define COMMUTATION_PROLOGUE(graph, f, g)                                      \
     do {                                                                       \
-        MY_ASSERT(graph);                                                      \
+        assert(graph);                                                         \
         XASSERT(f.ports);                                                      \
         XASSERT(g.ports);                                                      \
-        assert_commutation(f, g);                                              \
-        debug_interaction(__func__, graph, f, g);                              \
-        NCOMMUTATIONS_PLUS_PLUS(graph);                                        \
     } while (false)
 
-#ifdef OPTISCOPE_ENABLE_STATS
-#define NCOMMUTATIONS_PLUS_PLUS(graph) ((graph)->ncommutations++)
-#else
-#define NCOMMUTATIONS_PLUS_PLUS(graph) ((void)0)
-#endif
-
-RULE_DEFINITION(commute_1_2, graph, f, g) {
+COMMUTATION_HELPER(commute_1_2_helper, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
@@ -3428,9 +3103,9 @@ RULE_DEFINITION(commute_1_2, graph, f, g) {
     free_node(graph, g);
 }
 
-#define commute_2_1(graph, f, g) commute_1_2((graph), (g), (f))
+#define commute_2_1_helper(graph, f, g) commute_1_2_helper((graph), (g), (f))
 
-RULE_DEFINITION(commute_1_3, graph, f, g) {
+COMMUTATION_HELPER(commute_1_3_helper, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
     const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
@@ -3441,9 +3116,11 @@ RULE_DEFINITION(commute_1_3, graph, f, g) {
     free_node(graph, g);
 }
 
-#define commute_3_1(graph, f, g) commute_1_3((graph), (g), (f))
+#define commute_3_1_helper(graph, f, g) commute_1_3_helper((graph), (g), (f))
 
-RULE_DEFINITION(commute_2_2_core, graph, f, g) {
+COMMUTATION_HELPER(commute_2_2_helper, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
     connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 
@@ -3453,39 +3130,55 @@ RULE_DEFINITION(commute_2_2_core, graph, f, g) {
     try_merge_if_delimiter(graph, g);
 }
 
-RULE_DEFINITION(commute_2_2, graph, f, g) {
+COMMUTATION_HELPER(commute_2_3_helper, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    commute_2_2_core(graph, f, g);
+
+    const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
+
+    connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
+
+    connect_ports(&g.ports[1], &f.ports[1]);
+    connect_ports(&g.ports[2], &fx.ports[1]);
+
+    if (IS_DELIMITER(f.ports[-1])) {
+        try_merge_delimiter(graph, f);
+        try_merge_delimiter(graph, fx);
+    }
+
+    if (IS_DUPLICATOR(g.ports[-1])) { try_duplicate(graph, g); }
 }
 
-RULE_DEFINITION(commute_3_2_core, graph, f, g) {
-    const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
+#define commute_3_2_helper(graph, f, g) commute_2_3_helper((graph), (g), (f))
 
-    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+COMMUTATION_HELPER(commute_2_4_helper, graph, f, g) {
+    COMMUTATION_PROLOGUE(graph, f, g);
+
+    const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
+    const struct node fxx = alloc_node_from(graph, f.ports[-1], &f);
+
     connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
-    connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
+    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
+    connect_ports(&fxx.ports[0], DECODE_ADDRESS(g.ports[3]));
 
-    connect_ports(&f.ports[1], &g.ports[1]);
-    connect_ports(&f.ports[2], &gx.ports[1]);
+    connect_ports(&g.ports[1], &f.ports[1]);
+    connect_ports(&g.ports[2], &fx.ports[1]);
+    connect_ports(&g.ports[3], &fxx.ports[1]);
 
-    if (IS_DUPLICATOR(f.ports[-1])) { try_duplicate(graph, f); }
-
-    if (IS_DELIMITER(g.ports[-1])) {
-        try_merge_delimiter(graph, g);
-        try_merge_delimiter(graph, gx);
+    if (IS_DELIMITER(f.ports[-1])) {
+        try_merge_delimiter(graph, f);
+        try_merge_delimiter(graph, fx);
+        try_merge_delimiter(graph, fxx);
     }
 }
 
-#define commute_2_3_core(graph, f, g) commute_3_2_core((graph), (g), (f))
+#define commute_4_2_helper(graph, f, g) commute_2_4_helper((graph), (g), (f))
 
-RULE_DEFINITION(commute_3_2, graph, f, g) {
+COMMUTATION_HELPER(commute_3_3_helper, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
-    commute_3_2_core(graph, f, g);
-}
 
-#define commute_2_3(graph, f, g) commute_3_2((graph), (g), (f))
-
-RULE_DEFINITION(commute_3_3_core, graph, f, g) {
     const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
     const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
 
@@ -3510,178 +3203,60 @@ RULE_DEFINITION(commute_3_3_core, graph, f, g) {
     }
 }
 
-RULE_DEFINITION(commute_3_3, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    commute_3_3_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_4_2, graph, f, g) {
+COMMUTATION_HELPER(commute_3_4_helper, graph, f, g) {
     COMMUTATION_PROLOGUE(graph, f, g);
 
     const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
-    const struct node gxx = alloc_node_from(graph, g.ports[-1], &g);
+    const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
+    const struct node fxx = alloc_node_from(graph, f.ports[-1], &f);
 
-    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
     connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
     connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
-    connect_ports(&gxx.ports[0], DECODE_ADDRESS(f.ports[3]));
+    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
+    connect_ports(&fxx.ports[0], DECODE_ADDRESS(g.ports[3]));
 
     connect_ports(&f.ports[1], &g.ports[1]);
     connect_ports(&f.ports[2], &gx.ports[1]);
-    connect_ports(&f.ports[3], &gxx.ports[1]);
+    connect_ports(&fx.ports[1], &g.ports[2]);
+    connect_ports(&fx.ports[2], &gx.ports[2]);
+    connect_ports(&fxx.ports[1], &g.ports[3]);
+    connect_ports(&fxx.ports[2], &gx.ports[3]);
 
-    if (IS_DELIMITER(g.ports[-1])) {
-        try_merge_delimiter(graph, g);
-        try_merge_delimiter(graph, gx);
-        try_merge_delimiter(graph, gxx);
+    if (IS_DUPLICATOR(f.ports[-1])) {
+        try_duplicate(graph, f);
+        try_duplicate(graph, fx);
+        try_duplicate(graph, fxx);
     }
 }
 
-#define commute_2_4(graph, f, g) commute_4_2((graph), (g), (f))
+#define commute_4_3_helper(graph, f, g) commute_3_4_helper((graph), (g), (f))
 
-RULE_DEFINITION(commute_4_3, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
-    const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
-    const struct node gxx = alloc_node_from(graph, g.ports[-1], &g);
-
-    connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-    connect_ports(&fx.ports[0], DECODE_ADDRESS(g.ports[2]));
-    connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
-    connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
-    connect_ports(&gxx.ports[0], DECODE_ADDRESS(f.ports[3]));
-
-    connect_ports(&g.ports[1], &f.ports[1]);
-    connect_ports(&g.ports[2], &fx.ports[1]);
-    connect_ports(&gx.ports[1], &f.ports[2]);
-    connect_ports(&gx.ports[2], &fx.ports[2]);
-    connect_ports(&gxx.ports[1], &f.ports[3]);
-    connect_ports(&gxx.ports[2], &fx.ports[3]);
-
-    if (IS_DUPLICATOR(g.ports[-1])) {
-        try_duplicate(graph, g);
-        try_duplicate(graph, gx);
-        try_duplicate(graph, gxx);
-    }
-}
-
-#define commute_3_4(graph, f, g) commute_4_3((graph), (g), (f))
-
-// Index-Updating Commutation Rules
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-RULE_DEFINITION(commute_dup_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    if (SYMBOL_INDEX(f.ports[-1]) >= SYMBOL_INDEX(g.ports[-1])) {
-        f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
-    }
-
-    commute_3_2_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_dup_lambda, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    f.ports[-1] = bump_index(f.ports[-1], 1);
-    commute_3_3_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_dup_gc_lambda, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    f.ports[-1] = bump_index(f.ports[-1], 1);
-    commute_3_2_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_dup_lambda_c, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    f.ports[-1] = bump_index(f.ports[-1], 1);
-    commute_3_3_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_gc_dup_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    if (f.ports[2] >= SYMBOL_INDEX(g.ports[-1])) {
-        f.ports[2] = bump_raw_index(f.ports[2], g.ports[2]);
-    }
-
-    commute_2_2_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_gc_dup_lambda, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    f.ports[2] = bump_raw_index(f.ports[2], 1);
-    commute_2_3_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_gc_dup_gc_lambda, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    f.ports[2] = bump_raw_index(f.ports[2], 1);
-    commute_2_2_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_gc_dup_lambda_c, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    f.ports[2] = bump_raw_index(f.ports[2], 1);
-    commute_2_3_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_delim_delim, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    if (f.ports[-1] > g.ports[-1]) {
-        f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
-    } else {
-        g.ports[-1] = bump_index(g.ports[-1], f.ports[2]);
-    }
-
-    commute_2_2_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_delim_lambda, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    f.ports[-1] = bump_index(f.ports[-1], 1);
-    commute_2_3_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_delim_gc_lambda, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-    f.ports[-1] = bump_index(f.ports[-1], 1);
-    commute_2_2_core(graph, f, g);
-}
-
-RULE_DEFINITION(commute_delim_lambda_c, graph, f, g) {
-    COMMUTATION_PROLOGUE(graph, f, g);
-
-    connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
-
-    free_node(graph, f);
-}
-
-#undef NCOMMUTATIONS_PLUS_PLUS
 #undef COMMUTATION_PROLOGUE
+#undef COMMUTATION_HELPER
 
-// Specialized Extrusion Rules
+// Generic Extrusion Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 // TODO: maybe print delimiter extrusions if tracing is enabled?
 
+// clang-format off
+#define EXTRUSION_RULE(name, graph, f, g) \
+    COMPILER_NONNULL(1) COMPILER_HOT \
+    static void \
+    name(struct context *const restrict graph, const struct node f, const struct node g)
+// clang-format on
+
 #define EXTRUSION_PROLOGUE(graph, f, g)                                        \
     do {                                                                       \
-        MY_ASSERT(graph);                                                      \
+        assert(graph);                                                         \
         XASSERT(f.ports);                                                      \
         XASSERT(g.ports);                                                      \
-        NEXTRUSIONS_PLUS_PLUS(graph);                                          \
+        assert(IS_DELIMITER(f.ports[-1]));                                     \
+        assert(DECODE_ADDRESS(f.ports[0]) == &g.ports[1]);                     \
     } while (false)
 
-#ifdef OPTISCOPE_ENABLE_STATS
-#define NEXTRUSIONS_PLUS_PLUS(graph) ((graph)->nextrusions++)
-#else
-#define NEXTRUSIONS_PLUS_PLUS(graph) ((void)0)
-#endif
-
-RULE_DEFINITION(extrude_2_2, graph, f, g) {
+EXTRUSION_RULE(extrude_2_2, graph, f, g) {
     EXTRUSION_PROLOGUE(graph, f, g);
 
     connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
@@ -3690,9 +3265,13 @@ RULE_DEFINITION(extrude_2_2, graph, f, g) {
     connect_ports(&g.ports[0], &f.ports[1]);
 
     try_merge_delimiter(graph, f);
+
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->nextrusions++;
+#endif
 }
 
-RULE_DEFINITION(extrude_2_3, graph, f, g) {
+EXTRUSION_RULE(extrude_2_3, graph, f, g) {
     EXTRUSION_PROLOGUE(graph, f, g);
 
     const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
@@ -3706,9 +3285,13 @@ RULE_DEFINITION(extrude_2_3, graph, f, g) {
 
     try_merge_delimiter(graph, f);
     try_merge_delimiter(graph, fx);
+
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->nextrusions++;
+#endif
 }
 
-RULE_DEFINITION(extrude_2_4, graph, f, g) {
+EXTRUSION_RULE(extrude_2_4, graph, f, g) {
     EXTRUSION_PROLOGUE(graph, f, g);
 
     const struct node fx = alloc_node_from(graph, f.ports[-1], &f);
@@ -3726,13 +3309,194 @@ RULE_DEFINITION(extrude_2_4, graph, f, g) {
     try_merge_delimiter(graph, f);
     try_merge_delimiter(graph, fx);
     try_merge_delimiter(graph, fxx);
+
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->nextrusions++;
+#endif
 }
 
-#undef NEXTRUSIONS_PLUS_PLUS
 #undef EXTRUSION_PROLOGUE
+#undef EXTRUSION_RULE
 
-// Weak Reduction to Interface Normal Form (WRINF)
+// Specialized Annihilation Helpers
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+#define annihilate_dup_gc_dup(graph, f, g, keep, discard)                      \
+    do {                                                                       \
+        connect_ports(                                                         \
+            DECODE_ADDRESS(f.ports[(keep)]), DECODE_ADDRESS(g.ports[1]));      \
+        gc(graph, DECODE_ADDRESS(f.ports[(discard)]));                         \
+        free_node(graph, f);                                                   \
+        free_node(graph, g);                                                   \
+    } while (0)
+
+#define annihilate_gc_dup_dup(graph, f, g, keep, discard)                      \
+    do {                                                                       \
+        connect_ports(                                                         \
+            DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[(keep)]));      \
+        gc(graph, DECODE_ADDRESS(g.ports[(discard)]));                         \
+        free_node(graph, f);                                                   \
+        free_node(graph, g);                                                   \
+    } while (0)
+
+#define gc_both_directions(graph, f, g)                                        \
+    do {                                                                       \
+        gc(graph, DECODE_ADDRESS(f.ports[1]));                                 \
+        gc(graph, DECODE_ADDRESS(g.ports[1]));                                 \
+        free_node(graph, f);                                                   \
+        free_node(graph, g);                                                   \
+    } while (0)
+
+#define annihilate_delimiter(graph, survivor, deceased)                        \
+    do {                                                                       \
+        survivor.ports[2] -= deceased.ports[2];                                \
+        connect_ports(&survivor.ports[0], DECODE_ADDRESS(deceased.ports[1]));  \
+        try_merge_delimiter(graph, survivor);                                  \
+        free_node(graph, deceased);                                            \
+    } while (0)
+
+#define absorb_delimiter(graph, f, g)                                          \
+    do {                                                                       \
+        connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));                \
+        free_node(graph, f);                                                   \
+    } while (0)
+
+// Specialized Commutation Helpers
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+#define commute_gc_dup_lam(graph, f, g)                                        \
+    do {                                                                       \
+        f.ports[2] = bump_raw_index(f.ports[2], 1);                            \
+        commute_2_3_helper(graph, f, g);                                       \
+    } while (0)
+
+#define commute_gc_dup_gc_lam(graph, f, g)                                     \
+    do {                                                                       \
+        f.ports[2] = bump_raw_index(f.ports[2], 1);                            \
+        commute_2_2_helper(graph, f, g);                                       \
+    } while (0)
+
+#define commute_gc_dup_del(graph, f, g)                                        \
+    do {                                                                       \
+        if (f.ports[2] >= SYMBOL_INDEX(g.ports[-1])) {                         \
+            f.ports[2] = bump_raw_index(f.ports[2], g.ports[2]);               \
+        }                                                                      \
+        commute_2_2_helper(graph, f, g);                                       \
+    } while (0)
+
+#define commute_dup_lam(graph, f, g)                                           \
+    do {                                                                       \
+        f.ports[-1] = bump_index(f.ports[-1], 1);                              \
+        commute_3_3_helper(graph, f, g);                                       \
+    } while (0)
+
+#define commute_dup_gc_lam(graph, f, g)                                        \
+    do {                                                                       \
+        f.ports[-1] = bump_index(f.ports[-1], 1);                              \
+        commute_3_2_helper(graph, f, g);                                       \
+    } while (0)
+
+#define commute_dup_del(graph, f, g)                                           \
+    do {                                                                       \
+        if (SYMBOL_INDEX(f.ports[-1]) >= SYMBOL_INDEX(g.ports[-1])) {          \
+            f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);                 \
+        }                                                                      \
+        commute_3_2_helper(graph, f, g);                                       \
+    } while (0)
+
+#define commute_del_lam(graph, f, g)                                           \
+    do {                                                                       \
+        f.ports[-1] = bump_index(f.ports[-1], 1);                              \
+        commute_2_3_helper(graph, f, g);                                       \
+    } while (0)
+
+#define commute_del_gc_lam(graph, f, g)                                        \
+    do {                                                                       \
+        f.ports[-1] = bump_index(f.ports[-1], 1);                              \
+        commute_2_2_helper(graph, f, g);                                       \
+    } while (0)
+
+#define commute_del_del(graph, f, g)                                           \
+    do {                                                                       \
+        if (f.ports[-1] > g.ports[-1]) {                                       \
+            f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);                 \
+        } else {                                                               \
+            g.ports[-1] = bump_index(g.ports[-1], f.ports[2]);                 \
+        }                                                                      \
+        commute_2_2_helper(graph, f, g);                                       \
+    } while (0)
+
+// Interaction Rules per Operator Type
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+#ifdef OPTISCOPE_ENABLE_TRACING
+
+COMPILER_NONNULL(1, 2) //
+static void
+debug_interaction(
+    const char *const restrict caller,
+    struct context *const restrict graph,
+    const struct node f,
+    const struct node g) {
+    assert(caller);
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+
+    char *const f_ssymbol = print_symbol(f.ports[-1]), //
+        *const g_ssymbol = print_symbol(g.ports[-1]);
+
+    // clang-format off
+    debug(
+        "%s(%p %s, %p %s)", caller, (void *)f.ports, f_ssymbol, (void *)g.ports, g_ssymbol);
+    // clang-format on
+
+    free(f_ssymbol);
+    free(g_ssymbol);
+
+    wait_for_user(graph, f, g);
+}
+
+#else
+
+#define debug_interaction(caller, graph, f, g) ((void)0)
+
+#endif // OPTISCOPE_ENABLE_TRACING
+
+enum reduce_action {
+    // Pop a node from the reduction stack, continue with the popped node.
+    REDUCE_POP,
+    // Pop, but check if rescan is needed first.
+    REDUCE_POP_WITH_CHECK,
+    // Push the current node, continue with the node it points to.
+    REDUCE_PUSH,
+    // Continue from the current node.
+    REDUCE_LOOP,
+    // Stop the reduction loop.
+    REDUCE_STOP,
+};
+
+// clang-format off
+#define CONTROL_FUNCTION(name, graph, f, g) \
+    COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT \
+    static enum reduce_action \
+    name(struct context *const restrict graph, const struct node f, const struct node g)
+// clang-format on
+
+#ifdef OPTISCOPE_ENABLE_STATS
+#define NINTERACTIONS_PLUS_PLUS(graph) ((graph)->ninteractions++)
+#else
+#define NINTERACTIONS_PLUS_PLUS(graph) ((void)0)
+#endif
+
+#define INTERACTION(graph, f, g, action, ...)                                  \
+    do {                                                                       \
+        debug_interaction(__func__, (graph), (f), (g));                        \
+        do __VA_ARGS__ while (false);                                          \
+        NINTERACTIONS_PLUS_PLUS(graph);                                        \
+        return (action);                                                       \
+    } while (false)
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
 static bool
@@ -3740,7 +3504,7 @@ try_inst_barrier(
     struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
 
@@ -3750,10 +3514,10 @@ try_inst_barrier(
     const struct node h = node_of_port(h_port);
 
     if (DECODE_ADDRESS(h.ports[0]) != &g.ports[1]) {
-        const struct node barrier = alloc_node(graph, SYMBOL_BARRIER);
-        barrier.ports[2] = g.ports[2];
-        connect_ports(&barrier.ports[0], h_port);
-        connect_ports(&barrier.ports[1], &f.ports[0]);
+        const struct node barr = alloc_node(graph, SYMBOL_BARRIER);
+        barr.ports[2] = g.ports[2];
+        connect_ports(&barr.ports[0], h_port);
+        connect_ports(&barr.ports[1], &f.ports[0]);
         free_node(graph, g);
         return true;
     }
@@ -3767,10 +3531,10 @@ try_extrude(
     struct context *const restrict graph,
     const struct node f,
     const struct node g) {
-    MY_ASSERT(graph);
+    assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    MY_ASSERT(IS_DELIMITER(f.ports[-1]));
+    assert(IS_DELIMITER(f.ports[-1]));
 
     uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
 
@@ -3787,12 +3551,430 @@ try_extrude(
     }
 }
 
+CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(IS_GC_DUPLICATOR(f.ports[-1]));
+
+    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (IS_RELEVANT_LAMBDA(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_gc_dup_lam(graph, f, g); });
+    } else if (SYMBOL_GC_LAMBDA == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_gc_dup_gc_lam(graph, f, g); });
+    } else if (SYMBOL_CELL == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
+    } else if (SYMBOL_IDENTITY_LAMBDA == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (fsym == gsym && f.ports[2] == g.ports[2]) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { annihilate_2_2_helper(graph, f, g); });
+    } else if (
+        IS_GC_DUPLICATOR(gsym) && fsym != gsym && f.ports[2] == g.ports[2]) {
+        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+            gc_both_directions(graph, f, g);
+        });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+    } else if (
+        fsym == SYMBOL_GC_DUPLICATOR_LEFT && //
+        IS_DUPLICATOR(gsym) &&               //
+        f.ports[2] == SYMBOL_INDEX(gsym)) {
+        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+            annihilate_gc_dup_dup(graph, f, g, 2, 1);
+        });
+    } else if (
+        fsym == SYMBOL_GC_DUPLICATOR_RIGHT && //
+        IS_DUPLICATOR(gsym) &&                //
+        f.ports[2] == SYMBOL_INDEX(gsym)) {
+        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+            annihilate_gc_dup_dup(graph, f, g, 1, 2);
+        });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(IS_DUPLICATOR(f.ports[-1]));
+
+    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (IS_RELEVANT_LAMBDA(gsym)) {
+        INTERACTION(graph, f, g, REDUCE_POP, { commute_dup_lam(graph, f, g); });
+    } else if (SYMBOL_GC_LAMBDA == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_dup_gc_lam(graph, f, g); });
+    } else if (SYMBOL_CELL == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_1_helper(graph, f, g); });
+    } else if (SYMBOL_IDENTITY_LAMBDA == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_1_helper(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (
+        SYMBOL_GC_DUPLICATOR_LEFT == gsym && //
+        SYMBOL_INDEX(fsym) == g.ports[2]) {
+        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+            annihilate_dup_gc_dup(graph, f, g, 2, 1);
+        });
+    } else if (
+        SYMBOL_GC_DUPLICATOR_RIGHT == gsym && //
+        SYMBOL_INDEX(fsym) == g.ports[2]) {
+        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+            annihilate_dup_gc_dup(graph, f, g, 1, 2);
+        });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+    } else if (fsym == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { annihilate_3_3_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_dup_del(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_del, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(IS_DELIMITER(f.ports[-1]));
+
+    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
+
+    if (SYMBOL_CELL == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
+    } else if (SYMBOL_IDENTITY_LAMBDA == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
+    } else if (SYMBOL_LAMBDA == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { commute_del_lam(graph, f, g); });
+    } else if (SYMBOL_GC_LAMBDA == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_del_gc_lam(graph, f, g); });
+    } else if (SYMBOL_LAMBDA_C == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
+    } else if (try_extrude(graph, f, g)) {
+        return REDUCE_POP;
+    } else if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, g, f); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(graph, f, g, REDUCE_POP, { commute_dup_del(graph, g, f); });
+    } else if (fsym == gsym && f.ports[2] == g.ports[2]) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { annihilate_2_2_helper(graph, f, g); });
+    } else if (fsym == gsym && f.ports[2] > g.ports[2]) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { annihilate_delimiter(graph, f, g); });
+    } else if (fsym == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { annihilate_delimiter(graph, g, f); });
+    } else if (IS_DELIMITER(gsym)) {
+        INTERACTION(graph, f, g, REDUCE_POP, { commute_del_del(graph, f, g); });
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_app, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_LAMBDA == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { beta(graph, f, g); });
+    } else if (SYMBOL_LAMBDA_C == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { beta_c(graph, f, g); });
+    } else if (SYMBOL_IDENTITY_LAMBDA == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { identity_beta(graph, f, g); });
+    } else if (SYMBOL_GC_LAMBDA == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_ucall, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_UNARY_CALL == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_CELL == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { do_unary_call(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_bcall, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_BINARY_CALL == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_CELL == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { do_binary_call(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_bcall_aux, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_BINARY_CALL_AUX == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_CELL == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { do_binary_call_aux(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_ite, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_IF_THEN_ELSE == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_CELL == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+            do_if_then_else(graph, f, g);
+        });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_4_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_4_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_4_2_helper(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_perf, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_PERFORM == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_CELL == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { do_perform(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_barr, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_BARRIER == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { barrier(graph, f, g); });
+    } else {
+        INTERACTION(graph, f, g, REDUCE_POP, { unbarrier(graph, f, g); });
+    }
+}
+
+CONTROL_FUNCTION(interact_with_root, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_ROOT == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (IS_INTERFACE_SYMBOL(gsym)) {
+        return REDUCE_STOP;
+    } else if (IS_DELIMITER(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_LOOP, { commute_1_2_helper(graph, f, g); });
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+}
+
+#undef INTERACTION
+#undef NINTERACTIONS_PLUS_PLUS
+#undef CONTROL_FUNCTION
+
+// Weak Reduction to Interface Normal Form (WRINF)
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
 COMPILER_NONNULL(1) //
 static void
 reduce(struct context *const restrict graph) {
     debug("%s()", __func__);
 
-    MY_ASSERT(graph);
+    assert(graph);
 
     struct multifocus stack = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
 
@@ -3800,316 +3982,63 @@ rescan: {
     struct node f = graph->root, g = {NULL};
 
 loop: {
-    g = follow_port(&f.ports[0]);
+    g = follow_port(f, 0);
     XASSERT(g.ports);
 
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
+    (void)gsym; // `gsym` is onely needed for `OPTISCOPE_ENABLE_STATS`
+
+    // Ideally, these counters need to be incremented _after_ an interaction
+    // takes place. Incrementing them beforehand is just following the path of
+    // least resistance to keep the code readable.
 #ifdef OPTISCOPE_ENABLE_STATS
     if (is_interaction(f, g)) {
-        if (IS_ANY_DUPLICATOR(fsym) || IS_ANY_DUPLICATOR(gsym)) { //
-            graph->nduplication_itrs++;
+        if (IS_ANY_DUPLICATOR(fsym) || IS_ANY_DUPLICATOR(gsym)) {
+            graph->nduplicator_itrs++;
         }
-        if (IS_DELIMITER(fsym) || IS_DELIMITER(gsym)) { //
+        if (IS_DELIMITER(fsym) || IS_DELIMITER(gsym)) {
             graph->ndelimiter_itrs++;
         }
     }
 #endif
 
+    enum reduce_action action = REDUCE_POP;
+
     switch (fsym) {
-    duplicator:
-        if (SYMBOL_LAMBDA == gsym) commute_dup_lambda(graph, f, g);
-        else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_3_1(graph, f, g);
-        else if (SYMBOL_GC_LAMBDA == gsym) commute_dup_gc_lambda(graph, f, g);
-        else if (SYMBOL_LAMBDA_C == gsym) commute_dup_lambda_c(graph, f, g);
-        else if (SYMBOL_CELL == gsym) commute_3_1(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) {
-            do_expand(graph, g, f);
-            goto loop;
-        } else if (!is_pointing_to(g, f)) {
-            goto push;
-        } else if (SYMBOL_GC_DUPLICATOR_LEFT == gsym) {
-            if (SYMBOL_INDEX(fsym) == g.ports[2]) {
-                annihilate_gc_dup_l_dup(graph, g, f);
-                goto pop_with_check;
-            } else {
-                commute_3_2(graph, f, g);
-            }
-        } else if (SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
-            if (SYMBOL_INDEX(fsym) == g.ports[2]) {
-                annihilate_gc_dup_r_dup(graph, g, f);
-                goto pop_with_check;
-            } else {
-                commute_3_2(graph, f, g);
-            }
-        } else if (IS_DUPLICATOR(gsym)) {
-            if (fsym == gsym) {
-                annihilate_dup_dup(graph, f, g);
-            } else {
-                commute_3_3(graph, f, g);
-            }
-        } else if (IS_DELIMITER(gsym)) {
-            if (!try_inst_barrier(graph, f, g)) {
-                commute_dup_delim(graph, f, g);
-            }
-        } else {
-            COMPILER_UNREACHABLE();
-        }
-        goto pop;
-    delimiter:
-        if (SYMBOL_ROOT == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_LAMBDA == gsym) commute_delim_lambda(graph, f, g);
-        else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_GC_LAMBDA == gsym) commute_delim_gc_lambda(graph, f, g);
-        else if (SYMBOL_LAMBDA_C == gsym) commute_delim_lambda_c(graph, f, g);
-        else if (SYMBOL_CELL == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) commute_2_1(graph, f, g);
-        else if (try_extrude(graph, f, g)) goto pop;
-        else if (!is_pointing_to(g, f)) goto push;
-        else if (
-            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
-            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
-            commute_gc_dup_delim(graph, g, f);
-        } else if (IS_DUPLICATOR(gsym)) {
-            commute_dup_delim(graph, g, f);
-        } else if (IS_DELIMITER(gsym)) {
-            if (fsym == gsym) {
-                annihilate_delim_delim(graph, f, g);
-            } else {
-                commute_delim_delim(graph, f, g);
-            }
-        } else {
-            COMPILER_UNREACHABLE();
-        }
-        goto pop;
+    case SYMBOL_ROOT: action = interact_with_root(graph, f, g); break;
+    case SYMBOL_APPLICATOR: action = interact_with_app(graph, f, g); break;
+    case SYMBOL_UNARY_CALL: action = interact_with_ucall(graph, f, g); break;
+    case SYMBOL_BINARY_CALL: action = interact_with_bcall(graph, f, g); break;
+    case SYMBOL_BINARY_CALL_AUX:
+        action = interact_with_bcall_aux(graph, f, g);
+        break;
+    case SYMBOL_IF_THEN_ELSE: action = interact_with_ite(graph, f, g); break;
+    case SYMBOL_PERFORM: action = interact_with_perf(graph, f, g); break;
+    case SYMBOL_BARRIER: action = interact_with_barr(graph, f, g); break;
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
+        action = interact_with_gc_dup(graph, f, g);
+        break;
     default:
         if (IS_DUPLICATOR(fsym)) goto duplicator;
         else if (IS_DELIMITER(fsym)) goto delimiter;
         else COMPILER_UNREACHABLE();
-    case SYMBOL_APPLICATOR:
-        if (SYMBOL_LAMBDA == gsym) beta(graph, f, g);
-        else if (SYMBOL_LAMBDA_C == gsym) beta_c(graph, f, g);
-        else if (SYMBOL_IDENTITY_LAMBDA == gsym) identity_beta(graph, f, g);
-        else if (SYMBOL_GC_LAMBDA == gsym) {
-            gc_beta(graph, f, g);
-            goto pop_with_check;
-        } else if (SYMBOL_REFERENCE == gsym) {
-            do_expand(graph, g, f);
-            goto loop;
-        } else if (!is_pointing_to(g, f)) {
-            goto push;
-        } else if (
-            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
-            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
-            commute_3_2(graph, f, g);
-        } else if (IS_DUPLICATOR(gsym)) {
-            commute_3_3(graph, f, g);
-        } else if (IS_DELIMITER(gsym)) {
-            if (!try_inst_barrier(graph, f, g)) { //
-                commute_3_2(graph, f, g);
-            }
-        } else {
-            COMPILER_UNREACHABLE();
-        }
-        goto pop;
-    case SYMBOL_UNARY_CALL:
-        if (SYMBOL_CELL == gsym) do_unary_call(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) {
-            do_expand(graph, g, f);
-            goto loop;
-        } else if (!is_pointing_to(g, f)) {
-            goto push;
-        } else if (
-            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
-            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
-            commute_2_2(graph, f, g);
-        } else if (IS_DUPLICATOR(gsym)) {
-            commute_2_3(graph, f, g);
-        } else if (IS_DELIMITER(gsym)) {
-            if (!try_inst_barrier(graph, f, g)) { //
-                commute_2_2(graph, f, g);
-            }
-        } else {
-            COMPILER_UNREACHABLE();
-        }
-        goto pop;
-    case SYMBOL_BINARY_CALL:
-        if (SYMBOL_CELL == gsym) do_binary_call(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) {
-            do_expand(graph, g, f);
-            goto loop;
-        } else if (!is_pointing_to(g, f)) {
-            goto push;
-        } else if (
-            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
-            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
-            commute_3_2(graph, f, g);
-        } else if (IS_DUPLICATOR(gsym)) {
-            commute_3_3(graph, f, g);
-        } else if (IS_DELIMITER(gsym)) {
-            if (!try_inst_barrier(graph, f, g)) { //
-                commute_3_2(graph, f, g);
-            }
-        } else {
-            COMPILER_UNREACHABLE();
-        }
-        goto pop;
-    case SYMBOL_BINARY_CALL_AUX:
-        if (SYMBOL_CELL == gsym) do_binary_call_aux(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) {
-            do_expand(graph, g, f);
-            goto loop;
-        } else if (!is_pointing_to(g, f)) {
-            goto push;
-        } else if (
-            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
-            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
-            commute_2_2(graph, f, g);
-        } else if (IS_DUPLICATOR(gsym)) {
-            commute_2_3(graph, f, g);
-        } else if (IS_DELIMITER(gsym)) {
-            if (!try_inst_barrier(graph, f, g)) { //
-                commute_2_2(graph, f, g);
-            }
-        } else {
-            COMPILER_UNREACHABLE();
-        }
-        goto pop;
-    case SYMBOL_IF_THEN_ELSE:
-        if (SYMBOL_CELL == gsym) {
-            do_if_then_else(graph, f, g);
-            goto pop_with_check;
-        } else if (SYMBOL_REFERENCE == gsym) {
-            do_expand(graph, g, f);
-            goto loop;
-        } else if (!is_pointing_to(g, f)) {
-            goto push;
-        } else if (
-            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
-            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
-            commute_4_2(graph, f, g);
-        } else if (IS_DUPLICATOR(gsym)) {
-            commute_4_3(graph, f, g);
-        } else if (IS_DELIMITER(gsym)) {
-            if (!try_inst_barrier(graph, f, g)) { //
-                commute_4_2(graph, f, g);
-            }
-        } else {
-            COMPILER_UNREACHABLE();
-        }
-        goto pop;
-    case SYMBOL_PERFORM:
-        if (SYMBOL_CELL == gsym) do_perform(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) {
-            do_expand(graph, g, f);
-            goto loop;
-        } else if (!is_pointing_to(g, f)) {
-            goto push;
-        } else if (
-            SYMBOL_GC_DUPLICATOR_LEFT == gsym ||
-            SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
-            commute_3_2(graph, f, g);
-        } else if (IS_DUPLICATOR(gsym)) {
-            commute_3_3(graph, f, g);
-        } else if (IS_DELIMITER(gsym)) {
-            if (!try_inst_barrier(graph, f, g)) { //
-                commute_3_2(graph, f, g);
-            }
-        } else {
-            COMPILER_UNREACHABLE();
-        }
-        goto pop;
-    case SYMBOL_GC_DUPLICATOR_LEFT:
-        if (SYMBOL_LAMBDA == gsym) commute_gc_dup_lambda(graph, f, g);
-        else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_GC_LAMBDA == gsym)
-            commute_gc_dup_gc_lambda(graph, f, g);
-        else if (SYMBOL_LAMBDA_C == gsym) commute_gc_dup_lambda_c(graph, f, g);
-        else if (SYMBOL_CELL == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) {
-            do_expand(graph, g, f);
-            goto loop;
-        } else if (!is_pointing_to(g, f)) {
-            goto push;
-        } else if (SYMBOL_GC_DUPLICATOR_LEFT == gsym) {
-            if (f.ports[2] == g.ports[2]) {
-                annihilate_gc_dup_gc_dup(graph, f, g);
-            } else {
-                commute_2_2(graph, f, g);
-            }
-        } else if (SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
-            // TODO: is annihilation possible here?
-            commute_2_2(graph, f, g);
-        } else if (IS_DUPLICATOR(gsym)) {
-            if (f.ports[2] == SYMBOL_INDEX(gsym)) {
-                annihilate_gc_dup_l_dup(graph, f, g);
-                goto pop_with_check;
-            } else {
-                commute_2_3(graph, f, g);
-            }
-        } else if (IS_DELIMITER(gsym)) {
-            if (!try_inst_barrier(graph, f, g)) {
-                commute_gc_dup_delim(graph, f, g);
-            }
-        } else {
-            COMPILER_UNREACHABLE();
-        }
-        goto pop;
-    case SYMBOL_GC_DUPLICATOR_RIGHT:
-        if (SYMBOL_LAMBDA == gsym) commute_gc_dup_lambda(graph, f, g);
-        else if (SYMBOL_IDENTITY_LAMBDA == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_GC_LAMBDA == gsym)
-            commute_gc_dup_gc_lambda(graph, f, g);
-        else if (SYMBOL_LAMBDA_C == gsym) commute_gc_dup_lambda_c(graph, f, g);
-        else if (SYMBOL_CELL == gsym) commute_2_1(graph, f, g);
-        else if (SYMBOL_REFERENCE == gsym) {
-            do_expand(graph, g, f);
-            goto loop;
-        } else if (!is_pointing_to(g, f)) {
-            goto push;
-        } else if (SYMBOL_GC_DUPLICATOR_LEFT == gsym) {
-            // TODO: is annihilation possible here as well?
-            commute_2_2(graph, f, g);
-        } else if (SYMBOL_GC_DUPLICATOR_RIGHT == gsym) {
-            if (f.ports[2] == g.ports[2]) {
-                annihilate_gc_dup_gc_dup(graph, f, g);
-            } else {
-                commute_2_2(graph, f, g);
-            }
-        } else if (IS_DUPLICATOR(gsym)) {
-            if (f.ports[2] == SYMBOL_INDEX(gsym)) {
-                annihilate_gc_dup_r_dup(graph, f, g);
-                goto pop_with_check;
-            } else {
-                commute_2_3(graph, f, g);
-            }
-        } else if (IS_DELIMITER(gsym)) {
-            if (!try_inst_barrier(graph, f, g)) {
-                commute_gc_dup_delim(graph, f, g);
-            }
-        } else {
-            COMPILER_UNREACHABLE();
-        }
-        goto pop;
-    case SYMBOL_BARRIER:
-        if (!is_pointing_to(g, f)) {
-            goto push;
-        } else if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) {
-            barrier(graph, f, g);
-            goto loop;
-        } else {
-            unbarrier(graph, f, g);
-            goto pop;
-        }
-    case SYMBOL_ROOT:
-        if (IS_ANY_LAMBDA(gsym) || SYMBOL_CELL == gsym) {
-            goto stop;
-        } else if (IS_DELIMITER(gsym) && is_pointing_to(g, f)) {
-            commute_1_2(graph, f, g);
-            goto loop;
-        } else {
-            goto push;
-        }
+    duplicator:
+        action = interact_with_dup(graph, f, g);
+        break;
+    delimiter:
+        action = interact_with_del(graph, f, g);
+        break;
+    }
+
+    switch (action) {
+    case REDUCE_LOOP: goto loop;
+    case REDUCE_PUSH: goto push;
+    case REDUCE_POP_WITH_CHECK: goto pop_with_check;
+    case REDUCE_POP: goto pop;
+    case REDUCE_STOP: goto stop;
+    default: COMPILER_UNREACHABLE();
     }
 }
 
@@ -4129,17 +4058,19 @@ pop: {
 pop_with_check: {
     if (graph->rescan) {
         // Proceed with resetting the phases of nodes from the stack.
+        // clang-format off
         CONSUME_MULTIFOCUS (&stack, node) {
 #ifdef COMPILER_ASAN_AVAILABLE
             if (!COMPILER_IS_POISONED_ADDRESS(node.ports)) {
 #endif
-                if (PHASE_IN_STACK == DECODE_PHASE_METADATA(node.ports[0])) {
-                    node.ports[0] &= PHASE_MASK;
-                }
+            if (PHASE_IN_STACK == DECODE_PHASE_METADATA(node.ports[0])) {
+                node.ports[0] &= PHASE_MASK;
+            }
 #ifdef COMPILER_ASAN_AVAILABLE
             }
 #endif
         }
+        // clang-format on
         graph->rescan = false;
         goto rescan;
     } else {
@@ -4252,11 +4183,11 @@ applying(void) {
 COMPILER_RETURNS_NONNULL COMPILER_NONNULL(1) //
 static struct lambda_term *
 metacode(struct lambda_term *const restrict term) {
-    MY_ASSERT(term);
+    assert(term);
 
     switch (term->ty) {
     case LAMBDA_TERM_APPLY: {
-        struct apply_data *const data = &term->data.apply;
+        struct apply_data *const data = &term->data.app;
 
         data->rator = metacode(data->rator);
         data->rand = metacode(data->rand);
@@ -4267,7 +4198,7 @@ metacode(struct lambda_term *const restrict term) {
         return result;
     }
     case LAMBDA_TERM_LAMBDA: {
-        struct lambda_data *const data = term->data.lambda;
+        struct lambda_data *const data = term->data.lam;
 
         data->body = metacode(data->body);
 
@@ -4288,7 +4219,7 @@ optiscope_algorithm(
 ) {
     debug("%s()", __func__);
 
-    MY_ASSERT(term);
+    assert(term);
 
     struct context *const graph = alloc_context();
 
@@ -4302,7 +4233,7 @@ optiscope_algorithm(
     free_bytecode(bc);
     free_lambda_term(term);
     reduce(graph);
-    const struct node result = follow_port(&graph->root.ports[0]);
+    const struct node result = follow_port(graph->root, 0);
     const uint64_t value =
         SYMBOL_CELL == result.ports[-1] ? result.ports[1] : 0;
     if (stream) {

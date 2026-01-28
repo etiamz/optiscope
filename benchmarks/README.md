@@ -44,20 +44,12 @@ Benchmark 1: ./ackermann
 <summary>Statistics profile</summary>
 
 ```
-   Family reductions: 5571998
-        Commutations: 19508073
-       Annihilations: 2025
-          Expansions: 2785999
-     Cell operations: 12538012
-  Barrier operations: 4179998
-  Total interactions: 44586105
- Garbage collections: 44575980
-  Delimiter mergings: 2788012
-Delimiter extrusions: 4182018
-      Total rewrites: 96132115
-        Sharing work: 10.15%
-    Bookkeeping work: 18.85%
-     Peak node count: 4182126
+    Total rewrites: 96132115
+Total interactions: 44586105
+      Sharing work: 10.15%
+  Bookkeeping work: 21.75%
+           GC work: 46.37%
+   Peak node count: 4182126
 ```
 
 </details>
@@ -76,20 +68,12 @@ Benchmark 1: ./tak
 <summary>Statistics profile</summary>
 
 ```
-   Family reductions: 4666911
-        Commutations: 22878891
-       Annihilations: 1780801
-          Expansions: 1555637
-     Cell operations: 5833638
-  Barrier operations: 4507471
-  Total interactions: 41223349
- Garbage collections: 43150388
-  Delimiter mergings: 6326998
-Delimiter extrusions: 3792105
-      Total rewrites: 94492840
-        Sharing work: 14.96%
-    Bookkeeping work: 28.90%
-     Peak node count: 3889561
+    Total rewrites: 94492840
+Total interactions: 41223349
+      Sharing work: 14.96%
+  Bookkeeping work: 30.87%
+           GC work: 45.67%
+   Peak node count: 3889561
 ```
 
 </details>
@@ -108,20 +92,12 @@ Benchmark 1: ./scott-bubble-sort
 <summary>Statistics profile</summary>
 
 ```
-   Family reductions: 632709
-        Commutations: 151696832
-       Annihilations: 27897016
-          Expansions: 46052
-     Cell operations: 271498
-  Barrier operations: 14221657
-  Total interactions: 194765764
- Garbage collections: 2086155
-  Delimiter mergings: 362394
-Delimiter extrusions: 1528812
-      Total rewrites: 198743125
-        Sharing work: 95.62%
-    Bookkeeping work: 16.66%
-     Peak node count: 320355
+    Total rewrites: 198743125
+Total interactions: 194765764
+      Sharing work: 95.62%
+  Bookkeeping work: 16.78%
+           GC work: 1.05%
+   Peak node count: 320355
 ```
 
 </details>
@@ -140,20 +116,12 @@ Benchmark 1: ./scott-insertion-sort
 <summary>Statistics profile</summary>
 
 ```
-   Family reductions: 4015006
-        Commutations: 12008007
-       Annihilations: 1498500
-          Expansions: 502502
-     Cell operations: 1500500
-  Barrier operations: 4509500
-  Total interactions: 24034015
- Garbage collections: 22531515
-  Delimiter mergings: 4502501
-Delimiter extrusions: 4998999
-      Total rewrites: 56067030
-        Sharing work: 5.35%
-    Bookkeeping work: 42.84%
-     Peak node count: 1015215
+    Total rewrites: 56067030
+Total interactions: 24034015
+      Sharing work: 5.35%
+  Bookkeeping work: 45.52%
+           GC work: 40.19%
+   Peak node count: 1015215
 ```
 
 </details>
@@ -172,20 +140,12 @@ Benchmark 1: ./scott-merge-sort
 <summary>Statistics profile</summary>
 
 ```
-   Family reductions: 223404
-        Commutations: 23727987
-       Annihilations: 5503103
-          Expansions: 18907
-     Cell operations: 28931
-  Barrier operations: 1510973
-  Total interactions: 31013305
- Garbage collections: 728577
-  Delimiter mergings: 185063
-Delimiter extrusions: 9893731
-      Total rewrites: 41820676
-        Sharing work: 24.60%
-    Bookkeeping work: 78.97%
-     Peak node count: 2215851
+    Total rewrites: 41820676
+Total interactions: 31013305
+      Sharing work: 24.60%
+  Bookkeeping work: 79.16%
+           GC work: 1.74%
+   Peak node count: 2215851
 ```
 
 </details>
@@ -204,20 +164,12 @@ Benchmark 1: ./scott-quicksort
 <summary>Statistics profile</summary>
 
 ```
-   Family reductions: 3008506
-        Commutations: 345694771
-       Annihilations: 86947759
-          Expansions: 377252
-     Cell operations: 749500
-  Barrier operations: 3753004
-  Total interactions: 440530792
- Garbage collections: 5304042
-  Delimiter mergings: 2877245
-Delimiter extrusions: 173031257
-      Total rewrites: 621743336
-        Sharing work: 0.56%
-    Bookkeeping work: 84.20%
-     Peak node count: 1064779
+    Total rewrites: 621743336
+Total interactions: 440530792
+      Sharing work: 0.56%
+  Bookkeeping work: 98.00%
+           GC work: 0.85%
+   Peak node count: 1064779
 ```
 
 </details>
@@ -236,20 +188,12 @@ Benchmark 1: ./nqueens
 <summary>Statistics profile</summary>
 
 ```
-   Family reductions: 16117939
-        Commutations: 147016880
-       Annihilations: 29144059
-          Expansions: 2899293
-     Cell operations: 11692140
-  Barrier operations: 18373645
-  Total interactions: 225243956
- Garbage collections: 110178876
-  Delimiter mergings: 11649817
-Delimiter extrusions: 32325233
-      Total rewrites: 379397882
-        Sharing work: 25.06%
-    Bookkeeping work: 34.93%
-     Peak node count: 2383964
+    Total rewrites: 379397882
+Total interactions: 225243956
+      Sharing work: 25.06%
+  Bookkeeping work: 38.34%
+           GC work: 29.04%
+   Peak node count: 2383964
 ```
 
 </details>
