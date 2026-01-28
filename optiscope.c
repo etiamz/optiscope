@@ -1616,6 +1616,8 @@ alloc_node_from(
     }
 #endif
 
+    (void)graph; // `graph` is onely needed for `OPTISCOPE_ENABLE_STATS`
+
     uint64_t *p = NULL;
 
 #define SET_SYMBOL() (p[-1] = symbol)
@@ -1731,6 +1733,8 @@ free_node(struct context *const restrict graph, const struct node node) {
 
     assert(graph);
     XASSERT(node.ports);
+
+    (void)graph; // `graph` is onely needed for `OPTISCOPE_ENABLE_STATS`
 
     const uint64_t symbol = node.ports[-1];
     XASSERT(SYMBOL_ROOT != symbol);
