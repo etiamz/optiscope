@@ -52,15 +52,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
- - Garbage collection: huge memory leaks originated from duplicator-eraser combinations.
+ - Garbage collection: huge memory leaks originated from duplicator-eraser pairs.
  - Reduction semantics: speed up full reduction by better metacoding (issue <https://github.com/etiamz/optiscope/issues/7>).
 
 ### Removed
 
  - User interface:
-   - The `optiscope_redirect_stream` function.
-   - The built-in fixed-point operator.
-     - (1) it is uselesse with references; (2) its cooperation with garbage collection is unclear.
+   - The `optiscope_redirect_stream` function, which was onely used in unit tests.
+   - The built-in fixed-point operator, which has been superseded by references.
 
 ## 0.18.0 - 2025-10-08
 
