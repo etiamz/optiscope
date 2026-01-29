@@ -6,22 +6,23 @@
 ```
                           ./+o+-       etiamz@etiamz
                   yyyyy- -yyyyyy+      OS: Ubuntu 24.04 noble
-               ://+//////-yyyyyyo      Kernel: x86_64 Linux 6.8.0-60-generic
-           .++ .:/++++++/-.+sss/`      Uptime: 16m
-         .:++o:  /++++++++/:--:/-      Packages: 2799
+               ://+//////-yyyyyyo      Kernel: x86_64 Linux 6.14.0-37-generic
+           .++ .:/++++++/-.+sss/`      Uptime: 10m
+         .:++o:  /++++++++/:--:/-      Packages: 1795
         o:+o+:++.`..```.-/oo+++++/     Shell: bash 5.2.21
        .:+o:+o/.          `+sssoo+/    Resolution: 3840x2400
   .++/+:+oo+o:`             /sssooo.   DE: GNOME 46.7
  /+++//+:`oo+o               /::--:.   WM: Mutter
  \+/+o+++`o++o               ++////.   WM Theme: Adwaita
-  .++.o+++oo+:`             /dddhhh.   GTK Theme: Yaru-red [GTK2/3]
-       .+.o+oo:.          `oddhhhh+    Icon Theme: Yaru-red
-        \+.++o+o``-````.:ohdhhhhh+     Font: Ubuntu Sans Bold 11 @wght=700
-         `:o+++ `ohhhhhhhhyo++os:      Disk: 389G / 484G (85%)
-           .o:`.syhhhhhhh/.oo++o`      CPU: AMD Ryzen 9 5900HX with Radeon Graphics @ 16x 4.68GHz
-               /osyyyyyyo++ooo+++/     GPU: AMD/ATI Cezanne [Radeon Vega Series / Radeon Vega Mobile Series]
-                   ````` +oo+++o\:     RAM: 5849MiB / 15388MiB
-                          `oo++.
+  .++.o+++oo+:`             /dddhhh.   GTK Theme: Yaru-blue [GTK2/3]
+       .+.o+oo:.          `oddhhhh+    Icon Theme: Yaru-blue
+        \+.++o+o``-````.:ohdhhhhh+     Font: Ubuntu Sans 11
+         `:o+++ `ohhhhhhhhyo++os:      Disk: 44G / 484G (10%)
+           .o:`.syhhhhhhh/.oo++o`      CPU: AMD Ryzen 9 5900HX with Radeon Graphics @ 16x 4.683GHz
+               /osyyyyyyo++ooo+++/     GPU: NVIDIA GeForce RTX 3050 Ti Laptop GPU
+                   ````` +oo+++o\:     RAM: 2667MiB / 15388MiB
+                          `oo++.      
+
 ```
 
 </details>
@@ -36,8 +37,8 @@ Description: Computes the Ackermann function with initial values _(3, 8)_.
 
 ```
 Benchmark 1: ./ackermann
-  Time (mean ± σ):      1.189 s ±  0.017 s    [User: 1.179 s, System: 0.010 s]
-  Range (min … max):    1.171 s …  1.217 s    5 runs
+  Time (mean ± σ):      1.235 s ±  0.020 s    [User: 1.226 s, System: 0.009 s]
+  Range (min … max):    1.206 s …  1.256 s    5 runs
 ```
 
 <details>
@@ -60,8 +61,8 @@ Description: Computes the Takeuchi function with initial values _(24, 9, 3)_.
 
 ```
 Benchmark 1: ./tak
-  Time (mean ± σ):      1.103 s ±  0.021 s    [User: 1.094 s, System: 0.009 s]
-  Range (min … max):    1.083 s …  1.129 s    5 runs
+  Time (mean ± σ):      1.167 s ±  0.008 s    [User: 1.156 s, System: 0.010 s]
+  Range (min … max):    1.157 s …  1.178 s    5 runs
 ```
 
 <details>
@@ -84,8 +85,8 @@ Description: Performes a bubble sort on a Scott-encoded list of 300 cells, then 
 
 ```
 Benchmark 1: ./scott-bubble-sort
-  Time (mean ± σ):      2.425 s ±  0.040 s    [User: 2.421 s, System: 0.004 s]
-  Range (min … max):    2.391 s …  2.493 s    5 runs
+  Time (mean ± σ):      2.912 s ±  0.025 s    [User: 2.908 s, System: 0.003 s]
+  Range (min … max):    2.890 s …  2.950 s    5 runs
 ```
 
 <details>
@@ -108,8 +109,8 @@ Description: Performes an insertion sort on a Scott-encoded list of 1000 cells, 
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):     828.2 ms ±  15.3 ms    [User: 821.9 ms, System: 6.0 ms]
-  Range (min … max):   814.1 ms … 851.8 ms    5 runs
+  Time (mean ± σ):     858.0 ms ±   5.8 ms    [User: 853.1 ms, System: 4.6 ms]
+  Range (min … max):   851.5 ms … 865.6 ms    5 runs
 ```
 
 <details>
@@ -132,8 +133,8 @@ Description: Performes a merge sort on a Scott-encoded list of 1000 cells, then 
 
 ```
 Benchmark 1: ./scott-merge-sort
-  Time (mean ± σ):     569.3 ms ±   5.0 ms    [User: 559.4 ms, System: 9.6 ms]
-  Range (min … max):   564.6 ms … 577.6 ms    5 runs
+  Time (mean ± σ):     622.6 ms ±   6.4 ms    [User: 612.3 ms, System: 10.0 ms]
+  Range (min … max):   614.8 ms … 629.9 ms    5 runs
 ```
 
 <details>
@@ -156,8 +157,8 @@ Description: Performes a quicksort on a Scott-encoded list of 500 cells, then su
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):      7.033 s ±  0.045 s    [User: 7.029 s, System: 0.004 s]
-  Range (min … max):    6.982 s …  7.072 s    5 runs
+  Time (mean ± σ):      7.849 s ±  0.021 s    [User: 7.843 s, System: 0.005 s]
+  Range (min … max):    7.814 s …  7.868 s    5 runs
 ```
 
 <details>
@@ -180,8 +181,8 @@ Description: Solves the 10-queens problem using Scott-encoded lists.
 
 ```
 Benchmark 1: ./nqueens
-  Time (mean ± σ):      4.870 s ±  0.064 s    [User: 4.865 s, System: 0.005 s]
-  Range (min … max):    4.782 s …  4.930 s    5 runs
+  Time (mean ± σ):      5.325 s ±  0.274 s    [User: 5.318 s, System: 0.006 s]
+  Range (min … max):    5.096 s …  5.757 s    5 runs
 ```
 
 <details>
