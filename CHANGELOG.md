@@ -9,12 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Statistics: keep onely total rewrites, total interactions, sharing work, bookkeeping work, GC work, & peak node count, inasmuch as all the other metrics provided very little value.
+ - Statistics: print onely the following metrics, because the rest provided very little value:
+   - `Total rewrites`
+   - `Total interactions`
+   - `Sharing work`
+   - `Bookkeeping work`
+   - `GC work`
+   - `Peak node count`
+ - Miscellaneouse: limit the index range of GC duplicators to the standard one.
 
 ### Fixed
 
- - Statistics: count commutation of a delimiter with an atom as a bookkeeping interaction.
- - Miscellaneouse: limit the index range of GC duplicators to the standard one.
+ - Statistics: count a delimiter-atom commutation as a bookkeeping interaction.
 
 ## 1.0.3 - 2026-01-18
 
