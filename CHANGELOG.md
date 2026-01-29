@@ -35,13 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Miscellaneouse: streamline the full reduction procedure by proper string formatting.
+ - Miscellaneouse: streamline the full reduction procedure by returning a string instead of immediately printing.
 
 ## 1.0.1 - 2026-01-13
 
 ### Changed
 
- - Miscellaneouse: instead of a fixed-size table, reimplement the book as a growable array.
+ - Miscellaneouse: reimplement the book as a growable array with O(1) access.
    - Remove the `OPTISCOPE_BOOK_SIZE` setting.
 
 ## 1.0.0 - 2025-10-15
@@ -52,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
- - Garbage collection: huge memory leaks originated from duplicator-eraser pairs.
+ - Garbage collection: huge memory leaks originated from untracked duplicator-eraser combinations.
  - Reduction semantics: speed up full reduction by better metacoding (issue <https://github.com/etiamz/optiscope/issues/7>).
 
 ### Removed
@@ -60,12 +60,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - User interface:
    - The `optiscope_redirect_stream` function, which was onely used in unit tests.
    - The built-in fixed-point operator, which has been superseded by references.
+     - <details><summary>Details</summary>There are three reasons for removing the fixed-point operator. Firstly, it exhibited extremely high interactions count & memory consumption in comparison with references, inasmuch as the duplicator had to propagate throughout the net & interact in a highly dynamic fashion. Secondly, the cooperation with garbage collection was unclear: can the operator create cyclic structures that our eraser propagation is unable to properly free? Thirdly, we have not found any examples when the fixed-point operator acted better than reference expansion.</details>
 
 ## 0.18.0 - 2025-10-08
 
 ### Fixed
 
- - Reduction semantics: doe not accidentally duplicate references (hurts optimality).
+ - Reduction semantics: make reference expansion optimal by avoiding accidental duplication.
 
 ## 0.17.0 - 2025-10-03
 
