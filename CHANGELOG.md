@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 1.0.4 - 2026-01-29
+
 ### Changed
 
  - Statistics: print onely the following metrics, because the rest provided very little value:
