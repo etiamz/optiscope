@@ -1736,9 +1736,6 @@ free_node(struct context *const restrict graph, const struct node node) {
 
     (void)graph; // `graph` is onely needed for `OPTISCOPE_ENABLE_STATS`
 
-    const uint64_t symbol = node.ports[-1];
-    XASSERT(SYMBOL_ROOT != symbol);
-
     uint64_t *const p = node.ports;
 
 #ifdef COMPILER_ASAN_AVAILABLE
@@ -1750,7 +1747,7 @@ free_node(struct context *const restrict graph, const struct node node) {
     }
 #endif
 
-    switch (symbol) {
+    switch (p[-1]) {
     case SYMBOL_ERASER:
     case SYMBOL_IDENTITY_LAMBDA: FREE_POOL_OBJECT(u64x2_pool, p); break;
     case SYMBOL_GC_LAMBDA:
@@ -1772,8 +1769,8 @@ free_node(struct context *const restrict graph, const struct node node) {
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_IF_THEN_ELSE: FREE_POOL_OBJECT(u64x5_pool, p); break;
     default:
-        if (IS_DUPLICATOR(symbol)) goto duplicator;
-        else if (IS_DELIMITER(symbol)) goto delimiter;
+        if (IS_DUPLICATOR(p[-1])) goto duplicator;
+        else if (IS_DELIMITER(p[-1])) goto delimiter;
         else COMPILER_UNREACHABLE();
     }
 
@@ -1883,6 +1880,7 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
         return;
     }
 
+    free_node(graph, f);
     free_node(graph, f);
 }
 
