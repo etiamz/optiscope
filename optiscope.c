@@ -1971,23 +1971,23 @@ graphviz_edge_label(const struct node node, const uint8_t i) {
     switch (node.ports[-1]) {
     case SYMBOL_APPLICATOR:
         switch (i) {
-        case 0: return format_string("rator (\\#%" PRIu8 ")", i); break;
-        case 1: return format_string("\\#%" PRIu8, i); break;
-        case 2: return format_string("rand (\\#%" PRIu8 ")", i); break;
+        case 0: return format_string("rator (\\#%" PRIu8 ")", i);
+        case 1: return format_string("\\#%" PRIu8, i);
+        case 2: return format_string("rand (\\#%" PRIu8 ")", i);
         default: COMPILER_UNREACHABLE();
         }
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
         switch (i) {
-        case 0: return format_string("\\#%" PRIu8, i); break;
-        case 1: return format_string("binder (\\#%" PRIu8 ")", i); break;
-        case 2: return format_string("body (\\#%" PRIu8 ")", i); break;
+        case 0: return format_string("\\#%" PRIu8, i);
+        case 1: return format_string("binder (\\#%" PRIu8 ")", i);
+        case 2: return format_string("body (\\#%" PRIu8 ")", i);
         default: COMPILER_UNREACHABLE();
         }
     case SYMBOL_GC_LAMBDA:
         switch (i) {
-        case 0: return format_string("\\#%" PRIu8, i); break;
-        case 1: return format_string("body (\\#%" PRIu8 ")", i); break;
+        case 0: return format_string("\\#%" PRIu8, i);
+        case 1: return format_string("body (\\#%" PRIu8 ")", i);
         default: COMPILER_UNREACHABLE();
         }
     default: return format_string("\\#%" PRIu8, i);
