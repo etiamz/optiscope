@@ -2309,7 +2309,7 @@ wait_for_user(
 
 #else
 
-#define wait_for_user(graph) ((void)0)
+#define wait_for_user(graph, f, g) ((void)0)
 
 #endif // !defined(NDEBUG) && defined(OPTISCOPE_ENABLE_STEP_BY_STEP)
 
