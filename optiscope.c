@@ -3995,11 +3995,12 @@ loop: {
     // least resistance to keep the code readable.
 #ifdef OPTISCOPE_ENABLE_STATS
     if (is_interaction(f, g)) {
-        if (IS_ANY_DUPLICATOR(fsym) || IS_ANY_DUPLICATOR(gsym)) {
-            graph->nduplicator_itrs++;
-        }
-        if (IS_DELIMITER(fsym) || IS_DELIMITER(gsym)) {
+        const bool has_delimiter = IS_DELIMITER(fsym) || IS_DELIMITER(gsym);
+
+        if (has_delimiter) {
             graph->ndelimiter_itrs++;
+        } else if (IS_ANY_DUPLICATOR(fsym) || IS_ANY_DUPLICATOR(gsym)) {
+            graph->nduplicator_itrs++;
         }
     }
 #endif

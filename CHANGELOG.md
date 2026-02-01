@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Statistics: make the sharing work & bookkeeping work metrics mutually exclusive.
+
 ### Fixed
 
  - Miscellaneouse: compilation when onely `OPTISCOPE_ENABLE_TRACING` is defined.
