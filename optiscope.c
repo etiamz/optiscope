@@ -3253,8 +3253,8 @@ COMMUTATION_HELPER(commute_3_4_helper, graph, f, g) {
         assert(graph);                                                         \
         XASSERT(f.ports);                                                      \
         XASSERT(g.ports);                                                      \
-        assert(IS_DELIMITER(f.ports[-1]));                                     \
-        assert(DECODE_ADDRESS(f.ports[0]) == &g.ports[1]);                     \
+        XASSERT(IS_DELIMITER(f.ports[-1]));                                    \
+        XASSERT(DECODE_ADDRESS(f.ports[0]) == &g.ports[1]);                    \
     } while (false)
 
 EXTRUSION_RULE(extrude_2_2, graph, f, g) {
@@ -3535,7 +3535,7 @@ try_extrude(
     assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert(IS_DELIMITER(f.ports[-1]));
+    XASSERT(IS_DELIMITER(f.ports[-1]));
 
     uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
 
@@ -3549,6 +3549,60 @@ try_extrude(
     case SYMBOL_PERFORM: extrude_2_3(graph, f, g); return true;
     case SYMBOL_IF_THEN_ELSE: extrude_2_4(graph, f, g); return true;
     default: return false;
+    }
+}
+
+// `f` is mergeable with `h`, where `h` is a node that `g` points to.
+COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
+static bool
+is_mergeable_through(const struct node f, const struct node g) {
+    XASSERT(f.ports);
+    XASSERT(IS_DELIMITER(f.ports[-1]));
+    XASSERT(IS_DELIMITER(g.ports[-1]));
+    XASSERT(DECODE_ADDRESS(f.ports[0]) == &g.ports[1]);
+    XASSERT(f.ports[-1] < g.ports[-1]);
+
+    uint64_t *const target = DECODE_ADDRESS(g.ports[0]);
+    const struct node h = node_of_port(target);
+
+    return
+        // `h` is a delimiter with the same index as that of `f`.
+        h.ports[-1] == f.ports[-1] &&
+        // `g` & `h` are not interacting with each other.
+        target == &h.ports[1];
+}
+
+// Extrude delimiter `f` over delimiter `g`, if the index of `f` is strictly
+// less than the index of `g`.
+COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
+static bool
+try_extrude_over_delimiter(
+    struct context *const restrict graph,
+    const struct node f,
+    const struct node g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(IS_DELIMITER(f.ports[-1]));
+    XASSERT(IS_DELIMITER(g.ports[-1]));
+
+    uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
+
+    if (1 != DECODE_OFFSET_METADATA(*points_to)) { return false; }
+
+    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
+
+    if (fsym == gsym) {
+        try_merge_delimiter(graph, f);
+        return true;
+    } else if (fsym > gsym) {
+        return false;
+    } else if (is_mergeable_through(f, g)) {
+        g.ports[-1] = bump_index(gsym, f.ports[2]);
+        extrude_2_2(graph, f, g);
+        return true;
+    } else {
+        return false;
     }
 }
 
@@ -3698,6 +3752,8 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
     } else if (try_extrude(graph, f, g)) {
+        return REDUCE_POP;
+    } else if (IS_DELIMITER(gsym) && try_extrude_over_delimiter(graph, f, g)) {
         return REDUCE_POP;
     } else if (!points_to(g, f)) {
         return REDUCE_PUSH;
