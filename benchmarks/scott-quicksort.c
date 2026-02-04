@@ -14,7 +14,7 @@ generate_list(const uint64_t n) {
 #define BENCHMARK_TERM                                                         \
     apply(                                                                     \
         expand(scott_sum_list),                                                \
-        apply(expand(scott_quicksort), generate_list(500)))
+        apply(expand(scott_quicksort), generate_list(1000)))
 
 int
 main(void) {

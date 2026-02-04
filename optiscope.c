@@ -3541,6 +3541,17 @@ try_extrude(
 
     if (1 != DECODE_OFFSET_METADATA(*points_to)) { return false; }
 
+    // A heuristic: blocke extrusion of a zero-indexed delimiter when another
+    // delimiter points to its auxiliary port.
+    if (SYMBOL_DELIMITER(UINT64_C(0)) == f.ports[-1]) {
+        uint64_t *const aux_target = DECODE_ADDRESS(f.ports[1]);
+        const struct node aux = node_of_port(aux_target);
+        if (IS_DELIMITER(aux.ports[-1]) &&
+            DECODE_ADDRESS(aux.ports[0]) == &f.ports[1]) {
+            return false;
+        }
+    }
+
     switch (g.ports[-1]) {
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX: extrude_2_2(graph, f, g); return true;
