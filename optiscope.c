@@ -341,6 +341,18 @@ xrealloc(void *restrict object, const size_t size) {
     return object;
 }
 
+COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT
+COMPILER_NONNULL(1) //
+static char *
+xstrdup(const char *const s) {
+    assert(s);
+
+    char *const result = strdup(s);
+    if (NULL == result) { panic("Failed `xstrdup`!"); }
+
+    return result;
+}
+
 COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL COMPILER_NONNULL(1)
 COMPILER_FORMAT(printf, 1, 2) //
 static char *
@@ -372,6 +384,7 @@ enum lambda_term_type {
     LAMBDA_TERM_IF_THEN_ELSE,
     LAMBDA_TERM_PERFORM,
     LAMBDA_TERM_REFERENCE,
+    LAMBDA_TERM_READBACK,
 };
 
 struct apply_data {
@@ -410,6 +423,10 @@ struct reference_data {
     struct lambda_term *(*function)(void);
 };
 
+struct readback_data {
+    struct lambda_term *input;
+};
+
 union lambda_term_data {
     struct apply_data app;
     struct lambda_data *lam;
@@ -420,6 +437,7 @@ union lambda_term_data {
     struct if_then_else_data ite;
     struct perform_data perf;
     struct reference_data ref;
+    struct readback_data rb;
 };
 
 struct lambda_term {
@@ -430,6 +448,23 @@ struct lambda_term {
     uint64_t *connect_to; // the port addresse to be connected with the
                           // interface; dynamically mutated
 };
+
+COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
+inline static bool
+is_quotable_term(const enum lambda_term_type ty) {
+    switch (ty) {
+    case LAMBDA_TERM_APPLY:
+    case LAMBDA_TERM_LAMBDA:
+    case LAMBDA_TERM_VAR: return true;
+    default: return false;
+    }
+}
+
+COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
+inline static uint64_t
+de_bruijn_level_to_index(const uint64_t lvl, const uint64_t var) {
+    return lvl - var - 1;
+}
 
 extern LambdaTerm
 apply(const restrict LambdaTerm rator, const restrict LambdaTerm rand) {
@@ -573,6 +608,19 @@ expand(struct lambda_term *(*const function)(void)) {
     return term;
 }
 
+COMPILER_RETURNS_NONNULL COMPILER_NONNULL(1) //
+static struct lambda_term *
+readback(const restrict LambdaTerm input) {
+    assert(input);
+
+    struct lambda_term *const term = xmalloc(sizeof *term);
+    term->ty = LAMBDA_TERM_READBACK;
+    term->data.rb.input = input;
+    term->fv_count = input->fv_count;
+
+    return term;
+}
+
 COMPILER_NONNULL(1) COMPILER_COLD //
 static void
 free_lambda_term(struct lambda_term *const restrict term) {
@@ -605,6 +653,7 @@ free_lambda_term(struct lambda_term *const restrict term) {
     case LAMBDA_TERM_VAR:
     case LAMBDA_TERM_CELL:
     case LAMBDA_TERM_REFERENCE: break;
+    case LAMBDA_TERM_READBACK: free_lambda_term(term->data.rb.input); break;
     default: COMPILER_UNREACHABLE();
     }
 
@@ -678,25 +727,34 @@ STATIC_ASSERT(sizeof(struct lambda_term *(*)(void)) <= sizeof(uint64_t));
 STATIC_ASSERT(UINT64_MAX == UINT64_C(18446744073709551615));
 STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
 
-#define SYMBOL_ROOT                UINT64_C(0)
-#define SYMBOL_APPLICATOR          UINT64_C(1)
-#define SYMBOL_LAMBDA              UINT64_C(2)
-#define SYMBOL_ERASER              UINT64_C(3)
-#define SYMBOL_CELL                UINT64_C(4)
-#define SYMBOL_UNARY_CALL          UINT64_C(5)
-#define SYMBOL_BINARY_CALL         UINT64_C(6)
-#define SYMBOL_BINARY_CALL_AUX     UINT64_C(7)
-#define SYMBOL_IF_THEN_ELSE        UINT64_C(8)
-#define SYMBOL_PERFORM             UINT64_C(9)
-#define SYMBOL_IDENTITY_LAMBDA     UINT64_C(10) // the identity lambda
-#define SYMBOL_GC_LAMBDA           UINT64_C(11) // a lambda discarding its parameter
-#define SYMBOL_LAMBDA_C            UINT64_C(12) // a closed lambda
-#define SYMBOL_REFERENCE           UINT64_C(13)
-#define SYMBOL_BARRIER             UINT64_C(14)
-#define SYMBOL_GC_DUPLICATOR_LEFT  UINT64_C(15)
-#define SYMBOL_GC_DUPLICATOR_RIGHT UINT64_C(16)
-#define SYMBOL_DUPLICATOR(i)       (MAX_REGULAR_SYMBOL + 1 + (i))
-#define SYMBOL_DELIMITER(i)        (MAX_DUPLICATOR_INDEX + 1 + (i))
+#define SYMBOL_ROOT                    UINT64_C(0)
+#define SYMBOL_APPLICATOR              UINT64_C(1)
+#define SYMBOL_LAMBDA                  UINT64_C(2)
+#define SYMBOL_ERASER                  UINT64_C(3)
+#define SYMBOL_CELL                    UINT64_C(4)
+#define SYMBOL_UNARY_CALL              UINT64_C(5)
+#define SYMBOL_BINARY_CALL             UINT64_C(6)
+#define SYMBOL_BINARY_CALL_AUX         UINT64_C(7)
+#define SYMBOL_IF_THEN_ELSE            UINT64_C(8)
+#define SYMBOL_PERFORM                 UINT64_C(9)
+#define SYMBOL_IDENTITY_LAMBDA         UINT64_C(10) // the identity lambda
+#define SYMBOL_GC_LAMBDA               UINT64_C(11) // a lambda discarding its parameter
+#define SYMBOL_LAMBDA_C                UINT64_C(12) // a closed lambda
+#define SYMBOL_REFERENCE               UINT64_C(13)
+#define SYMBOL_BARRIER                 UINT64_C(14)
+#define SYMBOL_GC_DUPLICATOR_LEFT      UINT64_C(15)
+#define SYMBOL_GC_DUPLICATOR_RIGHT     UINT64_C(16)
+#define SYMBOL_QLAMBDA                 UINT64_C(17) // a quoted lambda
+#define SYMBOL_QAPPLICATOR             UINT64_C(18) // a quoted applicator
+#define SYMBOL_QVARIABLE               UINT64_C(19) // a quoted variable
+#define SYMBOL_MAPPLICATOR             UINT64_C(20) // a meta-applicator
+#define SYMBOL_READBACK                UINT64_C(21)
+#define SYMBOL_PRINTOUT                UINT64_C(22)
+#define SYMBOL_QLAMBDA_PRINTER         UINT64_C(23)
+#define SYMBOL_QAPPLICATOR_PRINTER     UINT64_C(24)
+#define SYMBOL_QAPPLICATOR_PRINTER_AUX UINT64_C(25)
+#define SYMBOL_DUPLICATOR(i)           (MAX_REGULAR_SYMBOL + 1 + (i))
+#define SYMBOL_DELIMITER(i)            (MAX_DUPLICATOR_INDEX + 1 + (i))
 
 #define IS_ANY_LAMBDA(symbol)                                                  \
     (SYMBOL_LAMBDA == (symbol) || SYMBOL_IDENTITY_LAMBDA == (symbol) ||        \
@@ -721,7 +779,8 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
     (IS_DUPLICATOR((symbol)) || IS_GC_DUPLICATOR((symbol)))
 
 #define IS_INTERFACE_SYMBOL(symbol)                                            \
-    (IS_ANY_LAMBDA((symbol)) || SYMBOL_CELL == (symbol))
+    (IS_ANY_LAMBDA((symbol)) || SYMBOL_CELL == (symbol) ||                     \
+     SYMBOL_PRINTOUT == (symbol))
 
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
 inline static bool
@@ -730,7 +789,9 @@ is_atomic_symbol(const uint64_t symbol) {
     case SYMBOL_ERASER:
     case SYMBOL_CELL:
     case SYMBOL_IDENTITY_LAMBDA:
-    case SYMBOL_REFERENCE: return true;
+    case SYMBOL_REFERENCE:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_PRINTOUT: return true;
     default: return false;
     }
 }
@@ -749,7 +810,9 @@ ports_count(const uint64_t symbol) {
     case SYMBOL_ERASER:
     case SYMBOL_CELL:
     case SYMBOL_IDENTITY_LAMBDA:
-    case SYMBOL_REFERENCE: //
+    case SYMBOL_REFERENCE:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_PRINTOUT: //
         return 1;
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
@@ -757,6 +820,10 @@ ports_count(const uint64_t symbol) {
     case SYMBOL_BARRIER:
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
+    case SYMBOL_QLAMBDA:
+    case SYMBOL_READBACK:
+    case SYMBOL_QLAMBDA_PRINTER:
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
     delimiter:
         return 2;
     case SYMBOL_APPLICATOR:
@@ -764,6 +831,9 @@ ports_count(const uint64_t symbol) {
     case SYMBOL_BINARY_CALL:
     case SYMBOL_PERFORM:
     case SYMBOL_LAMBDA_C:
+    case SYMBOL_QAPPLICATOR:
+    case SYMBOL_MAPPLICATOR:
+    case SYMBOL_QAPPLICATOR_PRINTER:
     duplicator:
         return 3;
     case SYMBOL_IF_THEN_ELSE: //
@@ -827,6 +897,15 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_BARRIER: return format_string("🚧");
     case SYMBOL_GC_DUPLICATOR_LEFT: return format_string("◉δ");
     case SYMBOL_GC_DUPLICATOR_RIGHT: return format_string("δ◉");
+    case SYMBOL_QLAMBDA: return format_string("Q-λ");
+    case SYMBOL_QAPPLICATOR: return format_string("Q-@");
+    case SYMBOL_QVARIABLE: return format_string("Q-var");
+    case SYMBOL_MAPPLICATOR: return format_string("M-@");
+    case SYMBOL_READBACK: return format_string("readback");
+    case SYMBOL_PRINTOUT: return format_string("printout");
+    case SYMBOL_QLAMBDA_PRINTER: return format_string("P-λ");
+    case SYMBOL_QAPPLICATOR_PRINTER: return format_string("P-@");
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX: return format_string("P-@'");
     default:
         if (IS_DUPLICATOR(symbol)) goto duplicator;
         else if (IS_DELIMITER(symbol)) goto delimiter;
@@ -1637,19 +1716,32 @@ alloc_node_from(
         SET_PORTS_0();
         break;
     case SYMBOL_GC_LAMBDA:
+    case SYMBOL_QLAMBDA:
+    case SYMBOL_QLAMBDA_PRINTER:
         p = ALLOC_POOL_OBJECT(u64x3_pool);
         SET_PORTS_1();
         break;
     case SYMBOL_CELL:
     case SYMBOL_REFERENCE:
+    case SYMBOL_QVARIABLE:
         p = ALLOC_POOL_OBJECT(u64x3_pool);
         if (prototype) { p[1] = prototype->ports[1]; }
+        SET_PORTS_0();
+        break;
+    case SYMBOL_PRINTOUT:
+        p = ALLOC_POOL_OBJECT(u64x3_pool);
+        if (prototype) {
+            p[1] = (uint64_t)xstrdup((const char *)prototype->ports[1]);
+        }
         SET_PORTS_0();
         break;
     case SYMBOL_APPLICATOR:
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
     case SYMBOL_PERFORM:
+    case SYMBOL_QAPPLICATOR:
+    case SYMBOL_MAPPLICATOR:
+    case SYMBOL_QAPPLICATOR_PRINTER:
     duplicator:
         p = ALLOC_POOL_OBJECT(u64x4_pool);
         SET_PORTS_2();
@@ -1658,9 +1750,17 @@ alloc_node_from(
     case SYMBOL_BARRIER:
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
+    case SYMBOL_READBACK:
     delimiter:
         p = ALLOC_POOL_OBJECT(u64x4_pool);
         if (prototype) { p[2] = prototype->ports[2]; }
+        SET_PORTS_1();
+        break;
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+        p = ALLOC_POOL_OBJECT(u64x4_pool);
+        if (prototype) {
+            p[2] = (uint64_t)xstrdup((const char *)prototype->ports[2]);
+        }
         SET_PORTS_1();
         break;
     case SYMBOL_IF_THEN_ELSE:
@@ -1752,7 +1852,14 @@ free_node(struct context *const restrict graph, const struct node node) {
     case SYMBOL_IDENTITY_LAMBDA: FREE_POOL_OBJECT(u64x2_pool, p); break;
     case SYMBOL_GC_LAMBDA:
     case SYMBOL_CELL:
-    case SYMBOL_REFERENCE: FREE_POOL_OBJECT(u64x3_pool, p); break;
+    case SYMBOL_REFERENCE:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_QLAMBDA:
+    case SYMBOL_QLAMBDA_PRINTER: FREE_POOL_OBJECT(u64x3_pool, p); break;
+    case SYMBOL_PRINTOUT:
+        free((char *)p[1]);
+        FREE_POOL_OBJECT(u64x3_pool, p);
+        break;
     case SYMBOL_APPLICATOR:
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
@@ -1761,8 +1868,16 @@ free_node(struct context *const restrict graph, const struct node node) {
     case SYMBOL_BARRIER:
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
+    case SYMBOL_QAPPLICATOR:
+    case SYMBOL_MAPPLICATOR:
+    case SYMBOL_READBACK:
+    case SYMBOL_QAPPLICATOR_PRINTER:
     duplicator:
     delimiter:
+        FREE_POOL_OBJECT(u64x4_pool, p);
+        break;
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+        free((char *)p[2]);
         FREE_POOL_OBJECT(u64x4_pool, p);
         break;
     case SYMBOL_BINARY_CALL:
@@ -1970,6 +2085,8 @@ graphviz_edge_label(const struct node node, const uint8_t i) {
 
     switch (node.ports[-1]) {
     case SYMBOL_APPLICATOR:
+    case SYMBOL_MAPPLICATOR:
+    case SYMBOL_QAPPLICATOR_PRINTER:
         switch (i) {
         case 0: return format_string("rator (\\#%" PRIu8 ")", i);
         case 1: return format_string("\\#%" PRIu8, i);
@@ -1988,6 +2105,13 @@ graphviz_edge_label(const struct node node, const uint8_t i) {
         switch (i) {
         case 0: return format_string("\\#%" PRIu8, i);
         case 1: return format_string("body (\\#%" PRIu8 ")", i);
+        default: COMPILER_UNREACHABLE();
+        }
+    case SYMBOL_QAPPLICATOR:
+        switch (i) {
+        case 0: return format_string("\\#%" PRIu8, i);
+        case 1: return format_string("rand (\\#%" PRIu8 ")", i);
+        case 2: return format_string("rator (\\#%" PRIu8 ")", i);
         default: COMPILER_UNREACHABLE();
         }
     default: return format_string("\\#%" PRIu8, i);
@@ -2009,11 +2133,14 @@ graphviz_edge_tailport(const struct node node, const uint8_t i) {
     case SYMBOL_CELL:
     case SYMBOL_IDENTITY_LAMBDA:
     case SYMBOL_REFERENCE:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_PRINTOUT:
         switch (i) {
         case 0: return "n";
         default: COMPILER_UNREACHABLE();
         }
     case SYMBOL_GC_LAMBDA:
+    case SYMBOL_QLAMBDA:
         switch (i) {
         case 0: return "n";
         case 1: return "s";
@@ -2024,6 +2151,9 @@ graphviz_edge_tailport(const struct node node, const uint8_t i) {
     case SYMBOL_BARRIER:
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
+    case SYMBOL_READBACK:
+    case SYMBOL_QLAMBDA_PRINTER:
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
     delimiter:
         switch (i) {
         case 0: return "s";
@@ -2031,6 +2161,8 @@ graphviz_edge_tailport(const struct node node, const uint8_t i) {
         default: COMPILER_UNREACHABLE();
         }
     case SYMBOL_APPLICATOR:
+    case SYMBOL_MAPPLICATOR:
+    case SYMBOL_QAPPLICATOR_PRINTER:
         switch (i) {
         case 0: return "s";
         case 1: return "n";
@@ -2039,6 +2171,7 @@ graphviz_edge_tailport(const struct node node, const uint8_t i) {
         }
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
+    case SYMBOL_QAPPLICATOR:
         switch (i) {
         case 0: return "n";
         case 1: return "e";
@@ -2091,6 +2224,10 @@ graphviz_print_symbol(const struct node node) {
     } else if (SYMBOL_BINARY_CALL_AUX == p[-1]) {
         result = format_string("%s %" PRIu64, ssymbol, p[3]);
     } else if (SYMBOL_BARRIER == p[-1]) {
+        result = format_string("%s %" PRIu64, ssymbol, p[2]);
+    } else if (SYMBOL_QVARIABLE == p[-1]) {
+        result = format_string("%s %" PRIu64, ssymbol, p[1]);
+    } else if (SYMBOL_READBACK == p[-1]) {
         result = format_string("%s %" PRIu64, ssymbol, p[2]);
     } else if (IS_GC_DUPLICATOR(p[-1])) {
         result = format_string("%s/%" PRIu64, ssymbol, p[2]);
@@ -2316,10 +2453,44 @@ wait_for_user(
 // Bytecode Emission
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
-inline static uint64_t
-de_bruijn_level_to_index(const uint64_t lvl, const uint64_t var) {
-    return lvl - var - 1;
+COMPILER_NONNULL(1, 2, 3) COMPILER_COLD //
+static void
+emit_bytecode(
+    struct context *const restrict graph,
+    struct bytecode *const restrict bc,
+    struct lambda_term *const restrict term,
+    const uint64_t lvl,
+    const bool quote);
+
+COMPILER_NONNULL(1, 2, 3, 4) COMPILER_COLD //
+static void
+emit_bytecode_for_body(
+    struct context *const restrict graph,
+    struct bytecode *const restrict bc,
+    struct lambda_data *const restrict binder,
+    struct lambda_term *const restrict body,
+    const uint64_t lvl,
+    const bool quote) {
+    assert(graph);
+    assert(bc);
+    assert(binder);
+    assert(body);
+    XASSERT(binder->nusages > 0);
+
+    binder->binder_ports = xmalloc(sizeof(uint64_t *) * binder->nusages);
+    binder->lvl = lvl;
+    if (1 == binder->nusages) {
+        // This is a linear non-self-referential lambda.
+        BC_SAVE_PORT(bc, &binder->binder_ports[0], 1);
+    } else {
+        // This is a non-linear lambda that needs a duplicator tree.
+        BC_TREE(bc, binder->nusages, binder->binder_ports);
+    }
+    uint64_t **const binder_ports = binder->binder_ports;
+    BC_SAVE_PORT(bc, &body->connect_to, 2);
+    emit_bytecode(graph, bc, body, lvl + 1, quote);
+    // Restore the beginning of the allocation to free it later.
+    binder->binder_ports = binder_ports;
 }
 
 COMPILER_NONNULL(1, 2, 3) COMPILER_COLD //
@@ -2328,9 +2499,14 @@ emit_bytecode(
     struct context *const restrict graph,
     struct bytecode *const restrict bc,
     struct lambda_term *const restrict term,
-    const uint64_t lvl) {
+    const uint64_t lvl,
+    const bool quote) {
     assert(graph);
     assert(term);
+
+    if (quote && !is_quotable_term(term->ty)) {
+        panic("Only pure LC terms can be quoted!");
+    }
 
     switch (term->ty) {
     case LAMBDA_TERM_LAMBDA: {
@@ -2338,6 +2514,14 @@ emit_bytecode(
         struct lambda_term *const body = term->data.lam->body;
         XASSERT(binder);
         XASSERT(body);
+
+        if (quote) {
+            const struct node qlam = alloc_node(graph, SYMBOL_QLAMBDA);
+            BC_ATTACH_NODE(bc, qlam, 0, &term->connect_to);
+            BC_SAVE_PORT(bc, &term->connect_to, 1);
+            // Fall through: the "real" lambda abstraction will be attached
+            // to the auxiliary port of this quoted lambda.
+        }
 
         const bool is_identity =
             LAMBDA_TERM_VAR == body->ty && binder == *body->data.var;
@@ -2352,27 +2536,14 @@ emit_bytecode(
             const struct node lam = alloc_node(graph, SYMBOL_GC_LAMBDA);
             BC_ATTACH_NODE(bc, lam, 0, &term->connect_to);
             BC_SAVE_PORT(bc, &body->connect_to, 1);
-            emit_bytecode(graph, bc, body, lvl + 1);
+            emit_bytecode(graph, bc, body, lvl + 1, quote);
             break;
         }
 
         const struct node lam = alloc_node(
             graph, term->fv_count > 0 ? SYMBOL_LAMBDA : SYMBOL_LAMBDA_C);
-
-        binder->binder_ports = xmalloc(sizeof(uint64_t *) * binder->nusages);
-        binder->lvl = lvl;
         BC_ATTACH_NODE(bc, lam, 0, &term->connect_to);
-        if (1 == binder->nusages) {
-            // This is a linear non-self-referential lambda.
-            BC_SAVE_PORT(bc, &binder->binder_ports[0], 1);
-        } else {
-            // This is a non-linear lambda that needs a duplicator tree.
-            BC_TREE(bc, binder->nusages, binder->binder_ports);
-        }
-        uint64_t **const binder_ports = binder->binder_ports;
-        BC_SAVE_PORT(bc, &body->connect_to, 2);
-        emit_bytecode(graph, bc, body, lvl + 1);
-        binder->binder_ports = binder_ports;
+        emit_bytecode_for_body(graph, bc, binder, body, lvl, quote);
 
         break;
     }
@@ -2394,13 +2565,14 @@ emit_bytecode(
         struct lambda_term *const rator = term->data.app.rator, //
             *const rand = term->data.app.rand;
 
-        const struct node app = alloc_node(graph, SYMBOL_APPLICATOR);
+        const struct node app =
+            alloc_node(graph, quote ? SYMBOL_MAPPLICATOR : SYMBOL_APPLICATOR);
 
         BC_ATTACH_NODE(bc, app, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &rator->connect_to, 0);
         BC_SAVE_PORT(bc, &rand->connect_to, 2);
-        emit_bytecode(graph, bc, rator, lvl);
-        emit_bytecode(graph, bc, rand, lvl);
+        emit_bytecode(graph, bc, rator, lvl, quote);
+        emit_bytecode(graph, bc, rand, lvl, quote);
 
         break;
     }
@@ -2424,7 +2596,7 @@ emit_bytecode(
 
         BC_ATTACH_NODE(bc, ucall, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &rand->connect_to, 0);
-        emit_bytecode(graph, bc, rand, lvl);
+        emit_bytecode(graph, bc, rand, lvl, false /* quote */);
 
         break;
     }
@@ -2443,8 +2615,8 @@ emit_bytecode(
         BC_ATTACH_NODE(bc, bcall, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &lhs->connect_to, 0);
         BC_SAVE_PORT(bc, &rhs->connect_to, 2);
-        emit_bytecode(graph, bc, lhs, lvl);
-        emit_bytecode(graph, bc, rhs, lvl);
+        emit_bytecode(graph, bc, lhs, lvl, false /* quote */);
+        emit_bytecode(graph, bc, rhs, lvl, false /* quote */);
 
         break;
     }
@@ -2459,9 +2631,9 @@ emit_bytecode(
         BC_SAVE_PORT(bc, &condition->connect_to, 0);
         BC_SAVE_PORT(bc, &if_else->connect_to, 2);
         BC_SAVE_PORT(bc, &if_then->connect_to, 3);
-        emit_bytecode(graph, bc, condition, lvl);
-        emit_bytecode(graph, bc, if_else, lvl);
-        emit_bytecode(graph, bc, if_then, lvl);
+        emit_bytecode(graph, bc, condition, lvl, false /* quote */);
+        emit_bytecode(graph, bc, if_else, lvl, false /* quote */);
+        emit_bytecode(graph, bc, if_then, lvl, false /* quote */);
 
         break;
     }
@@ -2474,8 +2646,8 @@ emit_bytecode(
         BC_ATTACH_NODE(bc, perf, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &action->connect_to, 0);
         BC_SAVE_PORT(bc, &k->connect_to, 2);
-        emit_bytecode(graph, bc, action, lvl);
-        emit_bytecode(graph, bc, k, lvl);
+        emit_bytecode(graph, bc, action, lvl, false /* quote */);
+        emit_bytecode(graph, bc, k, lvl, false /* quote */);
 
         break;
     }
@@ -2486,6 +2658,18 @@ emit_bytecode(
         ref.ports[1] = lookup_function(&graph->book, function);
 
         BC_ATTACH_NODE(bc, ref, 0, &term->connect_to);
+
+        break;
+    }
+    case LAMBDA_TERM_READBACK: {
+        struct lambda_term *const input = term->data.rb.input;
+
+        const struct node rb = alloc_node(graph, SYMBOL_READBACK);
+        rb.ports[2] = 0;
+
+        BC_ATTACH_NODE(bc, rb, 1, &term->connect_to);
+        BC_SAVE_PORT(bc, &input->connect_to, 0);
+        emit_bytecode(graph, bc, input, lvl, true /* quote */);
 
         break;
     }
@@ -2735,16 +2919,25 @@ gc_step(
     case SYMBOL_BARRIER:
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
+    case SYMBOL_QLAMBDA:
+    case SYMBOL_READBACK:
+    case SYMBOL_QLAMBDA_PRINTER:
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
     delimiter:
         goto commute_1_2;
     case SYMBOL_APPLICATOR:
     case SYMBOL_BINARY_CALL:
-    case SYMBOL_PERFORM: goto commute_1_3;
+    case SYMBOL_PERFORM:
+    case SYMBOL_QAPPLICATOR:
+    case SYMBOL_MAPPLICATOR:
+    case SYMBOL_QAPPLICATOR_PRINTER: goto commute_1_3;
     case SYMBOL_IF_THEN_ELSE: goto commute_1_4;
     case SYMBOL_ERASER:
     case SYMBOL_CELL:
     case SYMBOL_IDENTITY_LAMBDA:
-    case SYMBOL_REFERENCE: goto annihilate;
+    case SYMBOL_REFERENCE:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_PRINTOUT: goto annihilate;
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
         if (1 == i) {
@@ -2943,7 +3136,7 @@ COMPUTATION_RULE(do_expand, graph, f, g) {
     if (NULL == entry->expansion) {
         struct lambda_term *const term = entry->function();
         entry->expansion = term;
-        emit_bytecode(graph, &entry->bc, term, 0);
+        emit_bytecode(graph, &entry->bc, term, 0, false /* quote */);
     }
 
     plug_into(entry, &g.ports[0]);
@@ -3033,6 +3226,179 @@ COMPUTATION_RULE(do_perform, graph, f, g) {
     XASSERT(SYMBOL_CELL == g.ports[-1]);
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(f.ports[2]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+// Full Reduction Interaction Rules
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+COMPUTATION_RULE(do_meta_beta, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_MAPPLICATOR == f.ports[-1]);
+    XASSERT(SYMBOL_QLAMBDA == g.ports[-1]);
+
+    const struct node beta = alloc_node(graph, SYMBOL_APPLICATOR);
+    connect_ports(&beta.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&beta.ports[2], DECODE_ADDRESS(f.ports[2]));
+    connect_ports(&beta.ports[1], DECODE_ADDRESS(f.ports[1]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+COMPUTATION_RULE(do_meta_quote, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_MAPPLICATOR == f.ports[-1]);
+    XASSERT(
+        SYMBOL_QAPPLICATOR == g.ports[-1] || //
+        SYMBOL_QVARIABLE == g.ports[-1]);
+
+    const struct node q = alloc_node(graph, SYMBOL_QAPPLICATOR);
+    connect_ports(&q.ports[0], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&q.ports[1], DECODE_ADDRESS(f.ports[2]));
+    connect_ports(&q.ports[2], &g.ports[0]);
+
+    free_node(graph, f);
+    // `g` is preserved as a subterm.
+}
+
+COMPUTATION_RULE(do_readback_lam, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_READBACK == f.ports[-1]);
+    XASSERT(SYMBOL_QLAMBDA == g.ports[-1]);
+
+    const uint64_t lvl = f.ports[2];
+
+    const struct node neutral = alloc_node(graph, SYMBOL_QVARIABLE);
+    neutral.ports[1] = lvl;
+
+    const struct node app = alloc_node(graph, SYMBOL_APPLICATOR);
+    connect_ports(&app.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&app.ports[2], &neutral.ports[0]);
+
+    const struct node rb = alloc_node(graph, SYMBOL_READBACK);
+    rb.ports[2] = lvl + 1;
+    connect_ports(&rb.ports[0], &app.ports[1]);
+
+    const struct node p = alloc_node(graph, SYMBOL_QLAMBDA_PRINTER);
+    connect_ports(&p.ports[0], &rb.ports[1]);
+    connect_ports(&p.ports[1], DECODE_ADDRESS(f.ports[1]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+COMPUTATION_RULE(do_readback_app, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_READBACK == f.ports[-1]);
+    XASSERT(SYMBOL_QAPPLICATOR == g.ports[-1]);
+
+    const uint64_t lvl = f.ports[2];
+
+    const struct node p = alloc_node(graph, SYMBOL_QAPPLICATOR_PRINTER);
+    connect_ports(&p.ports[1], DECODE_ADDRESS(f.ports[1]));
+
+    const struct node rb_rator = alloc_node(graph, SYMBOL_READBACK);
+    rb_rator.ports[2] = lvl;
+    connect_ports(&rb_rator.ports[0], DECODE_ADDRESS(g.ports[2]));
+    connect_ports(&rb_rator.ports[1], &p.ports[0]);
+
+    const struct node rb_rand = alloc_node(graph, SYMBOL_READBACK);
+    rb_rand.ports[2] = lvl;
+    connect_ports(&rb_rand.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&rb_rand.ports[1], &p.ports[2]);
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+COMPUTATION_RULE(do_readback_var, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_READBACK == f.ports[-1]);
+    XASSERT(SYMBOL_QVARIABLE == g.ports[-1]);
+
+    const uint64_t lvl = f.ports[2], var = g.ports[1];
+
+    const struct node out = alloc_node(graph, SYMBOL_PRINTOUT);
+    out.ports[1] =
+        (uint64_t)format_string("%" PRIu64, de_bruijn_level_to_index(lvl, var));
+    connect_ports(&out.ports[0], DECODE_ADDRESS(f.ports[1]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+COMPUTATION_RULE(do_print_lam, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_QLAMBDA_PRINTER == f.ports[-1]);
+    XASSERT(SYMBOL_PRINTOUT == g.ports[-1]);
+
+    char *const body_s = (char *)g.ports[1];
+
+    char *const s = format_string("(λ %s)", body_s);
+
+    const struct node out = alloc_node(graph, SYMBOL_PRINTOUT);
+    out.ports[1] = (uint64_t)s;
+    connect_ports(&out.ports[0], DECODE_ADDRESS(f.ports[1]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+COMPUTATION_RULE(do_print_app, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_QAPPLICATOR_PRINTER == f.ports[-1]);
+    XASSERT(SYMBOL_PRINTOUT == g.ports[-1]);
+
+    const struct node aux = alloc_node(graph, SYMBOL_QAPPLICATOR_PRINTER_AUX);
+    aux.ports[2] = g.ports[1];
+    g.ports[1] = 0; // the ownership is tranferred to the auxiliary node
+    connect_ports(&aux.ports[0], DECODE_ADDRESS(f.ports[2]));
+    connect_ports(&aux.ports[1], DECODE_ADDRESS(f.ports[1]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+COMPUTATION_RULE(do_print_app_aux, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_QAPPLICATOR_PRINTER_AUX == f.ports[-1]);
+    XASSERT(SYMBOL_PRINTOUT == g.ports[-1]);
+
+    char *const rator_s = (char *)f.ports[2], //
+        *const rand_s = (char *)g.ports[1];
+
+    char *const s = format_string("(%s %s)", rator_s, rand_s);
+
+    const struct node out = alloc_node(graph, SYMBOL_PRINTOUT);
+    out.ports[1] = (uint64_t)s;
+    connect_ports(&out.ports[0], DECODE_ADDRESS(f.ports[1]));
 
     free_node(graph, f);
     free_node(graph, g);
@@ -3554,10 +3920,15 @@ try_extrude(
 
     switch (g.ports[-1]) {
     case SYMBOL_UNARY_CALL:
-    case SYMBOL_BINARY_CALL_AUX: extrude_2_2(graph, f, g); return true;
+    case SYMBOL_BINARY_CALL_AUX:
+    case SYMBOL_READBACK:
+    case SYMBOL_QLAMBDA_PRINTER:
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX: extrude_2_2(graph, f, g); return true;
     case SYMBOL_APPLICATOR:
     case SYMBOL_BINARY_CALL:
-    case SYMBOL_PERFORM: extrude_2_3(graph, f, g); return true;
+    case SYMBOL_PERFORM:
+    case SYMBOL_MAPPLICATOR:
+    case SYMBOL_QAPPLICATOR_PRINTER: extrude_2_3(graph, f, g); return true;
     case SYMBOL_IF_THEN_ELSE: extrude_2_4(graph, f, g); return true;
     default: return false;
     }
@@ -3633,14 +4004,11 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
     } else if (SYMBOL_GC_LAMBDA == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_gc_dup_gc_lam(graph, f, g); });
-    } else if (SYMBOL_CELL == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
-    } else if (SYMBOL_IDENTITY_LAMBDA == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
     } else if (SYMBOL_REFERENCE == gsym) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (is_atomic_symbol(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
     } else if (fsym == gsym && f.ports[2] == g.ports[2]) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { annihilate_2_2_helper(graph, f, g); });
@@ -3674,6 +4042,17 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
             INTERACTION(
                 graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, f, g); });
         }
+    } else if (
+        SYMBOL_QLAMBDA == gsym || SYMBOL_READBACK == gsym ||
+        SYMBOL_QLAMBDA_PRINTER == gsym ||
+        SYMBOL_QAPPLICATOR_PRINTER_AUX == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+    } else if (
+        SYMBOL_QAPPLICATOR == gsym || SYMBOL_MAPPLICATOR == gsym ||
+        SYMBOL_QAPPLICATOR_PRINTER == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
@@ -3696,14 +4075,11 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
     } else if (SYMBOL_GC_LAMBDA == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_dup_gc_lam(graph, f, g); });
-    } else if (SYMBOL_CELL == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_1_helper(graph, f, g); });
-    } else if (SYMBOL_IDENTITY_LAMBDA == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_1_helper(graph, f, g); });
     } else if (SYMBOL_REFERENCE == gsym) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (is_atomic_symbol(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_1_helper(graph, f, g); });
     } else if (
         SYMBOL_GC_DUPLICATOR_LEFT == gsym && //
         SYMBOL_INDEX(fsym) == g.ports[2]) {
@@ -3730,6 +4106,17 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
             INTERACTION(
                 graph, f, g, REDUCE_POP, { commute_dup_del(graph, f, g); });
         }
+    } else if (
+        SYMBOL_QLAMBDA == gsym || SYMBOL_READBACK == gsym ||
+        SYMBOL_QLAMBDA_PRINTER == gsym ||
+        SYMBOL_QAPPLICATOR_PRINTER_AUX == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+    } else if (
+        SYMBOL_QAPPLICATOR == gsym || SYMBOL_MAPPLICATOR == gsym ||
+        SYMBOL_QAPPLICATOR_PRINTER == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
@@ -3745,13 +4132,7 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
 
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
-    if (SYMBOL_CELL == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
-    } else if (SYMBOL_IDENTITY_LAMBDA == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
-    } else if (SYMBOL_REFERENCE == gsym) {
+    if (is_atomic_symbol(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
     } else if (SYMBOL_LAMBDA == gsym) {
@@ -3762,6 +4143,12 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
     } else if (SYMBOL_LAMBDA_C == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
+    } else if (SYMBOL_QLAMBDA == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+    } else if (SYMBOL_QAPPLICATOR == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
     } else if (try_extrude(graph, f, g)) {
         return REDUCE_POP;
     } else if (IS_DELIMITER(gsym) && try_extrude_over_delimiter(graph, f, g)) {
@@ -4030,6 +4417,175 @@ CONTROL_FUNCTION(interact_with_root, graph, f, g) {
     }
 }
 
+CONTROL_FUNCTION(interact_with_mapp, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_MAPPLICATOR == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_QLAMBDA == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { do_meta_beta(graph, f, g); });
+    } else if (SYMBOL_QAPPLICATOR == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { do_meta_quote(graph, f, g); });
+    } else if (SYMBOL_QVARIABLE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { do_meta_quote(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_rb, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_READBACK == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_QLAMBDA == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { do_readback_lam(graph, f, g); });
+    } else if (SYMBOL_QAPPLICATOR == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { do_readback_app(graph, f, g); });
+    } else if (SYMBOL_QVARIABLE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { do_readback_var(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_qlam_printer, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_QLAMBDA_PRINTER == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_PRINTOUT == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { do_print_lam(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_qapp_printer, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_QAPPLICATOR_PRINTER == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_PRINTOUT == gsym) {
+        INTERACTION(graph, f, g, REDUCE_POP, { do_print_app(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_qapp_printer_aux, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_QAPPLICATOR_PRINTER_AUX == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_PRINTOUT == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { do_print_app_aux(graph, f, g); });
+    } else if (SYMBOL_REFERENCE == gsym) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        if (!try_inst_barrier(graph, f, g)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        }
+    } else {
+        COMPILER_UNREACHABLE();
+    }
+
+    return REDUCE_POP;
+}
+
 #undef INTERACTION
 #undef NINTERACTIONS_PLUS_PLUS
 #undef CONTROL_FUNCTION
@@ -4085,6 +4641,17 @@ loop: {
     case SYMBOL_IF_THEN_ELSE: action = interact_with_ite(graph, f, g); break;
     case SYMBOL_PERFORM: action = interact_with_perf(graph, f, g); break;
     case SYMBOL_BARRIER: action = interact_with_barr(graph, f, g); break;
+    case SYMBOL_MAPPLICATOR: action = interact_with_mapp(graph, f, g); break;
+    case SYMBOL_READBACK: action = interact_with_rb(graph, f, g); break;
+    case SYMBOL_QLAMBDA_PRINTER:
+        action = interact_with_qlam_printer(graph, f, g);
+        break;
+    case SYMBOL_QAPPLICATOR_PRINTER:
+        action = interact_with_qapp_printer(graph, f, g);
+        break;
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+        action = interact_with_qapp_printer_aux(graph, f, g);
+        break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
         action = interact_with_gc_dup(graph, f, g);
@@ -4152,132 +4719,6 @@ stop:
     free_focus(stack);
 }
 
-// Metacircular Interpretation
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-static struct lambda_term *
-self_lambda(void) {
-    struct lambda_term *body, *my_lambda, *my_apply, *my_var;
-
-    // clang-format off
-    return lambda(body,
-        lambda(my_lambda, lambda(my_apply, lambda(my_var,
-            apply(var(my_lambda), var(body))))));
-    // clang-format on
-}
-
-static struct lambda_term *
-self_apply(void) {
-    struct lambda_term *rator, *rand, *my_lambda, *my_apply, *my_var;
-
-    // clang-format off
-    return lambda(rator, lambda(rand,
-        lambda(my_lambda, lambda(my_apply, lambda(my_var,
-            apply(apply(var(my_apply), var(rator)), var(rand)))))));
-    // clang-format on
-}
-
-static struct lambda_term *
-self_var(void) {
-    struct lambda_term *lvl, *my_lambda, *my_apply, *my_var;
-
-    // clang-format off
-    return lambda(lvl,
-        lambda(my_lambda, lambda(my_apply, lambda(my_var,
-            apply(var(my_var), var(lvl))))));
-    // clang-format on
-}
-
-static uint64_t
-print_lambda(const uint64_t body) {
-    const char *const result = format_string("(λ %s)", (const char *)body);
-    free((void *)body);
-    return (uint64_t)result;
-}
-
-static uint64_t
-print_apply(const uint64_t m, const uint64_t n) {
-    const char *const result =
-        format_string("(%s %s)", (const char *)m, (const char *)n);
-    free((void *)m);
-    free((void *)n);
-    return (uint64_t)result;
-}
-
-static uint64_t
-print_var(const uint64_t lvl, const uint64_t var) {
-    return (uint64_t)format_string("%" PRIu64, lvl - var - 1);
-}
-
-static uint64_t
-plus_one(const uint64_t x) {
-    return x + 1;
-}
-
-static struct lambda_term *
-print_out(void) {
-    struct lambda_term *input, *lvl, *f, *m, *n, *v;
-
-    // clang-format off
-    return lambda(input, lambda(lvl,
-        apply(apply(apply(var(input),
-            lambda(f, unary_call(print_lambda,
-                apply(apply(expand(print_out),
-                    apply(var(f), apply(self_var(), var(lvl)))),
-                    unary_call(plus_one, var(lvl)))))),
-            lambda(m, lambda(n, binary_call(print_apply,
-                apply(apply(expand(print_out), var(m)), var(lvl)),
-                apply(apply(expand(print_out), var(n)), var(lvl)))))),
-            lambda(v,
-                binary_call(print_var, var(lvl), var(v))))));
-    // clang-format on
-}
-
-static struct lambda_term *
-applying(void) {
-    struct lambda_term *m, *n, *mx, *nx, *f, *v, *non_lambda_case;
-
-    // clang-format off
-    return lambda(m, lambda(n,
-        apply(
-            lambda(non_lambda_case,
-                apply(apply(apply(var(m),
-                    lambda(f, apply(var(f), var(n)))),
-                    lambda(mx, lambda(nx, var(non_lambda_case)))),
-                    lambda(v, var(non_lambda_case)))),
-            apply(apply(self_apply(), var(m)), var(n)))));
-    // clang-format on
-}
-
-COMPILER_RETURNS_NONNULL COMPILER_NONNULL(1) //
-static struct lambda_term *
-metacode(struct lambda_term *const restrict term) {
-    assert(term);
-
-    switch (term->ty) {
-    case LAMBDA_TERM_APPLY: {
-        struct apply_data *const data = &term->data.app;
-
-        data->rator = metacode(data->rator);
-        data->rand = metacode(data->rand);
-        struct lambda_term *const result =
-            apply(apply(expand(applying), data->rator), data->rand);
-        free(term);
-
-        return result;
-    }
-    case LAMBDA_TERM_LAMBDA: {
-        struct lambda_data *const data = term->data.lam;
-
-        data->body = metacode(data->body);
-
-        return apply(expand(self_lambda), term);
-    }
-    case LAMBDA_TERM_VAR: return term;
-    default: panic("Non-LC term in metacoding!");
-    }
-}
-
 // Complete Algorithm
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -4292,19 +4733,19 @@ optiscope_algorithm(
 
     struct context *const graph = alloc_context();
 
-    if (stream) {
-        term = apply(apply(expand(print_out), metacode(term)), cell(0));
-    }
+    if (stream) { term = readback(term); }
     struct bytecode bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
-    emit_bytecode(graph, &bc, term, 0);
+    emit_bytecode(graph, &bc, term, 0, false /* quote */);
     term->connect_to = &graph->root.ports[0];
     execute_bytecode(graph, bc);
     free_bytecode(bc);
     free_lambda_term(term);
     reduce(graph);
     const struct node result = follow_port(graph->root, 0);
-    const uint64_t value =
-        SYMBOL_CELL == result.ports[-1] ? result.ports[1] : 0;
+    const uint64_t symbol = result.ports[-1];
+    const uint64_t value = (SYMBOL_CELL == symbol || SYMBOL_PRINTOUT == symbol)
+                               ? result.ports[1]
+                               : 0;
     if (stream) {
         char *const s = (char *)value;
         IO_CALL(fputs, s, stream);

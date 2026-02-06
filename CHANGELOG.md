@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
      - This change reduced quicksort bookkeeping from ~96% to ~66%.
    - Extrude a delimiter over a higher-indexed delimiter, if profitable.
      - <details><summary>Details</summary>We extrude delimiter _f_ over delimiter _g_ if _f_ can be merged with _h_, which is another delimiter that _g_ points to. After the extrusion, we bump _g_'s index _f_'s multiplicity. We also merge _f_ with _g_ if their indices are equal. This modification reduces the total amount of graph rewrites for quicksort by ~47%.</details>
+   - Represent metacircular interpretation as dedicated interaction net agents.
 
 ### Fixed
 

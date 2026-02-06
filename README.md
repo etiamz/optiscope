@@ -68,7 +68,7 @@ By adding the following lines into [`optiscope.h`]:
 
 ## Full Reduction
 
-We mimicke full reduction in terms of weak reduction applied to a metacircular interpreter for pure lambda calculus terms. Consider another example [`examples/2-power-2.c`], which computes _2^2_ using Church numerals:
+We mimicke full reduction as a normalization-by-evaluation procedure running on weak reduction. Consider another example [`examples/2-power-2.c`], which computes _2^2_ using Church numerals:
 
 [`examples/2-power-2.c`]: examples/2-power-2.c
 
@@ -103,7 +103,15 @@ $ ./command/example.sh 2-power-2
 (λ (λ (1 (1 (1 (1 0))))))
 ```
 
-Of course, such an implementation of full reduction is very inefficient -- we use it onely for testing purposes. (Implementing full reduction natively would require a more complex machinery, namely global graph traversing; also, Lévy-optimality requires following a specific order of reduction, but the leftmost-outermost order would enter a cycle when following backpointers.)
+The Graphviz visualization would look as follows:
+
+<div align="center">
+  <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/2-power-2-animation.gif">
+    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/2-power-2-preview.png" width="550px" alt="2^2 example" />
+  </a>
+</div>
+
+Full reduction onely works for pure lambda calculus terms: lambdas, applications, & variables.
 
 ## Side-Effectfull Evaluation
 
