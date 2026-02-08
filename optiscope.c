@@ -895,12 +895,12 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_LAMBDA_C: return format_string("λc");
     case SYMBOL_REFERENCE: return format_string("&");
     case SYMBOL_BARRIER: return format_string("🚧");
-    case SYMBOL_GC_DUPLICATOR_LEFT: return format_string("◉δ");
-    case SYMBOL_GC_DUPLICATOR_RIGHT: return format_string("δ◉");
-    case SYMBOL_QLAMBDA: return format_string("Q-λ");
-    case SYMBOL_QAPPLICATOR: return format_string("Q-@");
-    case SYMBOL_QVARIABLE: return format_string("Q-var");
-    case SYMBOL_MAPPLICATOR: return format_string("M-@");
+    case SYMBOL_GC_DUPLICATOR_LEFT: return format_string("◉δx");
+    case SYMBOL_GC_DUPLICATOR_RIGHT: return format_string("xδ◉");
+    case SYMBOL_QLAMBDA: return format_string("⌜λ⌝");
+    case SYMBOL_QAPPLICATOR: return format_string("⌜@⌝");
+    case SYMBOL_QVARIABLE: return format_string("⌜var⌝");
+    case SYMBOL_MAPPLICATOR: return format_string("↑@");
     case SYMBOL_READBACK: return format_string("readback");
     case SYMBOL_PRINTOUT: return format_string("printout");
     case SYMBOL_QLAMBDA_PRINTER: return format_string("P-λ");
