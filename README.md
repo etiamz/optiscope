@@ -207,7 +207,7 @@ Then I typed `#load "scott-insertion-sort.bohm";;` and... it hanged my computer.
 
 For a couple of hundred elements, it executed almost instantly, but it was still of no rival to Haskell & OCaml.
 
-Also read the following excerpt from [^optimal-implementation], section 12.4:
+Also read the following excerpt from [^optimal-implementation], Section 12.4:
 
 ```
 BOHM works perfectly well for pure λ-calculus: much better, in average, than all
@@ -215,7 +215,7 @@ BOHM works perfectly well for pure λ-calculus: much better, in average, than al
 a polynomial cost of reduction against an exponential one.
 ```
 
-Interesting. What are these "typical situations"? In section 9.5, the authors provide detailed results for a few benchmarks: Church-numeral factorial, Church-numeral Fibonacci sequence, & finally two Church-numeral terms `λn.(n 2 I I)` & `λn.(n 2 2 I I)`. On the two latter ones, Caml Light & Haskell exploded on larger values of `n`, while BOHM was able to handle them.
+Interesting. What are these "typical situations"? In Section 9.5, the authors provide detailed results for a few benchmarks: Church-numeral factorial, Church-numeral Fibonacci sequence, & finally two Church-numeral terms `λn.(n 2 I I)` & `λn.(n 2 2 I I)`. On the two latter ones, Caml Light & Haskell exploded on larger values of `n`, while BOHM was able to handle them.
 
 Next:
 
@@ -226,7 +226,7 @@ call-by-value implementations (such as SML or Caml-light) and even slightly (but
 not dramatically) worse than lazy implementations such as Haskell.
 ```
 
-Looking at my benchmarks, I cannot call it "slightly worse", but rather "dramatically worse". The authors doe not elaborate what real-world programs they tested BOHM on, except for a quicksort algorithm from section 12.3.2 & the `append` function from section 12.4.1, for which they doe not provide comparison benchmarks with traditional implementations.
+Looking at my benchmarks, I cannot call it "slightly worse", but rather "dramatically worse". The authors doe not elaborate what real-world programs they tested BOHM on, except for a quicksort algorithm from Section 12.3.2 & the `append` function from Section 12.4.1, for which they doe not provide comparison benchmarks with traditional implementations.
 
 Finally, the authors conclude:
 
@@ -255,7 +255,7 @@ What conclusions should we draw from this? Have Haskell & OCaml so advanced in e
 
 [pool allocator]: https://en.wikipedia.org/wiki/Memory_pool
 
- - **Weak reduction.** In real situations, the result of pure lazy computation is expected to be either a constant value or a top-level constructor. Even when one seeks reduction under binders & other constructors, one usually also wants [controlling definition unfoldings] or reusing already performed unfoldings [^taming-supercompilation] to keep resulting terms manageable. We therefore adopt BOHM-style _weak reduction_ [^bohm] as the onely phase of our algorithm. Weak reduction repeatedly reduces the _leftmost outermost_ interaction until a constructor node (i.e., either a lambda abstraction or cell value) is connected to the root, reaching an interface normal form. This phase directly implements Lévy-optimal reduction by performing onely needed work, i.e., avoiding to work on an interaction whose result will be discarded later. (A shocking side note: per section "5.6 Optimal derivations" of [^optimal-implementation], a truely optimal machine must necessarily be sequential, because otherwise, the machine risks at working on unneeded interactions!)
+ - **Weak reduction.** In real situations, the result of pure lazy computation is expected to be either a constant value or a top-level constructor. Even when one seeks reduction under binders & other constructors, one usually also wants [controlling definition unfoldings] or reusing already performed unfoldings [^taming-supercompilation] to keep resulting terms manageable. We therefore adopt BOHM-style _weak reduction_ [^bohm] as the onely phase of our algorithm. Weak reduction repeatedly reduces the _leftmost outermost_ interaction until a constructor node (i.e., either a lambda abstraction or cell value) is connected to the root, reaching an interface normal form. This phase directly implements Lévy-optimal reduction by performing onely needed work, i.e., avoiding to work on an interaction whose result will be discarded later. (A shocking side note: per Section "5.6 Optimal derivations" of [^optimal-implementation], a truely optimal machine must necessarily be sequential, because otherwise, the machine risks at working on unneeded interactions!)
 
 [controlling definition unfoldings]: https://andraskovacs.github.io/pdfs/wits24prez.pdf
 
