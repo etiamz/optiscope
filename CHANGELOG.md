@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 1.0.5 - 2026-02-08
+
 ### Changed
 
  - Statistics: make the sharing work & bookkeeping work metrics mutually exclusive.
