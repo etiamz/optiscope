@@ -953,7 +953,7 @@ bump_raw_index(const uint64_t index, const uint64_t offset) {
 #define PHASE_IN_STACK UINT64_C(3) // operators in the reduction stack
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
-#define PHASE_CURRENT_PAIR UINT64_C(4) // Grapdhviz: the current active pair
+#define PHASE_CURRENT_PAIR UINT64_C(4) // Graphviz: the current active pair
 #endif
 
 #define PHASE_MASK                                                             \
