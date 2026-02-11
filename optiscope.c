@@ -710,6 +710,9 @@ free_lambda_term(struct lambda_term *const restrict term) {
 #define PORT_VALUE(offset, phase, address)                                     \
     ENCODE_ADDRESS(ENCODE_METADATA((offset), (phase)), (address))
 
+#define SET_TARGET(address, target)                                            \
+    ENCODE_ADDRESS(DECODE_ADDRESS_METADATA((address)), (target))
+
 #define IS_PRINCIPAL_PORT(port) (0 == DECODE_OFFSET_METADATA((port)))
 
 #define MAX_REGULAR_SYMBOL   UINT64_C(63)
@@ -934,8 +937,8 @@ connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
     assert(rhs);
     XASSERT(lhs != rhs);
 
-    *lhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*lhs), (uint64_t)rhs);
-    *rhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*rhs), (uint64_t)lhs);
+    *lhs = SET_TARGET(*lhs, (uint64_t)rhs);
+    *rhs = SET_TARGET(*rhs, (uint64_t)lhs);
 }
 
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL
