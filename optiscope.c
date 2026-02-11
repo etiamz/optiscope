@@ -796,79 +796,6 @@ is_atomic_symbol(const uint64_t symbol) {
     }
 }
 
-#define FOR_ALL_PORTS(node, i, seed)                                           \
-    for (uint8_t i = seed; i < ports_count((node).ports[-1]); i++)
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function" // may be unused
-
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
-static uint8_t
-ports_count(const uint64_t symbol) {
-    switch (symbol) {
-    case SYMBOL_ROOT:
-    case SYMBOL_ERASER:
-    case SYMBOL_CELL:
-    case SYMBOL_IDENTITY_LAMBDA:
-    case SYMBOL_REFERENCE:
-    case SYMBOL_QVARIABLE:
-    case SYMBOL_PRINTOUT: //
-        return 1;
-    case SYMBOL_UNARY_CALL:
-    case SYMBOL_BINARY_CALL_AUX:
-    case SYMBOL_GC_LAMBDA:
-    case SYMBOL_BARRIER:
-    case SYMBOL_GC_DUPLICATOR_LEFT:
-    case SYMBOL_GC_DUPLICATOR_RIGHT:
-    case SYMBOL_QLAMBDA:
-    case SYMBOL_READBACK:
-    case SYMBOL_QLAMBDA_PRINTER:
-    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
-    delimiter:
-        return 2;
-    case SYMBOL_APPLICATOR:
-    case SYMBOL_LAMBDA:
-    case SYMBOL_BINARY_CALL:
-    case SYMBOL_PERFORM:
-    case SYMBOL_LAMBDA_C:
-    case SYMBOL_QAPPLICATOR:
-    case SYMBOL_MAPPLICATOR:
-    case SYMBOL_QAPPLICATOR_PRINTER:
-    duplicator:
-        return 3;
-    case SYMBOL_IF_THEN_ELSE: //
-        return 4;
-    default:
-        if (IS_DUPLICATOR(symbol)) goto duplicator;
-        else if (IS_DELIMITER(symbol)) goto delimiter;
-        else COMPILER_UNREACHABLE();
-    }
-}
-
-#pragma GCC diagnostic pop // "-Wunused-function"
-
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL
-COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static uint64_t *
-get_principal_port(uint64_t *const restrict port) {
-    assert(port);
-
-    return (port - DECODE_OFFSET_METADATA(port[0]));
-}
-
-COMPILER_NONNULL(1, 2) COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static void
-connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
-    debug("%p 🔗 %p", (void *)lhs, (void *)rhs);
-
-    assert(lhs);
-    assert(rhs);
-    XASSERT(lhs != rhs);
-
-    *lhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*lhs), (uint64_t)rhs);
-    *rhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*rhs), (uint64_t)lhs);
-}
-
 #define SYMBOL_INDEX(symbol)                                                   \
     /* Extract the symbol without branching, considering that duplicators &    \
      * delimiters share the same symbol range. */                              \
@@ -946,6 +873,79 @@ bump_raw_index(const uint64_t index, const uint64_t offset) {
 }
 
 #undef INDEX_OVERFLOW
+
+#define FOR_ALL_PORTS(node, i, seed)                                           \
+    for (uint8_t i = seed; i < ports_count((node).ports[-1]); i++)
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function" // may be unused
+
+COMPILER_CONST COMPILER_WARN_UNUSED_RESULT //
+static uint8_t
+ports_count(const uint64_t symbol) {
+    switch (symbol) {
+    case SYMBOL_ROOT:
+    case SYMBOL_ERASER:
+    case SYMBOL_CELL:
+    case SYMBOL_IDENTITY_LAMBDA:
+    case SYMBOL_REFERENCE:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_PRINTOUT: //
+        return 1;
+    case SYMBOL_UNARY_CALL:
+    case SYMBOL_BINARY_CALL_AUX:
+    case SYMBOL_GC_LAMBDA:
+    case SYMBOL_BARRIER:
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
+    case SYMBOL_QLAMBDA:
+    case SYMBOL_READBACK:
+    case SYMBOL_QLAMBDA_PRINTER:
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+    delimiter:
+        return 2;
+    case SYMBOL_APPLICATOR:
+    case SYMBOL_LAMBDA:
+    case SYMBOL_BINARY_CALL:
+    case SYMBOL_PERFORM:
+    case SYMBOL_LAMBDA_C:
+    case SYMBOL_QAPPLICATOR:
+    case SYMBOL_MAPPLICATOR:
+    case SYMBOL_QAPPLICATOR_PRINTER:
+    duplicator:
+        return 3;
+    case SYMBOL_IF_THEN_ELSE: //
+        return 4;
+    default:
+        if (IS_DUPLICATOR(symbol)) goto duplicator;
+        else if (IS_DELIMITER(symbol)) goto delimiter;
+        else COMPILER_UNREACHABLE();
+    }
+}
+
+#pragma GCC diagnostic pop // "-Wunused-function"
+
+COMPILER_NONNULL(1, 2) COMPILER_HOT COMPILER_ALWAYS_INLINE //
+inline static void
+connect_ports(uint64_t *const restrict lhs, uint64_t *const restrict rhs) {
+    debug("%p 🔗 %p", (void *)lhs, (void *)rhs);
+
+    assert(lhs);
+    assert(rhs);
+    XASSERT(lhs != rhs);
+
+    *lhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*lhs), (uint64_t)rhs);
+    *rhs = ENCODE_ADDRESS(DECODE_ADDRESS_METADATA(*rhs), (uint64_t)lhs);
+}
+
+COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL
+COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
+inline static uint64_t *
+get_principal_port(uint64_t *const restrict port) {
+    assert(port);
+
+    return (port - DECODE_OFFSET_METADATA(port[0]));
+}
 
 #define PHASE_DEFAULT  UINT64_C(0) // all nodes not in the reduction stack
 #define PHASE_GC       UINT64_C(1) // active GC erasers
