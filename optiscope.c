@@ -1961,6 +1961,12 @@ inst_delimiter(
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nmergings++;
 #endif
+    } else if (is_atomic_symbol(g.ports[-1])) {
+        connect_ports(&g.ports[0], template.goes_from);
+#ifdef OPTISCOPE_ENABLE_STATS
+        graph->ninteractions++;
+        graph->ndelimiter_itrs++;
+#endif
     } else {
         inst_delimiter_as_is(graph, template, count);
     }

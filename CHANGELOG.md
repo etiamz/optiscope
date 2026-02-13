@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Optimization: doe not instantiate a delimiter that would commute with an atom.
+   - This optimization reduces memory usage of N-Queens by ~%25.
+
 ## 1.0.5 - 2026-02-08
 
 ### Changed
