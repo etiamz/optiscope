@@ -1,4 +1,4 @@
-#include "optiscope.h"
+#include <optiscope.h>
 
 #include <assert.h>
 #include <inttypes.h>

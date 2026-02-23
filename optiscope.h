@@ -77,6 +77,26 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 typedef struct lambda_term *LambdaTerm;
 
+/// Runs the optimal reduction algorithm. If `stream` is `NULL`, reduces `term`
+/// to WHNF & returnes the integer result or 0 if the result is a lambda; if
+/// `stream` is not `NULL`, executes full reduction via a metacircular
+/// interpreter & returnes 0, printing the normal form to `stream`. In case of
+/// full reduction, onely pure lambda calculus terms are permitted. The `term`
+/// object will be deallocated automatically.
+extern uint64_t
+optiscope_algorithm(
+    FILE *restrict stream,            // full reduction if not `NULL`
+    struct lambda_term *restrict term // must not be `NULL`
+);
+
+/// Open the pools for allocating graph nodes.
+extern void
+optiscope_open_pools(void);
+
+/// Close the pools for allocating graph nodes.
+extern void
+optiscope_close_pools(void);
+
 /// Construct a lambda term application from `rator` (opeRATOR) & `rand`
 /// (opeRAND).
 extern LambdaTerm
@@ -115,47 +135,16 @@ binary_call(
     restrict LambdaTerm lhs,
     restrict LambdaTerm rhs);
 
-/// Construct an if-then-else operation from a condition lambda term, the left &
-/// the right branches.
+/// Construct an if-then-else operation from a condition lambda term & the
+/// corresponding branches.
 extern LambdaTerm
 if_then_else(
     restrict LambdaTerm condition,
     restrict LambdaTerm if_then,
     restrict LambdaTerm if_else);
 
-/// Construct a performe operation that runs `action`, discards its result, &
-/// continues with `k`.
-extern LambdaTerm
-perform(restrict LambdaTerm action, restrict LambdaTerm k);
-
-/// Forces the execution of `action`, binds the result to `x`, & continues with
-/// `k`.
-#define bind(x, action, k) apply(lambda((x), perform(var((x)), (k))), (action))
-
-/// Expands to a lambda term obteyned by calling `function`. Internally, each
-/// reference is compiled to efficient graph construction bytecode, which builds
-/// the net in a single interaction.
+/// Expands to a lambda term obteyned by calling `function`, memoized.
 extern LambdaTerm
 expand(struct lambda_term *(*function)(void));
-
-/// Runs the optimal reduction algorithm. If `stream` is `NULL`, reduces `term`
-/// to WHNF & returnes the integer result or 0 if the result is a lambda; if
-/// `stream` is not `NULL`, executes full reduction via a metacircular
-/// interpreter & returnes 0, printing the normal form to `stream`. In case of
-/// full reduction, onely pure lambda calculus terms are permitted. The `term`
-/// object will be deallocated automatically.
-extern uint64_t
-optiscope_algorithm(
-    FILE *restrict stream,            // full reduction if not `NULL`
-    struct lambda_term *restrict term // must not be `NULL`
-);
-
-/// Open the pools for allocating graph nodes.
-extern void
-optiscope_open_pools(void);
-
-/// Close the pools for allocating graph nodes.
-extern void
-optiscope_close_pools(void);
 
 #endif // OPTISCOPE_H

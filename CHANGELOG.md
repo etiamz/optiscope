@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Removed
+
+ - Reduction semantics: side effecting through the `perform` & `bind` operators.
+
 ## 1.0.6 - 2026-02-15
 
 ### Changed

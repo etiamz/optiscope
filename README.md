@@ -2,11 +2,11 @@
 
 _Optiscope_ is an experimental Lévy-optimal implementation of the pure lambda calculus enriched with recursive definitions, native function calls, & if-then-else expressions.
 
-Optiscope extends [Lambdascope] [^lambdascope], a system of optimal reduction, with the capability of calling user-provided functions at native speed. This combination allows one to (1) embed all primitive types & operations through C FFI, (2) interleave evaluation with direct side effects, and (3) let optimal reduction share calls to pure C functions just like ordinary β-reductions. As such, Optiscope can be understood as an optimal λ-calculus machine extended to sharing foreign computation.
+Optiscope extends [Lambdascope] [^lambdascope], a system of optimal reduction, with the capability of calling user-provided functions at native speed. This technique allows one to enrich optimal reduction with their own primitives in a convenient manner. Here, we study the performance of Lambdascope-style oracle on a few classical benchmarks with machine integers.
 
 [Lambdascope]: https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=61042374787bf6514706b49a5a4f0b74996979a0
 
-In what follows, we briefly explaine what it means for reduction to be Lévy-optimal, & then describe our results.
+In what follows, we briefly demonstrate Optiscope on a few examples, & then describe our results.
 
 ## Installation
 
@@ -23,7 +23,7 @@ Optiscope offers a lightweight C API for writing programs in the extended lambda
 [`examples/lamping-example.c`]: examples/lamping-example.c
 
 ```c
-#include "../optiscope.h"
+#include <optiscope.h>
 
 static struct lambda_term *
 lamping_example(void) {
@@ -73,7 +73,7 @@ We mimicke full reduction as a normalization-by-evaluation procedure running on 
 [`examples/2-power-2.c`]: examples/2-power-2.c
 
 ```c
-#include "../optiscope.h"
+#include <optiscope.h>
 
 static struct lambda_term *
 church_two(void) {
@@ -112,26 +112,6 @@ The Graphviz visualization would look as follows:
 </div>
 
 Full reduction onely works for pure lambda calculus terms: lambdas, applications, & variables.
-
-## Side-Effectfull Evaluation
-
-See the example [`examples/palindrome.c`](examples/palindrome.c) with a detailed step-by-step explanation in comments.
-
-## Rules for Side Effects
-
-In this section, we give well-formednesse rules for side-effectfull computations in Optiscope.
-
-We take our inspiration from the use of monads in call-by-need functional programming languages, such as Haskell. The intuition is as follows: whenever we would write `_ <- action; k` in Haskell, we write `perform(action, k)` in Optiscope; whenever we would write `x <- comp; k` in Haskell, we write `bind(x, action, k)` in Optiscope; whenever we would end execution with `action` in Haskell (e.g., `putStrLn "goodbye"` at the end of do-notation), we doe the same in Optiscope.
-
-We write `comp/pure` for pure computations, i.e., those not conteyning `bind` or `perform`, & `comp/impure` for computations involving side effects. The formal rules for impure computations are as follows:
- - If `f` is a side-effectfull function, then `unary_call(f, token)/impure`, where `token` is a cell passed downwards.
- - If `f` is a side-effectfull function & `rand/impure`, then `binary_call(f, rand, token)/impure`, where `token` is a cell passed downwards.
- - If `action/impure` & `k/impure`, then `perform(action, k)/impure`.
- - If `action/impure` & `k/impure` , then `bind(x, action, k)/impure`.
- - If `action/impure` & `if_then/impure` & `if_else/impure`, then `if_then_else(action, if_then, if_else)/impure`.
- - If `comp/pure`, then `comp/impure`.
-
-The onely difference between Optiscope and Haskell-style monads is that, while monads are first-class citizens in Haskell, they merely manifest themselves as well-formednesse rules in Optiscope. While the Haskell approach allows for more flexibility & preserves the conceptual purity of I/O functions, it requires the I/O monad to be incarnated into the language & to be treated specially by the runtime system; on the other hand, the Optiscope approach onely requires carefull positioning of effectfull computation, which can be easily achieved through a superimposed type system that implements the rules above.
 
 ## On Performance
 
@@ -302,10 +282,11 @@ What conclusions should we draw from this? Have Haskell & OCaml so advanced in e
  - We doe not guarantee what will happen with ill-formed terms, such as when an if-then-else expression receives a lambda as a condition. In such cases, Optiscope's behaviour is considered undefined.
  - Optiscope cannot detect when two syntactically identical configurations occur at run-time; that is, the avoidance of redex duplication is relative to the initial term, not to the computational pattern exhibited by the term.
  - On conventional problems, Optiscope is many times slower compared to traditional implementations, wherefore it is more of an interesting experiment rather than a production technology.
+ - Finally, side effects are not supported. Executing side effects from within `unary_call`/`binary_call` functions will not provide a desirable outcome.
 
 ## Acknowledgements
 
-Thanks to Marvin Borner, Marc Thatcher, & Vincent van Oostrom for interesting discussions about optimality & side effectfull computation.
+Thanks to Marvin Borner, Marc Thatcher, & Vincent van Oostrom for interesting discussions about the lambda calculus, optimality, & interaction nets.
 
 ## References
 

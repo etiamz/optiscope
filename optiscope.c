@@ -93,14 +93,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>
 #endif
 
-// Perhaps for future use...
-#if defined(_OPENMP) && defined(NDEBUG)
-#include <omp.h>
-#define MY_OPENMP(...) _Pragma(__VA_ARGS__)
-#else
-#define MY_OPENMP(...) /* empty */
-#endif
-
 // Compiler-Specific Builtins
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -382,7 +374,6 @@ enum lambda_term_type {
     LAMBDA_TERM_UNARY_CALL,
     LAMBDA_TERM_BINARY_CALL,
     LAMBDA_TERM_IF_THEN_ELSE,
-    LAMBDA_TERM_PERFORM,
     LAMBDA_TERM_REFERENCE,
     LAMBDA_TERM_READBACK,
 };
@@ -415,10 +406,6 @@ struct if_then_else_data {
     struct lambda_term *if_then, *if_else;
 };
 
-struct perform_data {
-    struct lambda_term *action, *k;
-};
-
 struct reference_data {
     struct lambda_term *(*function)(void);
 };
@@ -435,7 +422,6 @@ union lambda_term_data {
     struct unary_call_data ucall;
     struct binary_call_data bcall;
     struct if_then_else_data ite;
-    struct perform_data perf;
     struct reference_data ref;
     struct readback_data rb;
 };
@@ -583,20 +569,6 @@ if_then_else(
 }
 
 extern LambdaTerm
-perform(const restrict LambdaTerm action, const restrict LambdaTerm k) {
-    assert(action);
-    assert(k);
-
-    struct lambda_term *const term = xmalloc(sizeof *term);
-    term->ty = LAMBDA_TERM_PERFORM;
-    term->data.perf.action = action;
-    term->data.perf.k = k;
-    term->fv_count = action->fv_count + k->fv_count;
-
-    return term;
-}
-
-extern LambdaTerm
 expand(struct lambda_term *(*const function)(void)) {
     assert(function);
 
@@ -645,10 +617,6 @@ free_lambda_term(struct lambda_term *const restrict term) {
         free_lambda_term(term->data.ite.condition);
         free_lambda_term(term->data.ite.if_then);
         free_lambda_term(term->data.ite.if_else);
-        break;
-    case LAMBDA_TERM_PERFORM:
-        free_lambda_term(term->data.perf.action);
-        free_lambda_term(term->data.perf.k);
         break;
     case LAMBDA_TERM_VAR:
     case LAMBDA_TERM_CELL:
@@ -739,23 +707,22 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
 #define SYMBOL_BINARY_CALL             UINT64_C(6)
 #define SYMBOL_BINARY_CALL_AUX         UINT64_C(7)
 #define SYMBOL_IF_THEN_ELSE            UINT64_C(8)
-#define SYMBOL_PERFORM                 UINT64_C(9)
-#define SYMBOL_IDENTITY_LAMBDA         UINT64_C(10) // the identity lambda
-#define SYMBOL_GC_LAMBDA               UINT64_C(11) // a lambda discarding its parameter
-#define SYMBOL_LAMBDA_C                UINT64_C(12) // a closed lambda
-#define SYMBOL_REFERENCE               UINT64_C(13)
-#define SYMBOL_BARRIER                 UINT64_C(14)
-#define SYMBOL_GC_DUPLICATOR_LEFT      UINT64_C(15)
-#define SYMBOL_GC_DUPLICATOR_RIGHT     UINT64_C(16)
-#define SYMBOL_QLAMBDA                 UINT64_C(17) // a quoted lambda
-#define SYMBOL_QAPPLICATOR             UINT64_C(18) // a quoted applicator
-#define SYMBOL_QVARIABLE               UINT64_C(19) // a quoted variable
-#define SYMBOL_MAPPLICATOR             UINT64_C(20) // a meta-applicator
-#define SYMBOL_READBACK                UINT64_C(21)
-#define SYMBOL_PRINTOUT                UINT64_C(22)
-#define SYMBOL_QLAMBDA_PRINTER         UINT64_C(23)
-#define SYMBOL_QAPPLICATOR_PRINTER     UINT64_C(24)
-#define SYMBOL_QAPPLICATOR_PRINTER_AUX UINT64_C(25)
+#define SYMBOL_IDENTITY_LAMBDA         UINT64_C(9) // the identity lambda
+#define SYMBOL_GC_LAMBDA               UINT64_C(10) // a lambda discarding its parameter
+#define SYMBOL_LAMBDA_C                UINT64_C(11) // a closed lambda
+#define SYMBOL_REFERENCE               UINT64_C(12)
+#define SYMBOL_BARRIER                 UINT64_C(13)
+#define SYMBOL_GC_DUPLICATOR_LEFT      UINT64_C(14)
+#define SYMBOL_GC_DUPLICATOR_RIGHT     UINT64_C(15)
+#define SYMBOL_QLAMBDA                 UINT64_C(16) // a quoted lambda
+#define SYMBOL_QAPPLICATOR             UINT64_C(17) // a quoted applicator
+#define SYMBOL_QVARIABLE               UINT64_C(18) // a quoted variable
+#define SYMBOL_MAPPLICATOR             UINT64_C(19) // a meta-applicator
+#define SYMBOL_READBACK                UINT64_C(20)
+#define SYMBOL_PRINTOUT                UINT64_C(21)
+#define SYMBOL_QLAMBDA_PRINTER         UINT64_C(22)
+#define SYMBOL_QAPPLICATOR_PRINTER     UINT64_C(23)
+#define SYMBOL_QAPPLICATOR_PRINTER_AUX UINT64_C(24)
 #define SYMBOL_DUPLICATOR(i)           (MAX_REGULAR_SYMBOL + 1 + (i))
 #define SYMBOL_DELIMITER(i)            (MAX_DUPLICATOR_INDEX + 1 + (i))
 
@@ -819,7 +786,6 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_BINARY_CALL: return format_string("binary-call");
     case SYMBOL_BINARY_CALL_AUX: return format_string("binary-call-aux");
     case SYMBOL_IF_THEN_ELSE: return format_string("if-then-else");
-    case SYMBOL_PERFORM: return format_string("perform");
     case SYMBOL_IDENTITY_LAMBDA: return format_string("identity");
     case SYMBOL_GC_LAMBDA: return format_string("λ◉");
     case SYMBOL_LAMBDA_C: return format_string("λc");
@@ -910,7 +876,6 @@ ports_count(const uint64_t symbol) {
     case SYMBOL_APPLICATOR:
     case SYMBOL_LAMBDA:
     case SYMBOL_BINARY_CALL:
-    case SYMBOL_PERFORM:
     case SYMBOL_LAMBDA_C:
     case SYMBOL_QAPPLICATOR:
     case SYMBOL_MAPPLICATOR:
@@ -1741,7 +1706,6 @@ alloc_node_from(
     case SYMBOL_APPLICATOR:
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
-    case SYMBOL_PERFORM:
     case SYMBOL_QAPPLICATOR:
     case SYMBOL_MAPPLICATOR:
     case SYMBOL_QAPPLICATOR_PRINTER:
@@ -1867,7 +1831,6 @@ free_node(struct context *const restrict graph, const struct node node) {
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
     case SYMBOL_UNARY_CALL:
-    case SYMBOL_PERFORM:
     case SYMBOL_BARRIER:
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
@@ -2188,7 +2151,6 @@ graphviz_edge_tailport(const struct node node, const uint8_t i) {
         default: COMPILER_UNREACHABLE();
         }
     case SYMBOL_BINARY_CALL:
-    case SYMBOL_PERFORM:
         switch (i) {
         case 0: return "sw";
         case 1: return "n";
@@ -2646,20 +2608,6 @@ emit_bytecode(
 
         break;
     }
-    case LAMBDA_TERM_PERFORM: {
-        struct lambda_term *const action = term->data.perf.action, //
-            *const k = term->data.perf.k;
-
-        const struct node perf = alloc_node(graph, SYMBOL_PERFORM);
-
-        BC_ATTACH_NODE(bc, perf, 1, &term->connect_to);
-        BC_SAVE_PORT(bc, &action->connect_to, 0);
-        BC_SAVE_PORT(bc, &k->connect_to, 2);
-        emit_bytecode(graph, bc, action, lvl, false /* quote */);
-        emit_bytecode(graph, bc, k, lvl, false /* quote */);
-
-        break;
-    }
     case LAMBDA_TERM_REFERENCE: {
         struct lambda_term *(*const function)(void) = term->data.ref.function;
 
@@ -2936,7 +2884,6 @@ gc_step(
         goto commute_1_2;
     case SYMBOL_APPLICATOR:
     case SYMBOL_BINARY_CALL:
-    case SYMBOL_PERFORM:
     case SYMBOL_QAPPLICATOR:
     case SYMBOL_MAPPLICATOR:
     case SYMBOL_QAPPLICATOR_PRINTER: goto commute_1_3;
@@ -3221,20 +3168,6 @@ COMPUTATION_RULE(do_if_then_else, graph, f, g) {
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), choose);
     gc(graph, discard);
-
-    free_node(graph, f);
-    free_node(graph, g);
-}
-
-COMPUTATION_RULE(do_perform, graph, f, g) {
-    assert(graph);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-    assert(is_interaction(f, g));
-    XASSERT(SYMBOL_PERFORM == f.ports[-1]);
-    XASSERT(SYMBOL_CELL == g.ports[-1]);
-
-    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(f.ports[2]));
 
     free_node(graph, f);
     free_node(graph, g);
@@ -3935,7 +3868,6 @@ try_extrude(
     case SYMBOL_QAPPLICATOR_PRINTER_AUX: extrude_2_2(graph, f, g); return true;
     case SYMBOL_APPLICATOR:
     case SYMBOL_BINARY_CALL:
-    case SYMBOL_PERFORM:
     case SYMBOL_MAPPLICATOR:
     case SYMBOL_QAPPLICATOR_PRINTER: extrude_2_3(graph, f, g); return true;
     case SYMBOL_IF_THEN_ELSE: extrude_2_4(graph, f, g); return true;
@@ -4357,38 +4289,6 @@ CONTROL_FUNCTION(interact_with_ite, graph, f, g) {
     return REDUCE_POP;
 }
 
-CONTROL_FUNCTION(interact_with_perf, graph, f, g) {
-    assert(graph);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-    XASSERT(SYMBOL_PERFORM == f.ports[-1]);
-
-    const uint64_t gsym = g.ports[-1];
-
-    if (!points_to(g, f)) {
-        return REDUCE_PUSH;
-    } else if (SYMBOL_CELL == gsym) {
-        INTERACTION(graph, f, g, REDUCE_POP, { do_perform(graph, f, g); });
-    } else if (SYMBOL_REFERENCE == gsym) {
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
-    } else if (IS_GC_DUPLICATOR(gsym)) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
-    } else if (IS_DUPLICATOR(gsym)) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
-    } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
-        }
-    } else {
-        COMPILER_UNREACHABLE();
-    }
-
-    return REDUCE_POP;
-}
-
 CONTROL_FUNCTION(interact_with_barr, graph, f, g) {
     assert(graph);
     XASSERT(f.ports);
@@ -4648,7 +4548,6 @@ loop: {
         action = interact_with_bcall_aux(graph, f, g);
         break;
     case SYMBOL_IF_THEN_ELSE: action = interact_with_ite(graph, f, g); break;
-    case SYMBOL_PERFORM: action = interact_with_perf(graph, f, g); break;
     case SYMBOL_BARRIER: action = interact_with_barr(graph, f, g); break;
     case SYMBOL_MAPPLICATOR: action = interact_with_mapp(graph, f, g); break;
     case SYMBOL_READBACK: action = interact_with_rb(graph, f, g); break;

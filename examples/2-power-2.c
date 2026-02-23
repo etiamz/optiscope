@@ -1,4 +1,4 @@
-#include "../optiscope.h"
+#include <optiscope.h>
 
 static struct lambda_term *
 church_two(void) {

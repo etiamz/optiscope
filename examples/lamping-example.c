@@ -1,4 +1,4 @@
-#include "../optiscope.h"
+#include <optiscope.h>
 
 static struct lambda_term *
 lamping_example(void) { // originally Lévy's
