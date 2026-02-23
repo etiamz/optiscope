@@ -28,6 +28,12 @@ jobs:
       - name: Run the tests
         run: ./command/test.sh
 
+      - name: Run the examples
+        run: |
+          for f in examples/*.c; do
+            ./command/example.sh "$(basename "$f" .c)"
+          done
+
   benchmark:
     runs-on: ubuntu-latest
 
