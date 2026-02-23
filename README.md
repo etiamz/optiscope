@@ -1,12 +1,15 @@
 # 🔬 Optiscope
 
-_Optiscope_ is an experimental Lévy-optimal implementation of the pure lambda calculus enriched with recursive definitions, native function calls, & if-then-else expressions.
+_Optiscope_ is an experimental Lévy-optimal implementation of the pure lambda calculus enriched with mutually recursive definitions, native function calls, & if-then-else expressions.
 
-Optiscope extends [Lambdascope] [^lambdascope], a system of optimal reduction, with the capability of calling user-provided functions at native speed. This technique allows one to enrich optimal reduction with their own primitives in a convenient manner. Here, we study the performance of Lambdascope-style oracle on a few classical benchmarks with machine integers.
+Optiscope extends [Lambdascope]-style optimal reduction [^lambdascope] with a set of optimizations that minimize the ratio of scoping operations to total graph rewrites. To measure the impact of our optimizations, we benchmarke the implementation on a number of classical recursive algorithms manipulating (Scott-encoded lists of) machine integers. Although our results show that traditional implementations of functional programming languages still outperforme optimal reduction on conventional tasks, the discovered optimizations yield a substantial improvement over [BOHM1.1] _\*_, the state-of-the-art implementation of optimal reduction [^bohm].
+
+_\* To be demonstrated in the upcoming paper._
 
 [Lambdascope]: https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=61042374787bf6514706b49a5a4f0b74996979a0
+[BOHM1.1]: https://github.com/asperti/BOHM1.1
 
-In what follows, we briefly demonstrate the usage, & then describe our results.
+In what follows, we briefly demonstrate the system & discuss it in more detail.
 
 ## Installation
 
