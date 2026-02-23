@@ -6,7 +6,7 @@ Optiscope extends [Lambdascope] [^lambdascope], a system of optimal reduction, w
 
 [Lambdascope]: https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=61042374787bf6514706b49a5a4f0b74996979a0
 
-In what follows, we briefly demonstrate Optiscope on a few examples, & then describe our results.
+In what follows, we briefly demonstrate the usage, & then describe our results.
 
 ## Installation
 
