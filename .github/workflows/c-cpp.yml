@@ -29,6 +29,7 @@ jobs:
         run: ./command/test.sh
 
       - name: Run the examples
+        if: runner.os != 'Windows'
         run: |
           for f in examples/*.c; do
             ./command/example.sh "$(basename "$f" .c)"
