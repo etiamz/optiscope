@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 2.0.0 - 2026-02-25
+
 ### Removed
 
  - Reduction semantics: side-effectfull semantics through the `perform` & `bind` operators.
