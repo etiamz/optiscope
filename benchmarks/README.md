@@ -85,20 +85,20 @@ Description: Performes a bubble sort on a Scott-encoded list of 300 cells, then 
 
 ```
 Benchmark 1: ./scott-bubble-sort
-  Time (mean ± σ):      2.850 s ±  0.039 s    [User: 2.846 s, System: 0.004 s]
-  Range (min … max):    2.795 s …  2.902 s    5 runs
+  Time (mean ± σ):      2.859 s ±  0.007 s    [User: 2.855 s, System: 0.004 s]
+  Range (min … max):    2.849 s …  2.867 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-    Total rewrites: 198647435
-Total interactions: 194628809
+    Total rewrites: 198652587
+Total interactions: 194632735
       Sharing work: 81.73%
   Bookkeeping work: 16.74%
            GC work: 1.05%
-   Peak node count: 320354
+   Peak node count: 317982
 ```
 
 </details>
@@ -109,20 +109,20 @@ Description: Performes an insertion sort on a Scott-encoded list of 1000 cells, 
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):     945.2 ms ±   7.5 ms    [User: 941.3 ms, System: 3.6 ms]
-  Range (min … max):   933.3 ms … 952.8 ms    5 runs
+  Time (mean ± σ):     889.8 ms ±   7.3 ms    [User: 885.2 ms, System: 4.3 ms]
+  Range (min … max):   877.4 ms … 896.4 ms    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-    Total rewrites: 55068028
-Total interactions: 23029015
+    Total rewrites: 55092075
+Total interactions: 23046036
       Sharing work: 3.63%
   Bookkeeping work: 44.53%
-           GC work: 40.92%
-   Peak node count: 1015215
+           GC work: 40.90%
+   Peak node count: 1007243
 ```
 
 </details>
@@ -133,20 +133,20 @@ Description: Performes a merge sort on a Scott-encoded list of 1000 cells, then 
 
 ```
 Benchmark 1: ./scott-merge-sort
-  Time (mean ± σ):     720.1 ms ±   6.4 ms    [User: 710.1 ms, System: 9.7 ms]
-  Range (min … max):   712.6 ms … 729.5 ms    5 runs
+  Time (mean ± σ):     705.3 ms ±   1.4 ms    [User: 696.2 ms, System: 8.9 ms]
+  Range (min … max):   703.8 ms … 706.9 ms    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-    Total rewrites: 41734945
-Total interactions: 30966452
+    Total rewrites: 41744999
+Total interactions: 30973479
       Sharing work: 18.49%
-  Bookkeeping work: 79.12%
+  Bookkeeping work: 79.09%
            GC work: 1.75%
-   Peak node count: 2215588
+   Peak node count: 2206616
 ```
 
 </details>
@@ -157,20 +157,20 @@ Description: Performes a quicksort on a Scott-encoded list of 500 cells, then su
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):      2.612 s ±  0.009 s    [User: 2.597 s, System: 0.015 s]
-  Range (min … max):    2.603 s …  2.627 s    5 runs
+  Time (mean ± σ):      2.585 s ±  0.028 s    [User: 2.570 s, System: 0.014 s]
+  Range (min … max):    2.566 s …  2.633 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-    Total rewrites: 147572783
-Total interactions: 88993426
+    Total rewrites: 147596830
+Total interactions: 89010447
       Sharing work: 8.13%
   Bookkeeping work: 66.03%
            GC work: 14.64%
-   Peak node count: 4210390
+   Peak node count: 4202418
 ```
 
 </details>

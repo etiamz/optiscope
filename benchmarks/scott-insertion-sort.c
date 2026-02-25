@@ -2,19 +2,38 @@
 #include "../tests.c"
 
 static struct lambda_term *
-generate_list(const uint64_t n) {
-    struct lambda_term *term = scott_nil();
-    for (uint64_t i = 0; i < n; i++) {
-        term = apply(apply(scott_cons(), cell(i)), term);
-    }
+generate_list_go(void) {
+    struct lambda_term *n, *i, *acc;
 
-    return term;
+    // clang-format off
+    return lambda(n, lambda(i, lambda(acc, if_then_else(
+        binary_call(less_than, var(i), var(n)),
+        apply(apply(apply(expand(generate_list_go),
+            var(n)),
+            unary_call(plus_one, var(i))),
+            apply(apply(scott_cons(), var(i)), var(acc))),
+        var(acc)))));
+    // clang-format on
+}
+
+static struct lambda_term *
+generate_list(void) {
+    struct lambda_term *n;
+
+    // clang-format off
+    return lambda(n, apply(apply(apply(expand(generate_list_go),
+        var(n)),
+        cell(0)),
+        scott_nil()));
+    // clang-format on
 }
 
 #define BENCHMARK_TERM                                                         \
     apply(                                                                     \
         expand(scott_sum_list),                                                \
-        apply(expand(scott_insertion_sort), generate_list(1000)))
+        apply(                                                                 \
+            expand(scott_insertion_sort),                                      \
+            apply(expand(generate_list), cell(1000))))
 
 int
 main(void) {
