@@ -37,8 +37,8 @@ Description: Computes the Ackermann function with initial values _(3, 8)_.
 
 ```
 Benchmark 1: ./ackermann
-  Time (mean ± σ):      1.249 s ±  0.006 s    [User: 1.238 s, System: 0.010 s]
-  Range (min … max):    1.242 s …  1.257 s    5 runs
+  Time (mean ± σ):      1.243 s ±  0.010 s    [User: 1.241 s, System: 0.002 s]
+  Range (min … max):    1.233 s …  1.255 s    5 runs
 ```
 
 <details>
@@ -50,7 +50,7 @@ Total interactions: 44586105
       Sharing work: 10.14%
   Bookkeeping work: 21.75%
            GC work: 46.37%
-   Peak node count: 4180090
+   Peak node count: 23549
 ```
 
 </details>
@@ -61,8 +61,8 @@ Description: Computes the Takeuchi function with initial values _(24, 9, 3)_.
 
 ```
 Benchmark 1: ./tak
-  Time (mean ± σ):      1.197 s ±  0.013 s    [User: 1.183 s, System: 0.013 s]
-  Range (min … max):    1.181 s …  1.213 s    5 runs
+  Time (mean ± σ):      1.159 s ±  0.017 s    [User: 1.156 s, System: 0.002 s]
+  Range (min … max):    1.141 s …  1.184 s    5 runs
 ```
 
 <details>
@@ -74,7 +74,7 @@ Total interactions: 41057777
       Sharing work: 10.78%
   Bookkeeping work: 30.37%
            GC work: 46.00%
-   Peak node count: 3682483
+   Peak node count: 1481
 ```
 
 </details>
@@ -85,8 +85,8 @@ Description: Performes a bubble sort on a Scott-encoded list of 300 cells, then 
 
 ```
 Benchmark 1: ./scott-bubble-sort
-  Time (mean ± σ):      2.859 s ±  0.007 s    [User: 2.855 s, System: 0.004 s]
-  Range (min … max):    2.849 s …  2.867 s    5 runs
+  Time (mean ± σ):      2.869 s ±  0.015 s    [User: 2.863 s, System: 0.005 s]
+  Range (min … max):    2.852 s …  2.889 s    5 runs
 ```
 
 <details>
@@ -98,7 +98,7 @@ Total interactions: 194632735
       Sharing work: 81.73%
   Bookkeeping work: 16.74%
            GC work: 1.05%
-   Peak node count: 317982
+   Peak node count: 271335
 ```
 
 </details>
@@ -109,8 +109,8 @@ Description: Performes an insertion sort on a Scott-encoded list of 1000 cells, 
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):     889.8 ms ±   7.3 ms    [User: 885.2 ms, System: 4.3 ms]
-  Range (min … max):   877.4 ms … 896.4 ms    5 runs
+  Time (mean ± σ):     855.5 ms ±   2.5 ms    [User: 852.9 ms, System: 2.3 ms]
+  Range (min … max):   852.4 ms … 859.0 ms    5 runs
 ```
 
 <details>
@@ -122,7 +122,7 @@ Total interactions: 23046036
       Sharing work: 3.63%
   Bookkeeping work: 44.53%
            GC work: 40.90%
-   Peak node count: 1007243
+   Peak node count: 72130
 ```
 
 </details>
@@ -133,8 +133,8 @@ Description: Performes a merge sort on a Scott-encoded list of 1000 cells, then 
 
 ```
 Benchmark 1: ./scott-merge-sort
-  Time (mean ± σ):     705.3 ms ±   1.4 ms    [User: 696.2 ms, System: 8.9 ms]
-  Range (min … max):   703.8 ms … 706.9 ms    5 runs
+  Time (mean ± σ):     707.1 ms ±   6.1 ms    [User: 696.7 ms, System: 10.2 ms]
+  Range (min … max):   700.5 ms … 713.2 ms    5 runs
 ```
 
 <details>
@@ -146,7 +146,7 @@ Total interactions: 30973479
       Sharing work: 18.49%
   Bookkeeping work: 79.09%
            GC work: 1.75%
-   Peak node count: 2206616
+   Peak node count: 2202603
 ```
 
 </details>
@@ -157,8 +157,8 @@ Description: Performes a quicksort on a Scott-encoded list of 500 cells, then su
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):      2.585 s ±  0.028 s    [User: 2.570 s, System: 0.014 s]
-  Range (min … max):    2.566 s …  2.633 s    5 runs
+  Time (mean ± σ):      2.608 s ±  0.027 s    [User: 2.596 s, System: 0.011 s]
+  Range (min … max):    2.570 s …  2.643 s    5 runs
 ```
 
 <details>
@@ -170,7 +170,7 @@ Total interactions: 89010447
       Sharing work: 8.13%
   Bookkeeping work: 66.03%
            GC work: 14.64%
-   Peak node count: 4202418
+   Peak node count: 3410506
 ```
 
 </details>
@@ -181,8 +181,8 @@ Description: Solves the 10-queens problem using Scott-encoded lists.
 
 ```
 Benchmark 1: ./nqueens
-  Time (mean ± σ):      5.492 s ±  0.046 s    [User: 5.486 s, System: 0.005 s]
-  Range (min … max):    5.440 s …  5.551 s    5 runs
+  Time (mean ± σ):      5.454 s ±  0.108 s    [User: 5.451 s, System: 0.002 s]
+  Range (min … max):    5.383 s …  5.643 s    5 runs
 ```
 
 <details>
@@ -194,7 +194,7 @@ Total interactions: 228610169
       Sharing work: 24.17%
   Bookkeeping work: 38.83%
            GC work: 29.02%
-   Peak node count: 1789042
+   Peak node count: 10537
 ```
 
 </details>

@@ -2789,6 +2789,7 @@ gc_duplicator_aux(
         free_node(graph, g);
     } else if (SYMBOL_DUPLICATOR(UINT64_C(0)) == g.ports[-1]) {
         connect_ports(points_to, shares_with);
+        free_node(graph, f);
         free_node(graph, g);
     } else {
         // clang-format off

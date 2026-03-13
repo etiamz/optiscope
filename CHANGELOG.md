@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 2.0.1 - 2026-03-13
+
+### Fixed
+
+ - Garbage collection: free the eraser that faces an auxiliary port of a zero-duplicator.
+
 ## 2.0.0 - 2026-02-25
 
 ### Removed
