@@ -1863,19 +1863,6 @@ free_node(struct context *const restrict graph, const struct node node) {
 // Delimiter Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-// Tells whether two delimiters, the inner _⊔a^p_ & the outer _⊔b^q_, can be
-// represented as a single delimiter _⊔a^(p+q)_.
-COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT
-COMPILER_ALWAYS_INLINE //
-inline static bool
-check_mergeability(const uint64_t a, const uint64_t p, const uint64_t b) {
-    XASSERT(IS_DELIMITER(a));
-    XASSERT(IS_DELIMITER(b));
-    XASSERT(p > 0);
-
-    return a <= b && b - a <= p;
-}
-
 struct delimiter {
     const uint64_t idx;
     uint64_t *const restrict points_to, *const restrict goes_from;
@@ -1930,16 +1917,15 @@ inst_delimiter(
 
     const uint64_t fsym = SYMBOL_DELIMITER(template.idx), gsym = g.ports[-1];
 
-    const bool condition = IS_DELIMITER(g.ports[-1]) &&
-                           1 == DECODE_OFFSET_METADATA(*template.points_to) &&
-                           check_mergeability(gsym, g.ports[2], fsym);
+    const bool condition =
+        fsym == gsym && 1 == DECODE_OFFSET_METADATA(*template.points_to);
     if (condition) {
         g.ports[2] = checked_add(g.ports[2], count);
         connect_ports(&g.ports[1], template.goes_from);
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nmergings++;
 #endif
-    } else if (is_atomic_symbol(g.ports[-1])) {
+    } else if (is_atomic_symbol(gsym)) {
         connect_ports(&g.ports[0], template.goes_from);
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ninteractions++;
@@ -1965,16 +1951,15 @@ try_merge_delimiter(struct context *const restrict graph, const struct node f) {
 
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
-    const bool condition = IS_DELIMITER(gsym) &&
-                           1 == DECODE_OFFSET_METADATA(*points_to) &&
-                           check_mergeability(gsym, g.ports[2], fsym);
+    const bool condition =
+        fsym == gsym && 1 == DECODE_OFFSET_METADATA(*points_to);
     if (condition) {
         g.ports[2] = checked_add(g.ports[2], f.ports[2]);
         connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->nmergings++;
 #endif
-    } else if (is_atomic_symbol(g.ports[-1])) {
+    } else if (is_atomic_symbol(gsym)) {
         connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 #ifdef OPTISCOPE_ENABLE_STATS
         graph->ninteractions++;
@@ -3907,10 +3892,8 @@ is_mergeable_through(const struct node f, const struct node g) {
     const struct node h = node_of_port(target);
 
     return
-        // The node that `g` points to is a delimiter.
-        IS_DELIMITER(h.ports[-1]) &&
         // `f` & `h` can be merged into a single delimiter.
-        check_mergeability(h.ports[-1], h.ports[2], f.ports[-1]) &&
+        f.ports[-1] == h.ports[-1] &&
         // `g` is pointing to `h`'s auxiliary port.
         target == &h.ports[1];
 }
@@ -3935,7 +3918,7 @@ try_extrude_over_delimiter(
 
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
-    if (check_mergeability(gsym, g.ports[2], fsym)) {
+    if (fsym == gsym) {
         try_merge_delimiter(graph, f);
         return true;
     } else if (fsym > gsym) {

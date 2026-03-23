@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 2.0.3 - 2026-03-23
+
+### Fixed
+
+ - Optimization: remove cross-level delimiter compression due to potential unsoundnesse.
+   - Specifically, disabling delimiter extrusion makes our test suite fail, which should not happen. Without cross-level compression, disabling extrusion makes no harm.
+
 ## 2.0.2 - 2026-03-16
 
 ### Changed
