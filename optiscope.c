@@ -722,31 +722,34 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
 
 #define SYMBOL_LAMBDA_C UINT64_C(11) // a closed lambda
 
-#define SYMBOL_REFERENCE UINT64_C(12)
+#define SYMBOL_GC_LAMBDA_C                                                     \
+    UINT64_C(12) // a closed lambda discarding its parameter
 
-#define SYMBOL_BARRIER UINT64_C(13)
+#define SYMBOL_REFERENCE UINT64_C(13)
 
-#define SYMBOL_GC_DUPLICATOR_LEFT UINT64_C(14)
+#define SYMBOL_BARRIER UINT64_C(14)
 
-#define SYMBOL_GC_DUPLICATOR_RIGHT UINT64_C(15)
+#define SYMBOL_GC_DUPLICATOR_LEFT UINT64_C(15)
 
-#define SYMBOL_QLAMBDA UINT64_C(16) // a quoted lambda
+#define SYMBOL_GC_DUPLICATOR_RIGHT UINT64_C(16)
 
-#define SYMBOL_QAPPLICATOR UINT64_C(17) // a quoted applicator
+#define SYMBOL_QLAMBDA UINT64_C(17) // a quoted lambda
 
-#define SYMBOL_QVARIABLE UINT64_C(18) // a quoted variable
+#define SYMBOL_QAPPLICATOR UINT64_C(18) // a quoted applicator
 
-#define SYMBOL_MAPPLICATOR UINT64_C(19) // a meta-applicator
+#define SYMBOL_QVARIABLE UINT64_C(19) // a quoted variable
 
-#define SYMBOL_READBACK UINT64_C(20)
+#define SYMBOL_MAPPLICATOR UINT64_C(20) // a meta-applicator
 
-#define SYMBOL_PRINTOUT UINT64_C(21)
+#define SYMBOL_READBACK UINT64_C(21)
 
-#define SYMBOL_QLAMBDA_PRINTER UINT64_C(22)
+#define SYMBOL_PRINTOUT UINT64_C(22)
 
-#define SYMBOL_QAPPLICATOR_PRINTER UINT64_C(23)
+#define SYMBOL_QLAMBDA_PRINTER UINT64_C(23)
 
-#define SYMBOL_QAPPLICATOR_PRINTER_AUX UINT64_C(24)
+#define SYMBOL_QAPPLICATOR_PRINTER UINT64_C(24)
+
+#define SYMBOL_QAPPLICATOR_PRINTER_AUX UINT64_C(25)
 
 #define SYMBOL_DUPLICATOR(i) (MAX_REGULAR_SYMBOL + 1 + (i))
 
@@ -754,10 +757,14 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
 
 #define IS_ANY_LAMBDA(symbol)                                                  \
     (SYMBOL_LAMBDA == (symbol) || SYMBOL_IDENTITY_LAMBDA == (symbol) ||        \
-     SYMBOL_GC_LAMBDA == (symbol) || SYMBOL_LAMBDA_C == (symbol))
+     SYMBOL_GC_LAMBDA == (symbol) || SYMBOL_LAMBDA_C == (symbol) ||            \
+     SYMBOL_GC_LAMBDA_C == (symbol))
 
 #define IS_RELEVANT_LAMBDA(symbol)                                             \
     (SYMBOL_LAMBDA == (symbol) || SYMBOL_LAMBDA_C == (symbol))
+
+#define IS_GC_LAMBDA(symbol)                                                   \
+    (SYMBOL_GC_LAMBDA == (symbol) || SYMBOL_GC_LAMBDA_C == (symbol))
 
 // clang-format off
 #define IS_DUPLICATOR(symbol) \
@@ -815,6 +822,7 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_IDENTITY_LAMBDA: return format_string("identity");
     case SYMBOL_GC_LAMBDA: return format_string("λ◉");
     case SYMBOL_LAMBDA_C: return format_string("λc");
+    case SYMBOL_GC_LAMBDA_C: return format_string("λc◉");
     case SYMBOL_REFERENCE: return format_string("&");
     case SYMBOL_BARRIER: return format_string("🚧");
     case SYMBOL_GC_DUPLICATOR_LEFT: return format_string("◉δx");
@@ -890,6 +898,7 @@ ports_count(const uint64_t symbol) {
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_GC_LAMBDA:
+    case SYMBOL_GC_LAMBDA_C:
     case SYMBOL_BARRIER:
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
@@ -1706,6 +1715,7 @@ alloc_node_from(
         SET_PORTS_0();
         break;
     case SYMBOL_GC_LAMBDA:
+    case SYMBOL_GC_LAMBDA_C:
     case SYMBOL_QLAMBDA:
     case SYMBOL_QLAMBDA_PRINTER:
         p = ALLOC_POOL_OBJECT(u64x3_pool);
@@ -1840,6 +1850,7 @@ free_node(struct context *const restrict graph, const struct node node) {
     case SYMBOL_ERASER:
     case SYMBOL_IDENTITY_LAMBDA: FREE_POOL_OBJECT(u64x2_pool, p); break;
     case SYMBOL_GC_LAMBDA:
+    case SYMBOL_GC_LAMBDA_C:
     case SYMBOL_CELL:
     case SYMBOL_REFERENCE:
     case SYMBOL_QVARIABLE:
@@ -1947,6 +1958,7 @@ graphviz_port_orientation(const struct node node, const uint8_t i) {
         default: COMPILER_UNREACHABLE();
         }
     case SYMBOL_GC_LAMBDA:
+    case SYMBOL_GC_LAMBDA_C:
     case SYMBOL_QLAMBDA:
         switch (i) {
         case 0: return "n";
@@ -2371,7 +2383,9 @@ emit_bytecode(
 
         if (0 == binder->nusages) {
             // This is a lambda that "garbage-collects" its argument.
-            const struct node lam = alloc_node(graph, SYMBOL_GC_LAMBDA);
+            const struct node lam = alloc_node(
+                graph,
+                term->fv_count > 0 ? SYMBOL_GC_LAMBDA : SYMBOL_GC_LAMBDA_C);
             BC_ATTACH_NODE(bc, lam, 0, &term->connect_to);
             BC_SAVE_PORT(bc, &body->connect_to, 1);
             emit_bytecode(graph, bc, body, lvl + 1, quote);
@@ -2668,6 +2682,7 @@ gc_step(
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_GC_LAMBDA:
+    case SYMBOL_GC_LAMBDA_C:
     case SYMBOL_BARRIER:
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
@@ -2692,7 +2707,10 @@ gc_step(
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
         if (1 == i) {
-            const struct node replacement = alloc_node(graph, SYMBOL_GC_LAMBDA);
+            const struct node replacement = alloc_node(
+                graph,
+                SYMBOL_LAMBDA_C == g.ports[-1] ? SYMBOL_GC_LAMBDA_C
+                                               : SYMBOL_GC_LAMBDA);
 
             connect_ports(&replacement.ports[0], DECODE_ADDRESS(g.ports[0]));
             connect_ports(&replacement.ports[1], DECODE_ADDRESS(g.ports[2]));
@@ -2871,6 +2889,21 @@ COMPUTATION_RULE(gc_beta, graph, f, g) {
 
     // There is a chance that the argument is fully disconnected from the root;
     // if so, we must garbage-collect it.
+    gc(graph, DECODE_ADDRESS(f.ports[2]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+COMPUTATION_RULE(gc_beta_c, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+    XASSERT(SYMBOL_GC_LAMBDA_C == g.ports[-1]);
+
+    connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
     gc(graph, DECODE_ADDRESS(f.ports[2]));
 
     free_node(graph, f);
@@ -3707,7 +3740,7 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
     } else if (IS_RELEVANT_LAMBDA(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_gc_dup_lam(graph, f, g); });
-    } else if (SYMBOL_GC_LAMBDA == gsym) {
+    } else if (IS_GC_LAMBDA(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_gc_dup_gc_lam(graph, f, g); });
     } else if (SYMBOL_REFERENCE == gsym) {
@@ -3778,7 +3811,7 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
         return REDUCE_PUSH;
     } else if (IS_RELEVANT_LAMBDA(gsym)) {
         INTERACTION(graph, f, g, REDUCE_POP, { commute_dup_lam(graph, f, g); });
-    } else if (SYMBOL_GC_LAMBDA == gsym) {
+    } else if (IS_GC_LAMBDA(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_dup_gc_lam(graph, f, g); });
     } else if (SYMBOL_REFERENCE == gsym) {
@@ -3847,7 +3880,9 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
     } else if (SYMBOL_GC_LAMBDA == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_del_gc_lam(graph, f, g); });
-    } else if (SYMBOL_LAMBDA_C == gsym) {
+    } else if (
+        SYMBOL_LAMBDA_C == gsym || //
+        SYMBOL_GC_LAMBDA_C == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
     } else if (SYMBOL_QLAMBDA == gsym) {
@@ -3905,6 +3940,9 @@ CONTROL_FUNCTION(interact_with_app, graph, f, g) {
     } else if (SYMBOL_GC_LAMBDA == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta(graph, f, g); });
+    } else if (SYMBOL_GC_LAMBDA_C == gsym) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta_c(graph, f, g); });
     } else if (SYMBOL_REFERENCE == gsym) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
     } else if (IS_GC_DUPLICATOR(gsym)) {
