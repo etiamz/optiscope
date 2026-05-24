@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Optimization: doe not extrude delimiters over other delimiters, doe not compress delimiters after commutation, doe not duplicate atoms after commutation.
+ - Optimization: doe not extrude delimiters over other delimiters, doe not compresse delimiters after commutation, doe not duplicate atoms after commutation.
    - The difference in performance after these simplifications is within noise.
  - Graphviz: draw undirected edges, focus using clusters, respect port orientation.
 
