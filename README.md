@@ -65,7 +65,7 @@ By adding the following lines into [`optiscope.h`]:
 
 <div align="center">
   <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-animation.gif">
-    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-preview.png" width="750px" alt="Lamping's example" />
+    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-preview.png" alt="Lamping's example" />
   </a>
 </div>
 
@@ -110,7 +110,7 @@ The Graphviz visualization would look as follows:
 
 <div align="center">
   <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/2-power-2-animation.gif">
-    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/2-power-2-preview.png" width="550px" alt="2^2 example" />
+    <img src="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/2-power-2-preview.png" alt="2^2 example" />
   </a>
 </div>
 

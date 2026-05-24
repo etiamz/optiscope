@@ -698,33 +698,59 @@ STATIC_ASSERT(sizeof(struct lambda_term *(*)(void)) <= sizeof(uint64_t));
 STATIC_ASSERT(UINT64_MAX == UINT64_C(18446744073709551615));
 STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
 
-#define SYMBOL_ROOT                    UINT64_C(0)
-#define SYMBOL_APPLICATOR              UINT64_C(1)
-#define SYMBOL_LAMBDA                  UINT64_C(2)
-#define SYMBOL_ERASER                  UINT64_C(3)
-#define SYMBOL_CELL                    UINT64_C(4)
-#define SYMBOL_UNARY_CALL              UINT64_C(5)
-#define SYMBOL_BINARY_CALL             UINT64_C(6)
-#define SYMBOL_BINARY_CALL_AUX         UINT64_C(7)
-#define SYMBOL_IF_THEN_ELSE            UINT64_C(8)
-#define SYMBOL_IDENTITY_LAMBDA         UINT64_C(9) // the identity lambda
-#define SYMBOL_GC_LAMBDA               UINT64_C(10) // a lambda discarding its parameter
-#define SYMBOL_LAMBDA_C                UINT64_C(11) // a closed lambda
-#define SYMBOL_REFERENCE               UINT64_C(12)
-#define SYMBOL_BARRIER                 UINT64_C(13)
-#define SYMBOL_GC_DUPLICATOR_LEFT      UINT64_C(14)
-#define SYMBOL_GC_DUPLICATOR_RIGHT     UINT64_C(15)
-#define SYMBOL_QLAMBDA                 UINT64_C(16) // a quoted lambda
-#define SYMBOL_QAPPLICATOR             UINT64_C(17) // a quoted applicator
-#define SYMBOL_QVARIABLE               UINT64_C(18) // a quoted variable
-#define SYMBOL_MAPPLICATOR             UINT64_C(19) // a meta-applicator
-#define SYMBOL_READBACK                UINT64_C(20)
-#define SYMBOL_PRINTOUT                UINT64_C(21)
-#define SYMBOL_QLAMBDA_PRINTER         UINT64_C(22)
-#define SYMBOL_QAPPLICATOR_PRINTER     UINT64_C(23)
+#define SYMBOL_ROOT UINT64_C(0)
+
+#define SYMBOL_APPLICATOR UINT64_C(1)
+
+#define SYMBOL_LAMBDA UINT64_C(2)
+
+#define SYMBOL_ERASER UINT64_C(3)
+
+#define SYMBOL_CELL UINT64_C(4)
+
+#define SYMBOL_UNARY_CALL UINT64_C(5)
+
+#define SYMBOL_BINARY_CALL UINT64_C(6)
+
+#define SYMBOL_BINARY_CALL_AUX UINT64_C(7)
+
+#define SYMBOL_IF_THEN_ELSE UINT64_C(8)
+
+#define SYMBOL_IDENTITY_LAMBDA UINT64_C(9) // the identity lambda
+
+#define SYMBOL_GC_LAMBDA UINT64_C(10) // a lambda discarding its parameter
+
+#define SYMBOL_LAMBDA_C UINT64_C(11) // a closed lambda
+
+#define SYMBOL_REFERENCE UINT64_C(12)
+
+#define SYMBOL_BARRIER UINT64_C(13)
+
+#define SYMBOL_GC_DUPLICATOR_LEFT UINT64_C(14)
+
+#define SYMBOL_GC_DUPLICATOR_RIGHT UINT64_C(15)
+
+#define SYMBOL_QLAMBDA UINT64_C(16) // a quoted lambda
+
+#define SYMBOL_QAPPLICATOR UINT64_C(17) // a quoted applicator
+
+#define SYMBOL_QVARIABLE UINT64_C(18) // a quoted variable
+
+#define SYMBOL_MAPPLICATOR UINT64_C(19) // a meta-applicator
+
+#define SYMBOL_READBACK UINT64_C(20)
+
+#define SYMBOL_PRINTOUT UINT64_C(21)
+
+#define SYMBOL_QLAMBDA_PRINTER UINT64_C(22)
+
+#define SYMBOL_QAPPLICATOR_PRINTER UINT64_C(23)
+
 #define SYMBOL_QAPPLICATOR_PRINTER_AUX UINT64_C(24)
-#define SYMBOL_DUPLICATOR(i)           (MAX_REGULAR_SYMBOL + 1 + (i))
-#define SYMBOL_DELIMITER(i)            (MAX_DUPLICATOR_INDEX + 1 + (i))
+
+#define SYMBOL_DUPLICATOR(i) (MAX_REGULAR_SYMBOL + 1 + (i))
+
+#define SYMBOL_DELIMITER(i) (MAX_DUPLICATOR_INDEX + 1 + (i))
 
 #define IS_ANY_LAMBDA(symbol)                                                  \
     (SYMBOL_LAMBDA == (symbol) || SYMBOL_IDENTITY_LAMBDA == (symbol) ||        \
@@ -919,10 +945,6 @@ get_principal_port(uint64_t *const restrict port) {
 #define PHASE_GC       UINT64_C(1) // active GC erasers
 #define PHASE_GC_AUX   UINT64_C(2) // GC erasers scheduled for deletion
 #define PHASE_IN_STACK UINT64_C(3) // operators in the reduction stack
-
-#ifdef OPTISCOPE_ENABLE_GRAPHVIZ
-#define PHASE_CURRENT_PAIR UINT64_C(4) // Graphviz: the current active pair
-#endif
 
 #define PHASE_MASK                                                             \
     UINT64_C(0xC3FFFFFFFFFFFFFF) /* clear the phase bits (61-58) */
@@ -1343,32 +1365,32 @@ emit_instruction(
 #define BC_ATTACH_NODE(bc, ...)                                                \
     emit_instruction(                                                          \
         (bc),                                                                  \
-        (struct bc_instruction){.ty = INSTRUCTION_ATTACH_NODE,                 \
-                                .data.attach_node = {__VA_ARGS__}})
+        (struct bc_instruction){                                               \
+            .ty = INSTRUCTION_ATTACH_NODE, .data.attach_node = {__VA_ARGS__}})
 
 #define BC_SAVE_PORT(bc, ...)                                                  \
     emit_instruction(                                                          \
         (bc),                                                                  \
-        (struct bc_instruction){.ty = INSTRUCTION_SAVE_PORT,                   \
-                                .data.save_port = {__VA_ARGS__}})
+        (struct bc_instruction){                                               \
+            .ty = INSTRUCTION_SAVE_PORT, .data.save_port = {__VA_ARGS__}})
 
 #define BC_CONNECT(bc, ...)                                                    \
     emit_instruction(                                                          \
         (bc),                                                                  \
-        (struct bc_instruction){.ty = INSTRUCTION_CONNECT,                     \
-                                .data.connect = {__VA_ARGS__}})
+        (struct bc_instruction){                                               \
+            .ty = INSTRUCTION_CONNECT, .data.connect = {__VA_ARGS__}})
 
 #define BC_DELIMIT(bc, ...)                                                    \
     emit_instruction(                                                          \
         (bc),                                                                  \
-        (struct bc_instruction){.ty = INSTRUCTION_DELIMIT,                     \
-                                .data.delimit = {__VA_ARGS__}})
+        (struct bc_instruction){                                               \
+            .ty = INSTRUCTION_DELIMIT, .data.delimit = {__VA_ARGS__}})
 
 #define BC_TREE(bc, ...)                                                       \
     emit_instruction(                                                          \
         (bc),                                                                  \
-        (struct bc_instruction){.ty = INSTRUCTION_TREE,                        \
-                                .data.tree = {__VA_ARGS__}})
+        (struct bc_instruction){                                               \
+            .ty = INSTRUCTION_TREE, .data.tree = {__VA_ARGS__}})
 
 // Multifocuses Functionality
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -1860,155 +1882,6 @@ free_node(struct context *const restrict graph, const struct node node) {
 #endif
 }
 
-// Delimiter Functionality
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-struct delimiter {
-    const uint64_t idx;
-    uint64_t *const restrict points_to, *const restrict goes_from;
-};
-
-#ifndef NDEBUG
-
-static void
-assert_delimiter_template(const struct delimiter template) {
-    assert(template.idx < INDEX_RANGE);
-    assert(template.points_to);
-    assert(template.goes_from);
-}
-
-#else
-
-#define assert_delimiter_template(template) ((void)0)
-
-#endif // NDEBUG
-
-COMPILER_NONNULL(1) COMPILER_HOT //
-static void
-inst_delimiter_as_is(
-    struct context *const restrict graph,
-    const struct delimiter template,
-    const uint64_t count) {
-    assert(graph);
-    assert_delimiter_template(template);
-
-    const struct node node = alloc_node(graph, SYMBOL_DELIMITER(template.idx));
-    node.ports[2] = count;
-    connect_ports(&node.ports[0], template.points_to);
-    connect_ports(&node.ports[1], template.goes_from);
-}
-
-COMPILER_NONNULL(1) COMPILER_HOT //
-static void
-inst_delimiter(
-    struct context *const restrict graph,
-    const struct delimiter template,
-    const uint64_t count) {
-    assert(graph);
-    assert_delimiter_template(template);
-
-    if (0 == count) {
-        connect_ports(template.points_to, template.goes_from);
-        return;
-    }
-
-    const struct node g = node_of_port(template.points_to);
-    XASSERT(g.ports);
-
-    const uint64_t fsym = SYMBOL_DELIMITER(template.idx), gsym = g.ports[-1];
-
-    const bool condition =
-        fsym == gsym && 1 == DECODE_OFFSET_METADATA(*template.points_to);
-    if (condition) {
-        g.ports[2] = checked_add(g.ports[2], count);
-        connect_ports(&g.ports[1], template.goes_from);
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->nmergings++;
-#endif
-    } else if (is_atomic_symbol(gsym)) {
-        connect_ports(&g.ports[0], template.goes_from);
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->ninteractions++;
-        graph->ndelimiter_itrs++;
-#endif
-    } else {
-        inst_delimiter_as_is(graph, template, count);
-    }
-}
-
-COMPILER_NONNULL(1) COMPILER_HOT //
-static void
-try_merge_delimiter(struct context *const restrict graph, const struct node f) {
-    assert(graph);
-    XASSERT(f.ports);
-    XASSERT(IS_DELIMITER(f.ports[-1]));
-
-    uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
-    XASSERT(points_to);
-
-    const struct node g = node_of_port(points_to);
-    XASSERT(g.ports);
-
-    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
-
-    const bool condition =
-        fsym == gsym && 1 == DECODE_OFFSET_METADATA(*points_to);
-    if (condition) {
-        g.ports[2] = checked_add(g.ports[2], f.ports[2]);
-        connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->nmergings++;
-#endif
-    } else if (is_atomic_symbol(gsym)) {
-        connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->ninteractions++;
-        graph->ndelimiter_itrs++;
-#endif
-    } else {
-        return;
-    }
-
-    free_node(graph, f);
-}
-
-COMPILER_NONNULL(1) COMPILER_HOT //
-static void
-try_merge_if_delimiter(
-    struct context *const restrict graph, const struct node f) {
-    assert(graph);
-    XASSERT(f.ports);
-
-    if (IS_DELIMITER(f.ports[-1])) { try_merge_delimiter(graph, f); }
-}
-
-// Immediate Duplication
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-COMPILER_NONNULL(1) COMPILER_HOT //
-static void
-try_duplicate(struct context *const restrict graph, const struct node f) {
-    assert(graph);
-    XASSERT(f.ports);
-    XASSERT(IS_DUPLICATOR(f.ports[-1]));
-
-    const struct node g = follow_port(f, 0);
-    XASSERT(g.ports);
-
-    const bool condition =
-        is_atomic_symbol(g.ports[-1]) && SYMBOL_REFERENCE != g.ports[-1];
-    if (condition) {
-        const struct node gx = alloc_node_from(graph, g.ports[-1], &g);
-        connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
-        connect_ports(&gx.ports[0], DECODE_ADDRESS(f.ports[2]));
-        free_node(graph, f);
-#ifdef OPTISCOPE_ENABLE_STATS
-        graph->ninteractions++;
-        graph->nduplicator_itrs++;
-#endif
-    }
-}
-
 // Graphviz Graph Generation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -2052,49 +1925,9 @@ graphviz_node_xlabel(const struct node node) {
 #undef FORMAT_BLOCK
 }
 
-COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
-static char *
-graphviz_edge_label(const struct node node, const uint8_t i) {
-    XASSERT(node.ports);
-
-    switch (node.ports[-1]) {
-    case SYMBOL_APPLICATOR:
-    case SYMBOL_MAPPLICATOR:
-    case SYMBOL_QAPPLICATOR_PRINTER:
-        switch (i) {
-        case 0: return format_string("rator (\\#%" PRIu8 ")", i);
-        case 1: return format_string("\\#%" PRIu8, i);
-        case 2: return format_string("rand (\\#%" PRIu8 ")", i);
-        default: COMPILER_UNREACHABLE();
-        }
-    case SYMBOL_LAMBDA:
-    case SYMBOL_LAMBDA_C:
-        switch (i) {
-        case 0: return format_string("\\#%" PRIu8, i);
-        case 1: return format_string("binder (\\#%" PRIu8 ")", i);
-        case 2: return format_string("body (\\#%" PRIu8 ")", i);
-        default: COMPILER_UNREACHABLE();
-        }
-    case SYMBOL_GC_LAMBDA:
-        switch (i) {
-        case 0: return format_string("\\#%" PRIu8, i);
-        case 1: return format_string("body (\\#%" PRIu8 ")", i);
-        default: COMPILER_UNREACHABLE();
-        }
-    case SYMBOL_QAPPLICATOR:
-        switch (i) {
-        case 0: return format_string("\\#%" PRIu8, i);
-        case 1: return format_string("rand (\\#%" PRIu8 ")", i);
-        case 2: return format_string("rator (\\#%" PRIu8 ")", i);
-        default: COMPILER_UNREACHABLE();
-        }
-    default: return format_string("\\#%" PRIu8, i);
-    }
-}
-
 COMPILER_PURE COMPILER_WARN_UNUSED_RESULT COMPILER_RETURNS_NONNULL //
 static const char *
-graphviz_edge_tailport(const struct node node, const uint8_t i) {
+graphviz_port_orientation(const struct node node, const uint8_t i) {
     XASSERT(node.ports);
 
     switch (node.ports[-1]) {
@@ -2216,38 +2049,11 @@ graphviz_print_symbol(const struct node node) {
 }
 
 struct graphviz_context {
-    struct context *graph;
-    struct multifocus history;
-    FILE *stream;
+    struct context *graph;     // our graph pointer
+    struct multifocus history; // every node visited so far
+    struct multifocus stack;   // nodes on the current DFS path
+    FILE *stream;              // the output stream
 };
-
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
-inline static bool
-graphviz_is_current_node(const struct node node) {
-    XASSERT(node.ports);
-
-    return PHASE_CURRENT_PAIR == DECODE_PHASE_METADATA(node.ports[0]);
-}
-
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
-inline static bool
-graphviz_is_active_node(const struct node node) {
-    XASSERT(node.ports);
-
-    const struct node f = node, g = follow_port(node, 0);
-
-    return points_to(g, f) && SYMBOL_ROOT != node.ports[-1];
-}
-
-COMPILER_PURE COMPILER_WARN_UNUSED_RESULT //
-inline static bool
-graphviz_is_active_edge(const struct node node, const uint8_t i) {
-    XASSERT(node.ports);
-
-    const struct node f = node, g = follow_port(node, i);
-
-    return is_interaction(f, g);
-}
 
 COMPILER_NONNULL(1) //
 static void
@@ -2259,29 +2065,21 @@ graphviz_draw_node(
 
     const uint64_t *const p = node.ports;
 
-    const bool is_active = graphviz_is_active_node(node),
-               is_current = graphviz_is_current_node(node),
-               is_root = SYMBOL_ROOT == p[-1];
+    const bool is_root = SYMBOL_ROOT == p[-1];
 
     char *const ssymbol = graphviz_print_symbol(node);
     char *const xlabel = graphviz_node_xlabel(node);
 
     fprintf(
         ctx->stream,
-        // clang-format off
-        GRAPHVIZ_INDENT "n%p"
-        " [label=\"%s\""
-        ", xlabel=<<FONT FACE=\"Courier\" COLOR=\"blue\" POINT-SIZE=\"8\">%s</FONT>>"
-        "%s%s%s];\n",
-        // clang-format on
+        GRAPHVIZ_INDENT
+        "n%p [label=\"%s\", "
+        "xlabel=<<FONT FACE=\"Courier\" COLOR=\"blue\" POINT-SIZE=\"8\">%s</FONT>>, "
+        "style=%s];\n",
         (void *)p,
         ssymbol,
         xlabel,
-        (is_current && !is_root
-             ? ", color=darkred"
-             : (is_active && !is_root ? ", color=darkgreen" : "")),
-        (is_active ? ", penwidth=2.3" : ""),
-        (is_root ? ", style=filled" : ""));
+        (is_root ? "filled" : "none"));
 
     free(ssymbol);
     free(xlabel);
@@ -2292,62 +2090,78 @@ static void
 graphviz_draw_edge(
     struct graphviz_context *const restrict ctx,
     const struct node source,
-    const uint8_t i) {
+    const uint8_t i,
+    const bool constrain) {
     assert(ctx);
     XASSERT(source.ports);
 
     uint64_t *const target_port = DECODE_ADDRESS(source.ports[i]);
     const struct node target = node_of_port(target_port);
-    const bool is_active = graphviz_is_active_edge(source, i);
-    char *const edge_label = graphviz_edge_label(source, i);
+    const uint8_t j = DECODE_OFFSET_METADATA(*target_port);
+    const bool arrowtail = (0 == i),
+               arrowhead = IS_PRINCIPAL_PORT(*target_port);
 
     fprintf(
         ctx->stream,
-        // clang-format off
-        GRAPHVIZ_INDENT "n%p -> n%p [label=\" %s \", tailport=%s%s%s%s%s];\n",
-        // clang-format on
+        GRAPHVIZ_INDENT
+        "n%p -> n%p "
+        "[dir=both, tailport=%s, headport=%s, arrowtail=%s, arrowhead=%s, constraint=%s];\n",
         (void *)source.ports,
         (void *)target.ports,
-        edge_label,
-        graphviz_edge_tailport(source, i),
-        (is_active && graphviz_is_current_node(source)
-             ? ", color=darkred"
-             : (is_active ? ", color=darkgreen" : "")),
-        (is_active ? ", penwidth=1.5" : ""),
-        (IS_PRINCIPAL_PORT(*target_port) ? ", arrowhead=dot" : ""),
-        (0 == i ? ", style=dashed" : ""));
-
-    free(edge_label);
+        graphviz_port_orientation(source, i),
+        graphviz_port_orientation(target, j),
+        arrowtail ? "dot" : "none",
+        arrowhead ? "dot" : "none",
+        constrain ? "true" : "false");
 }
 
 COMPILER_NONNULL(1) //
 static void
 go_graphviz(
-    struct graphviz_context *const restrict ctx,
-    const struct node source,
-    const uint8_t i) {
+    struct graphviz_context *const restrict ctx, uint64_t *const restrict p) {
     assert(ctx);
     XASSERT(ctx->stream);
-    XASSERT(source.ports);
 
-    const struct node node = follow_port(source, i);
+    const struct node node = p ? node_of_port(p) : ctx->graph->root;
 
-    if (is_focused_on(ctx->history, node)) { return; }
+    assert(!is_focused_on(ctx->history, node));
+    assert(!is_focused_on(ctx->stack, node));
 
     focus_on(&ctx->history, node);
+    focus_on(&ctx->stack, node);
 
     graphviz_draw_node(ctx, node);
 
-    FOR_ALL_PORTS (node, j, 0) { graphviz_draw_edge(ctx, node, j); }
+    FOR_ALL_PORTS (node, j, 0) {
+        uint64_t *const target_port = DECODE_ADDRESS(node.ports[j]);
+        const struct node target = node_of_port(target_port);
 
-    FOR_ALL_PORTS (node, j, 0) { go_graphviz(ctx, node, j); }
+        if (&node.ports[j] == p) {
+            // The edge we entered through.
+            continue;
+        } else if (!is_focused_on(ctx->history, target)) {
+            // `target` is a new child: draw down, descend.
+            graphviz_draw_edge(ctx, node, j, true /* constrain */);
+            go_graphviz(ctx, target_port);
+        } else if (is_focused_on(ctx->stack, target)) {
+            // `target` is an ancestor: draw up.
+            graphviz_draw_edge(ctx, node, j, false /* constrain */);
+        } else {
+            // `target` is a visited child, skip.
+            continue;
+        }
+    }
+
+    unfocus(&ctx->stack);
 }
 
 COMPILER_NONNULL(1, 2) //
 static void
 graphviz(
-    struct context *const restrict graph, //
-    const char *const restrict filename) {
+    struct context *const restrict graph,
+    const char *const restrict filename,
+    const struct node f,
+    const struct node g) {
     debug("%s(\"%s\")", __func__, filename);
 
     assert(graph);
@@ -2359,23 +2173,75 @@ graphviz(
         abort();
     }
 
-    fprintf(fp, "digraph {\n");
-    fprintf(fp, GRAPHVIZ_INDENT "graph [nodesep=0.5, ranksep=0.8];\n");
-    fprintf(fp, GRAPHVIZ_INDENT "node [fontname=\"bold helvetica\"];\n");
-    fprintf(
-        fp,
-        GRAPHVIZ_INDENT
-        "edge [fontname=\"bold helvetica\", fontsize=11, fontcolor=darkblue];\n");
-    fprintf(
-        fp, GRAPHVIZ_INDENT "{ rank=min; n%p }\n", (void *)graph->root.ports);
     struct graphviz_context ctx = {
         .graph = graph,
         .history = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY),
+        .stack = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY),
         .stream = fp,
     };
-    go_graphviz(&ctx, graph->root, 0);
-    free_focus(ctx.history);
+
+    fprintf(fp, "digraph {\n");
+    fprintf(fp, GRAPHVIZ_INDENT "graph [nodesep=0.5, ranksep=0.8];\n");
+    fprintf(
+        fp,
+        GRAPHVIZ_INDENT "node [fontname=\"bold helvetica\", penwidth=1.5];\n");
+    fprintf(
+        fp,
+        GRAPHVIZ_INDENT
+        "edge [fontname=\"bold helvetica\", fontsize=11, fontcolor=darkblue, style=dashed];\n");
+
+    go_graphviz(&ctx, NULL);
+
+    // The currently selected pair, as a darke red translucent cluster.
+    // clang-format off
+    fprintf(
+        fp,
+        GRAPHVIZ_INDENT "subgraph cluster_current_redex {\n"
+        GRAPHVIZ_INDENT GRAPHVIZ_INDENT "color=darkred;\n"
+        GRAPHVIZ_INDENT GRAPHVIZ_INDENT "bgcolor=\"#8B000033\";\n"
+        GRAPHVIZ_INDENT GRAPHVIZ_INDENT "penwidth=1.5;\n"
+        GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
+        GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
+        GRAPHVIZ_INDENT "}\n",
+        (void *)f.ports,
+        (void *)g.ports);
+    // clang-format on
+
+    // Every other active pair is put in a green translucent cluster.
+    CONSUME_MULTIFOCUS (&ctx.history, h) {
+        const struct node hx = follow_port(h, 0);
+
+        if (!is_interaction(h, hx)) { continue; }
+
+        // Onely draw a single cluster for two interacting nodes.
+        if ((uintptr_t)h.ports >= (uintptr_t)hx.ports) { continue; }
+
+        // We have already drawn a red cluster for these nodes.
+        if (h.ports == f.ports || h.ports == g.ports || //
+            hx.ports == f.ports || hx.ports == g.ports) {
+            continue;
+        }
+
+        // clang-format off
+        fprintf(
+            fp,
+            GRAPHVIZ_INDENT "subgraph cluster_redex_%p {\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "color=darkgreen;\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "bgcolor=\"#00800033\";\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "penwidth=1.5;\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
+            GRAPHVIZ_INDENT "}\n",
+            (void *)h.ports,
+            (void *)h.ports,
+            (void *)hx.ports);
+        // clang-format on
+    }
+
     fprintf(fp, "}\n");
+
+    free_focus(ctx.history);
+    free_focus(ctx.stack);
 
     IO_CALL(fclose, fp);
 }
@@ -2384,7 +2250,7 @@ graphviz(
 
 #else
 
-#define graphviz(graph, filename) ((void)0)
+#define graphviz(graph, filename, f, g) ((void)0)
 
 #endif // OPTISCOPE_ENABLE_GRAPHVIZ
 
@@ -2399,14 +2265,13 @@ wait_for_user(
     assert(graph);
 
 #ifdef OPTISCOPE_ENABLE_GRAPHVIZ
-    set_phase(&f.ports[0], PHASE_CURRENT_PAIR);
-    set_phase(&g.ports[0], PHASE_CURRENT_PAIR);
-    graphviz(graph, "target/state.dot");
-    set_phase(&f.ports[0], PHASE_DEFAULT);
-    set_phase(&g.ports[0], PHASE_DEFAULT);
-    if (system("./command/graphviz-state.sh") != 0) {
-        panic("Failed to run `./command/graphviz-state.sh`!");
+    graphviz(graph, "target/state.dot", f, g);
+    if (system("./command/graphviz.py target/state.dot") != 0) {
+        panic("Failed to run `./command/graphviz.py`!");
     }
+#else
+    (void)f;
+    (void)g;
 #endif
 
     printf("Press ENTER to proceed...");
@@ -2714,8 +2579,11 @@ execute_bytecode(
                 **const goes_from = instr.data.delimit.goes_from;
             const uint64_t n = instr.data.delimit.n;
 
-            inst_delimiter_as_is(
-                graph, (struct delimiter){.idx = 0, *points_to, *goes_from}, n);
+            const struct node del =
+                alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+            del.ports[2] = n;
+            connect_ports(&del.ports[0], *points_to);
+            connect_ports(&del.ports[1], *goes_from);
 
             break;
         }
@@ -2733,82 +2601,6 @@ execute_bytecode(
 
 // Eraser-Passing Garbage Collection
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-// When the eraser `f` faces the binder port `i` of the lambda `g`.
-COMPILER_NONNULL(1) COMPILER_HOT //
-static void
-gc_lambda_binder(
-    struct context *const restrict graph,
-    const struct node f,
-    const struct node g,
-    const ptrdiff_t i) {
-    assert(graph);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-    XASSERT(1 == i);
-    XASSERT(SYMBOL_ERASER == f.ports[-1]);
-    XASSERT(IS_RELEVANT_LAMBDA(g.ports[-1]));
-
-    const struct node replacement = alloc_node(graph, SYMBOL_GC_LAMBDA);
-
-    connect_ports(&replacement.ports[0], DECODE_ADDRESS(g.ports[0]));
-    connect_ports(&replacement.ports[1], DECODE_ADDRESS(g.ports[2]));
-
-    free_node(graph, f);
-    free_node(graph, g);
-}
-
-// When the eraser `f` faces the auxiliary port `i` of the duplicator `g`.
-COMPILER_NONNULL(1) COMPILER_HOT //
-static void
-gc_duplicator_aux(
-    struct context *const restrict graph,
-    const struct node f,
-    const struct node g,
-    const ptrdiff_t i) {
-    assert(graph);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-    XASSERT(1 == i || 2 == i);
-    XASSERT(SYMBOL_ERASER == f.ports[-1]);
-    XASSERT(IS_DUPLICATOR(g.ports[-1]));
-
-    uint64_t *const points_to = DECODE_ADDRESS(g.ports[0]), //
-        *const shares_with = DECODE_ADDRESS(g.ports[1 == i ? 2 : 1]);
-
-    const struct node h = node_of_port(shares_with),
-                      shared = node_of_port(points_to);
-
-    if (SYMBOL_ERASER == h.ports[-1]) {
-        assert(PHASE_GC == DECODE_PHASE_METADATA(h.ports[0]));
-        connect_ports(&f.ports[0], points_to);
-        focus_on(&graph->gc_focus, f);
-        free_node(graph, g);
-        set_phase(&h.ports[0], PHASE_GC_AUX);
-    } else if (is_atomic_symbol(shared.ports[-1])) {
-        connect_ports(&shared.ports[0], shares_with);
-        free_node(graph, f);
-        free_node(graph, g);
-    } else if (SYMBOL_DUPLICATOR(UINT64_C(0)) == g.ports[-1]) {
-        connect_ports(points_to, shares_with);
-        free_node(graph, f);
-        free_node(graph, g);
-    } else {
-        // clang-format off
-        struct node replacement = alloc_node(graph,
-            1 == i ?
-            SYMBOL_GC_DUPLICATOR_LEFT :
-            SYMBOL_GC_DUPLICATOR_RIGHT);
-        // clang-format on
-
-        replacement.ports[2] = SYMBOL_INDEX(g.ports[-1]);
-        connect_ports(&replacement.ports[0], points_to);
-        connect_ports(&replacement.ports[1], shares_with);
-
-        free_node(graph, f);
-        free_node(graph, g);
-    }
-}
 
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
@@ -2900,7 +2692,14 @@ gc_step(
     case SYMBOL_LAMBDA:
     case SYMBOL_LAMBDA_C:
         if (1 == i) {
-            gc_lambda_binder(graph, f, g, i);
+            const struct node replacement = alloc_node(graph, SYMBOL_GC_LAMBDA);
+
+            connect_ports(&replacement.ports[0], DECODE_ADDRESS(g.ports[0]));
+            connect_ports(&replacement.ports[1], DECODE_ADDRESS(g.ports[2]));
+
+            free_node(graph, f);
+            free_node(graph, g);
+
             break;
         } else {
             goto commute_1_3;
@@ -2908,7 +2707,42 @@ gc_step(
     duplicator:
         switch (i) {
         case 1:
-        case 2: gc_duplicator_aux(graph, f, g, i); break;
+        case 2: {
+            uint64_t *const points_to = DECODE_ADDRESS(g.ports[0]), //
+                *const shares_with = DECODE_ADDRESS(g.ports[1 == i ? 2 : 1]);
+
+            const struct node h = node_of_port(shares_with),
+                              shared = node_of_port(points_to);
+
+            if (SYMBOL_ERASER == h.ports[-1]) {
+                assert(PHASE_GC == DECODE_PHASE_METADATA(h.ports[0]));
+                connect_ports(&f.ports[0], points_to);
+                focus_on(&graph->gc_focus, f);
+                free_node(graph, g);
+                set_phase(&h.ports[0], PHASE_GC_AUX);
+            } else if (is_atomic_symbol(shared.ports[-1])) {
+                connect_ports(&shared.ports[0], shares_with);
+                free_node(graph, f);
+                free_node(graph, g);
+            } else if (SYMBOL_DUPLICATOR(UINT64_C(0)) == g.ports[-1]) {
+                connect_ports(points_to, shares_with);
+                free_node(graph, f);
+                free_node(graph, g);
+            } else {
+                struct node replacement = alloc_node(
+                    graph,
+                    1 == i ? SYMBOL_GC_DUPLICATOR_LEFT
+                           : SYMBOL_GC_DUPLICATOR_RIGHT);
+
+                replacement.ports[2] = SYMBOL_INDEX(g.ports[-1]);
+                connect_ports(&replacement.ports[0], points_to);
+                connect_ports(&replacement.ports[1], shares_with);
+
+                free_node(graph, f);
+                free_node(graph, g);
+            }
+            break;
+        }
         case 0: goto commute_1_3;
         default: COMPILER_UNREACHABLE();
         }
@@ -2979,16 +2813,15 @@ COMPUTATION_RULE(beta, graph, f, g) {
     XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
     XASSERT(SYMBOL_LAMBDA == g.ports[-1]);
 
-    inst_delimiter(
-        graph,
-        (struct delimiter){
-            .idx = 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2])},
-        1);
-    inst_delimiter(
-        graph,
-        (struct delimiter){
-            .idx = 0, DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[1])},
-        1);
+    const struct node del = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+    del.ports[2] = 1;
+    connect_ports(&del.ports[0], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&del.ports[1], DECODE_ADDRESS(g.ports[2]));
+
+    const struct node delx = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+    delx.ports[2] = 1;
+    connect_ports(&delx.ports[0], DECODE_ADDRESS(f.ports[2]));
+    connect_ports(&delx.ports[1], DECODE_ADDRESS(g.ports[1]));
 
     free_node(graph, f);
     free_node(graph, g);
@@ -3031,11 +2864,10 @@ COMPUTATION_RULE(gc_beta, graph, f, g) {
     XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
     XASSERT(SYMBOL_GC_LAMBDA == g.ports[-1]);
 
-    inst_delimiter(
-        graph,
-        (struct delimiter){
-            .idx = 0, DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1])},
-        1);
+    const struct node del = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+    del.ports[2] = 1;
+    connect_ports(&del.ports[0], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&del.ports[1], DECODE_ADDRESS(g.ports[1]));
 
     // There is a chance that the argument is fully disconnected from the root;
     // if so, we must garbage-collect it.
@@ -3067,10 +2899,10 @@ COMPUTATION_RULE(unbarrier, graph, f, g) {
     XASSERT(SYMBOL_BARRIER == f.ports[-1]);
     // `g` is unspecified.
 
-    inst_delimiter(
-        graph,
-        (struct delimiter){.idx = 0, DECODE_ADDRESS(f.ports[1]), &g.ports[0]},
-        f.ports[2]);
+    const struct node del = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+    del.ports[2] = f.ports[2];
+    connect_ports(&del.ports[0], DECODE_ADDRESS(f.ports[1]));
+    connect_ports(&del.ports[1], &g.ports[0]);
 
     free_node(graph, f);
 }
@@ -3364,6 +3196,7 @@ COMPUTATION_RULE(do_print_app_aux, graph, f, g) {
 #define ANNIHILATION_PROLOGUE(graph, f, g)                                     \
     do {                                                                       \
         assert(graph);                                                         \
+        (void)graph; /* in case `graph` is unused */                           \
         XASSERT(f.ports);                                                      \
         XASSERT(g.ports);                                                      \
     } while (false)
@@ -3403,6 +3236,7 @@ ANNIHILATION_HELPER(annihilate_3_3_helper, graph, f, g) {
 #define COMMUTATION_PROLOGUE(graph, f, g)                                      \
     do {                                                                       \
         assert(graph);                                                         \
+        (void)graph; /* in case `graph` is unused */                           \
         XASSERT(f.ports);                                                      \
         XASSERT(g.ports);                                                      \
     } while (false)
@@ -3437,9 +3271,6 @@ COMMUTATION_HELPER(commute_2_2_helper, graph, f, g) {
     connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 
     connect_ports(&f.ports[1], &g.ports[1]);
-
-    try_merge_if_delimiter(graph, f);
-    try_merge_if_delimiter(graph, g);
 }
 
 COMMUTATION_HELPER(commute_2_3_helper, graph, f, g) {
@@ -3453,13 +3284,6 @@ COMMUTATION_HELPER(commute_2_3_helper, graph, f, g) {
 
     connect_ports(&g.ports[1], &f.ports[1]);
     connect_ports(&g.ports[2], &fx.ports[1]);
-
-    if (IS_DELIMITER(f.ports[-1])) {
-        try_merge_delimiter(graph, f);
-        try_merge_delimiter(graph, fx);
-    }
-
-    if (IS_DUPLICATOR(g.ports[-1])) { try_duplicate(graph, g); }
 }
 
 #define commute_3_2_helper(graph, f, g) commute_2_3_helper((graph), (g), (f))
@@ -3478,12 +3302,6 @@ COMMUTATION_HELPER(commute_2_4_helper, graph, f, g) {
     connect_ports(&g.ports[1], &f.ports[1]);
     connect_ports(&g.ports[2], &fx.ports[1]);
     connect_ports(&g.ports[3], &fxx.ports[1]);
-
-    if (IS_DELIMITER(f.ports[-1])) {
-        try_merge_delimiter(graph, f);
-        try_merge_delimiter(graph, fx);
-        try_merge_delimiter(graph, fxx);
-    }
 }
 
 #define commute_4_2_helper(graph, f, g) commute_2_4_helper((graph), (g), (f))
@@ -3503,16 +3321,6 @@ COMMUTATION_HELPER(commute_3_3_helper, graph, f, g) {
     connect_ports(&g.ports[2], &fx.ports[1]);
     connect_ports(&gx.ports[1], &f.ports[2]);
     connect_ports(&gx.ports[2], &fx.ports[2]);
-
-    if (IS_DUPLICATOR(f.ports[-1])) {
-        try_duplicate(graph, f);
-        try_duplicate(graph, fx);
-    }
-
-    if (IS_DUPLICATOR(g.ports[-1])) {
-        try_duplicate(graph, g);
-        try_duplicate(graph, gx);
-    }
 }
 
 COMMUTATION_HELPER(commute_3_4_helper, graph, f, g) {
@@ -3534,12 +3342,6 @@ COMMUTATION_HELPER(commute_3_4_helper, graph, f, g) {
     connect_ports(&fx.ports[2], &gx.ports[2]);
     connect_ports(&fxx.ports[1], &g.ports[3]);
     connect_ports(&fxx.ports[2], &gx.ports[3]);
-
-    if (IS_DUPLICATOR(f.ports[-1])) {
-        try_duplicate(graph, f);
-        try_duplicate(graph, fx);
-        try_duplicate(graph, fxx);
-    }
 }
 
 #define commute_4_3_helper(graph, f, g) commute_3_4_helper((graph), (g), (f))
@@ -3562,6 +3364,7 @@ COMMUTATION_HELPER(commute_3_4_helper, graph, f, g) {
 #define EXTRUSION_PROLOGUE(graph, f, g)                                        \
     do {                                                                       \
         assert(graph);                                                         \
+        (void)graph; /* in case `graph` is unused */                           \
         XASSERT(f.ports);                                                      \
         XASSERT(g.ports);                                                      \
         XASSERT(IS_DELIMITER(f.ports[-1]));                                    \
@@ -3575,12 +3378,6 @@ EXTRUSION_RULE(extrude_2_2, graph, f, g) {
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0]));
 
     connect_ports(&g.ports[0], &f.ports[1]);
-
-    try_merge_delimiter(graph, f);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nextrusions++;
-#endif
 }
 
 EXTRUSION_RULE(extrude_2_3, graph, f, g) {
@@ -3594,13 +3391,6 @@ EXTRUSION_RULE(extrude_2_3, graph, f, g) {
 
     connect_ports(&g.ports[0], &f.ports[1]);
     connect_ports(&g.ports[2], &fx.ports[1]);
-
-    try_merge_delimiter(graph, f);
-    try_merge_delimiter(graph, fx);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nextrusions++;
-#endif
 }
 
 EXTRUSION_RULE(extrude_2_4, graph, f, g) {
@@ -3617,14 +3407,6 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
     connect_ports(&g.ports[0], &f.ports[1]);
     connect_ports(&g.ports[2], &fx.ports[1]);
     connect_ports(&g.ports[3], &fxx.ports[1]);
-
-    try_merge_delimiter(graph, f);
-    try_merge_delimiter(graph, fx);
-    try_merge_delimiter(graph, fxx);
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->nextrusions++;
-#endif
 }
 
 #undef EXTRUSION_PROLOGUE
@@ -3663,7 +3445,6 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
     do {                                                                       \
         survivor.ports[2] -= deceased.ports[2];                                \
         connect_ports(&survivor.ports[0], DECODE_ADDRESS(deceased.ports[1]));  \
-        try_merge_delimiter(graph, survivor);                                  \
         free_node(graph, deceased);                                            \
     } while (0)
 
@@ -3745,7 +3526,7 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
 
 COMPILER_NONNULL(1, 2) //
 static void
-debug_interaction(
+debug_rewrite(
     const char *const restrict caller,
     struct context *const restrict graph,
     const struct node f,
@@ -3754,15 +3535,17 @@ debug_interaction(
     assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    assert(is_interaction(f, g));
 
     char *const f_ssymbol = print_symbol(f.ports[-1]), //
         *const g_ssymbol = print_symbol(g.ports[-1]);
 
-    // clang-format off
     debug(
-        "%s(%p %s, %p %s)", caller, (void *)f.ports, f_ssymbol, (void *)g.ports, g_ssymbol);
-    // clang-format on
+        "%s(%p %s, %p %s)",
+        caller,
+        (void *)f.ports,
+        f_ssymbol,
+        (void *)g.ports,
+        g_ssymbol);
 
     free(f_ssymbol);
     free(g_ssymbol);
@@ -3772,7 +3555,7 @@ debug_interaction(
 
 #else
 
-#define debug_interaction(caller, graph, f, g) ((void)0)
+#define debug_rewrite(caller, graph, f, g) ((void)0)
 
 #endif // OPTISCOPE_ENABLE_TRACING
 
@@ -3798,16 +3581,25 @@ enum reduce_action {
 
 #ifdef OPTISCOPE_ENABLE_STATS
 #define NINTERACTIONS_PLUS_PLUS(graph) ((graph)->ninteractions++)
+#define NREWRITES_PLUS_PLUS(graph, r)  ((graph)->r++)
 #else
 #define NINTERACTIONS_PLUS_PLUS(graph) ((void)0)
+#define NREWRITES_PLUS_PLUS(graph, r)  ((void)0)
 #endif
 
 #define INTERACTION(graph, f, g, action, ...)                                  \
     do {                                                                       \
-        debug_interaction(__func__, (graph), (f), (g));                        \
+        debug_rewrite(__func__, (graph), (f), (g));                            \
         do __VA_ARGS__ while (false);                                          \
         NINTERACTIONS_PLUS_PLUS(graph);                                        \
         return (action);                                                       \
+    } while (false)
+
+#define REWRITE(graph, f, g, r, ...)                                           \
+    do {                                                                       \
+        debug_rewrite(__func__, (graph), (f), (g));                            \
+        do __VA_ARGS__ while (false);                                          \
+        NREWRITES_PLUS_PLUS(graph, r);                                         \
     } while (false)
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
@@ -3868,41 +3660,24 @@ try_extrude(
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_READBACK:
     case SYMBOL_QLAMBDA_PRINTER:
-    case SYMBOL_QAPPLICATOR_PRINTER_AUX: extrude_2_2(graph, f, g); return true;
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+        REWRITE(graph, f, g, nextrusions, { extrude_2_2(graph, f, g); });
+        return true;
     case SYMBOL_APPLICATOR:
     case SYMBOL_BINARY_CALL:
     case SYMBOL_MAPPLICATOR:
-    case SYMBOL_QAPPLICATOR_PRINTER: extrude_2_3(graph, f, g); return true;
-    case SYMBOL_IF_THEN_ELSE: extrude_2_4(graph, f, g); return true;
+    case SYMBOL_QAPPLICATOR_PRINTER:
+        REWRITE(graph, f, g, nextrusions, { extrude_2_3(graph, f, g); });
+        return true;
+    case SYMBOL_IF_THEN_ELSE:
+        REWRITE(graph, f, g, nextrusions, { extrude_2_4(graph, f, g); });
+        return true;
     default: return false;
     }
 }
-
-// `f` is mergeable with `h`, where `h` is a node that `g` points to.
-COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
-static bool
-is_mergeable_through(const struct node f, const struct node g) {
-    XASSERT(f.ports);
-    XASSERT(IS_DELIMITER(f.ports[-1]));
-    XASSERT(IS_DELIMITER(g.ports[-1]));
-    XASSERT(DECODE_ADDRESS(f.ports[0]) == &g.ports[1]);
-    XASSERT(f.ports[-1] < g.ports[-1]);
-
-    uint64_t *const target = DECODE_ADDRESS(g.ports[0]);
-    const struct node h = node_of_port(target);
-
-    return
-        // `f` & `h` can be merged into a single delimiter.
-        f.ports[-1] == h.ports[-1] &&
-        // `g` is pointing to `h`'s auxiliary port.
-        target == &h.ports[1];
-}
-
-// Extrude delimiter `f` over delimiter `g`, if the index of `f` is strictly
-// less than the index of `g`.
-COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
-static bool
-try_extrude_over_delimiter(
+COMPILER_NONNULL(1) COMPILER_HOT //
+static void
+merge_delimiter(
     struct context *const restrict graph,
     const struct node f,
     const struct node g) {
@@ -3911,25 +3686,12 @@ try_extrude_over_delimiter(
     XASSERT(g.ports);
     XASSERT(IS_DELIMITER(f.ports[-1]));
     XASSERT(IS_DELIMITER(g.ports[-1]));
+    XASSERT(f.ports[-1] == g.ports[-1]);
+    XASSERT(DECODE_ADDRESS(f.ports[0]) == &g.ports[1]);
 
-    uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
-
-    if (1 != DECODE_OFFSET_METADATA(*points_to)) { return false; }
-
-    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
-
-    if (fsym == gsym) {
-        try_merge_delimiter(graph, f);
-        return true;
-    } else if (fsym > gsym) {
-        return false;
-    } else if (is_mergeable_through(f, g)) {
-        g.ports[-1] = bump_index(gsym, f.ports[2]);
-        extrude_2_2(graph, f, g);
-        return true;
-    } else {
-        return false;
-    }
+    g.ports[2] = checked_add(g.ports[2], f.ports[2]);
+    connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
+    free_node(graph, f);
 }
 
 CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
@@ -4095,7 +3857,8 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
     } else if (try_extrude(graph, f, g)) {
         return REDUCE_POP;
-    } else if (IS_DELIMITER(gsym) && try_extrude_over_delimiter(graph, f, g)) {
+    } else if (fsym == gsym && DECODE_ADDRESS(f.ports[0]) == &g.ports[1]) {
+        REWRITE(graph, f, g, nmergings, { merge_delimiter(graph, f, g); });
         return REDUCE_POP;
     } else if (!points_to(g, f)) {
         return REDUCE_PUSH;
@@ -4498,7 +4261,9 @@ CONTROL_FUNCTION(interact_with_qapp_printer_aux, graph, f, g) {
     return REDUCE_POP;
 }
 
+#undef REWRITE
 #undef INTERACTION
+#undef NREWRITES_PLUS_PLUS
 #undef NINTERACTIONS_PLUS_PLUS
 #undef CONTROL_FUNCTION
 
