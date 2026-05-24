@@ -3727,15 +3727,13 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
     } else if (
-        fsym == SYMBOL_GC_DUPLICATOR_LEFT && //
-        IS_DUPLICATOR(gsym) &&               //
+        fsym == SYMBOL_GC_DUPLICATOR_LEFT && IS_DUPLICATOR(gsym) &&
         f.ports[2] == SYMBOL_INDEX(gsym)) {
         INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
             annihilate_gc_dup_dup(graph, f, g, 2, 1);
         });
     } else if (
-        fsym == SYMBOL_GC_DUPLICATOR_RIGHT && //
-        IS_DUPLICATOR(gsym) &&                //
+        fsym == SYMBOL_GC_DUPLICATOR_RIGHT && IS_DUPLICATOR(gsym) &&
         f.ports[2] == SYMBOL_INDEX(gsym)) {
         INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
             annihilate_gc_dup_dup(graph, f, g, 1, 2);
@@ -3749,13 +3747,15 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
                 graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, f, g); });
         }
     } else if (
-        SYMBOL_QLAMBDA == gsym || SYMBOL_READBACK == gsym ||
+        SYMBOL_QLAMBDA == gsym ||  //
+        SYMBOL_READBACK == gsym || //
         SYMBOL_QLAMBDA_PRINTER == gsym ||
         SYMBOL_QAPPLICATOR_PRINTER_AUX == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
     } else if (
-        SYMBOL_QAPPLICATOR == gsym || SYMBOL_MAPPLICATOR == gsym ||
+        SYMBOL_QAPPLICATOR == gsym || //
+        SYMBOL_MAPPLICATOR == gsym || //
         SYMBOL_QAPPLICATOR_PRINTER == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
@@ -3787,13 +3787,12 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_1_helper(graph, f, g); });
     } else if (
-        SYMBOL_GC_DUPLICATOR_LEFT == gsym && //
-        SYMBOL_INDEX(fsym) == g.ports[2]) {
+        SYMBOL_GC_DUPLICATOR_LEFT == gsym && SYMBOL_INDEX(fsym) == g.ports[2]) {
         INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
             annihilate_dup_gc_dup(graph, f, g, 2, 1);
         });
     } else if (
-        SYMBOL_GC_DUPLICATOR_RIGHT == gsym && //
+        SYMBOL_GC_DUPLICATOR_RIGHT == gsym &&
         SYMBOL_INDEX(fsym) == g.ports[2]) {
         INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
             annihilate_dup_gc_dup(graph, f, g, 1, 2);
@@ -3813,13 +3812,15 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
                 graph, f, g, REDUCE_POP, { commute_dup_del(graph, f, g); });
         }
     } else if (
-        SYMBOL_QLAMBDA == gsym || SYMBOL_READBACK == gsym ||
+        SYMBOL_QLAMBDA == gsym ||  //
+        SYMBOL_READBACK == gsym || //
         SYMBOL_QLAMBDA_PRINTER == gsym ||
         SYMBOL_QAPPLICATOR_PRINTER_AUX == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
     } else if (
-        SYMBOL_QAPPLICATOR == gsym || SYMBOL_MAPPLICATOR == gsym ||
+        SYMBOL_QAPPLICATOR == gsym || //
+        SYMBOL_MAPPLICATOR == gsym || //
         SYMBOL_QAPPLICATOR_PRINTER == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
