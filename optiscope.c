@@ -3747,9 +3747,9 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
                 graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, f, g); });
         }
     } else if (
-        SYMBOL_QLAMBDA == gsym ||  //
-        SYMBOL_READBACK == gsym || //
-        SYMBOL_QLAMBDA_PRINTER == gsym ||
+        SYMBOL_QLAMBDA == gsym ||         //
+        SYMBOL_READBACK == gsym ||        //
+        SYMBOL_QLAMBDA_PRINTER == gsym || //
         SYMBOL_QAPPLICATOR_PRINTER_AUX == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
@@ -3812,9 +3812,9 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
                 graph, f, g, REDUCE_POP, { commute_dup_del(graph, f, g); });
         }
     } else if (
-        SYMBOL_QLAMBDA == gsym ||  //
-        SYMBOL_READBACK == gsym || //
-        SYMBOL_QLAMBDA_PRINTER == gsym ||
+        SYMBOL_QLAMBDA == gsym ||         //
+        SYMBOL_READBACK == gsym ||        //
+        SYMBOL_QLAMBDA_PRINTER == gsym || //
         SYMBOL_QAPPLICATOR_PRINTER_AUX == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
