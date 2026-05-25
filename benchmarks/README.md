@@ -45,12 +45,12 @@ Benchmark 1: ./ackermann
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 96134140
-  Total interactions: 44588130
-        Sharing work: 10.14%
-    Bookkeeping work: 21.75%
-             GC work: 46.37%
-    Compression work: 2.90%
+      Total rewrites: 97530171
+  Total interactions: 45984161
+        Sharing work: 10.00%
+    Bookkeeping work: 21.44%
+             GC work: 45.70%
+    Compression work: 2.86%
 Max duplicator index: 2087945
  Max delimiter index: 0
      Peak node count: 23549
@@ -72,12 +72,12 @@ Benchmark 1: ./tak
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 96855837
-  Total interactions: 43894203
-        Sharing work: 10.44%
-    Bookkeeping work: 32.56%
-             GC work: 44.55%
-    Compression work: 6.57%
+      Total rewrites: 101280297
+  Total interactions: 48318663
+        Sharing work: 9.98%
+    Bookkeeping work: 31.14%
+             GC work: 42.60%
+    Compression work: 6.28%
 Max duplicator index: 2017
  Max delimiter index: 0
      Peak node count: 1514
@@ -99,12 +99,12 @@ Benchmark 1: ./scott-bubble-sort
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 198652284
-  Total interactions: 194586986
-        Sharing work: 81.73%
-    Bookkeeping work: 16.74%
-             GC work: 1.05%
-    Compression work: 0.25%
+      Total rewrites: 212467294
+  Total interactions: 208401996
+        Sharing work: 76.42%
+    Bookkeeping work: 15.65%
+             GC work: 0.98%
+    Compression work: 0.23%
 Max duplicator index: 5673
  Max delimiter index: 1502
      Peak node count: 271338
@@ -126,12 +126,12 @@ Benchmark 1: ./scott-insertion-sort
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 54093075
-  Total interactions: 23544536
-        Sharing work: 3.70%
-    Bookkeeping work: 43.50%
-             GC work: 41.66%
-    Compression work: 7.42%
+      Total rewrites: 55595578
+  Total interactions: 25047039
+        Sharing work: 3.60%
+    Bookkeeping work: 42.33%
+             GC work: 40.53%
+    Compression work: 7.22%
 Max duplicator index: 0
  Max delimiter index: 2
      Peak node count: 73135
@@ -153,12 +153,12 @@ Benchmark 1: ./scott-merge-sort
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 41766243
-  Total interactions: 30982806
-        Sharing work: 18.48%
-    Bookkeeping work: 79.06%
-             GC work: 1.79%
-    Compression work: 0.41%
+      Total rewrites: 43104826
+  Total interactions: 32321389
+        Sharing work: 17.91%
+    Bookkeeping work: 76.61%
+             GC work: 1.73%
+    Compression work: 0.40%
 Max duplicator index: 1611588
  Max delimiter index: 1611585
      Peak node count: 2203877
@@ -180,12 +180,12 @@ Benchmark 1: ./scott-quicksort
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 152088334
-  Total interactions: 95496952
-        Sharing work: 7.89%
-    Bookkeeping work: 66.71%
-             GC work: 14.54%
-    Compression work: 8.22%
+      Total rewrites: 157093335
+  Total interactions: 100501953
+        Sharing work: 7.64%
+    Bookkeeping work: 64.58%
+             GC work: 14.08%
+    Compression work: 7.96%
 Max duplicator index: 8986
  Max delimiter index: 8989
      Peak node count: 3605960
@@ -207,12 +207,12 @@ Benchmark 1: ./nqueens
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 380246509
-  Total interactions: 221012523
-        Sharing work: 24.48%
-    Bookkeeping work: 37.13%
-             GC work: 30.32%
-    Compression work: 2.81%
+      Total rewrites: 385695703
+  Total interactions: 226461717
+        Sharing work: 24.13%
+    Bookkeeping work: 36.61%
+             GC work: 29.89%
+    Compression work: 2.77%
 Max duplicator index: 21
  Max delimiter index: 500931
      Peak node count: 10558

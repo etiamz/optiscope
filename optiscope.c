@@ -2980,6 +2980,22 @@ COMPUTATION_RULE(gc_beta_c, graph, f, g) {
     free_node(graph, g);
 }
 
+COMPUTATION_RULE(new_barrier, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    // `f` is unspecified.
+    XASSERT(IS_DELIMITER(g.ports[-1]));
+
+    const struct node barr = alloc_node(graph, SYMBOL_BARRIER);
+    barr.ports[2] = g.ports[2];
+    connect_ports(&barr.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&barr.ports[1], &f.ports[0]);
+
+    free_node(graph, g);
+}
+
 COMPUTATION_RULE(barrier, graph, f, g) {
     assert(graph);
     XASSERT(f.ports);
@@ -3713,31 +3729,21 @@ enum reduce_action {
         NREWRITES_PLUS_PLUS(graph, r);                                         \
     } while (false)
 
-COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
-static bool
-try_inst_barrier(
-    struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    assert(graph);
+COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
+inline static bool
+barrier_condition(const struct node f, const struct node g) {
     XASSERT(f.ports);
     XASSERT(g.ports);
+#ifndef NDEBUG
+    assert(is_interaction(f, g));
+#else
+    (void)f;
+#endif
 
-    if (SYMBOL_DELIMITER(UINT64_C(0)) != g.ports[-1]) { return false; }
+    const struct node h = follow_port(g, 1);
 
-    uint64_t *const h_port = DECODE_ADDRESS(g.ports[1]);
-    const struct node h = node_of_port(h_port);
-
-    if (DECODE_ADDRESS(h.ports[0]) != &g.ports[1]) {
-        const struct node barr = alloc_node(graph, SYMBOL_BARRIER);
-        barr.ports[2] = g.ports[2];
-        connect_ports(&barr.ports[0], h_port);
-        connect_ports(&barr.ports[1], &f.ports[0]);
-        free_node(graph, g);
-        return true;
-    }
-
-    return false;
+    return SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1] &&
+           DECODE_ADDRESS(h.ports[0]) != &g.ports[1];
 }
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
@@ -3853,11 +3859,11 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, f, g); });
-        }
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, f, g); });
     } else if (
         SYMBOL_QLAMBDA == gsym ||         //
         SYMBOL_READBACK == gsym ||        //
@@ -3918,11 +3924,10 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_dup_del(graph, f, g); });
-        }
+        INTERACTION(graph, f, g, REDUCE_POP, { commute_dup_del(graph, f, g); });
     } else if (
         SYMBOL_QLAMBDA == gsym ||         //
         SYMBOL_READBACK == gsym ||        //
@@ -4030,11 +4035,11 @@ CONTROL_FUNCTION(interact_with_app, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
-        }
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
@@ -4062,11 +4067,11 @@ CONTROL_FUNCTION(interact_with_ucall, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
-        }
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
@@ -4094,11 +4099,11 @@ CONTROL_FUNCTION(interact_with_bcall, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
-        }
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
@@ -4127,11 +4132,11 @@ CONTROL_FUNCTION(interact_with_bcall_aux, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
-        }
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
@@ -4161,11 +4166,11 @@ CONTROL_FUNCTION(interact_with_ite, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_4_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_4_2_helper(graph, f, g); });
-        }
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_4_2_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
@@ -4234,11 +4239,11 @@ CONTROL_FUNCTION(interact_with_mapp, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
-        }
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
@@ -4270,11 +4275,11 @@ CONTROL_FUNCTION(interact_with_rb, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
-        }
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
@@ -4302,11 +4307,11 @@ CONTROL_FUNCTION(interact_with_qlam_printer, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
-        }
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
@@ -4334,11 +4339,11 @@ CONTROL_FUNCTION(interact_with_qapp_printer, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
-        }
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
@@ -4367,11 +4372,11 @@ CONTROL_FUNCTION(interact_with_qapp_printer_aux, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (barrier_condition(f, g)) {
+        INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
     } else if (IS_DELIMITER(gsym)) {
-        if (!try_inst_barrier(graph, f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
-        }
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
     } else {
         COMPILER_UNREACHABLE();
     }
