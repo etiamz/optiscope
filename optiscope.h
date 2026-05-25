@@ -42,8 +42,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // - `OPTISCOPE_ENABLE_STEP_BY_STEP`
 //   Aske the user for ENTER before each interaction step.
 // - `OPTISCOPE_ENABLE_STATS`
-//   Enable run-time statistics (the total number of interactions by type, other
-//   graph rewrites, & memory usage).
+//   Enable run-time statistics: total numbers of interactions & graph rewrites
+//   for time; peak node counts for memory.
 // - `OPTISCOPE_ENABLE_GRAPHVIZ`
 //   Generate `target/state.dot(.svg)` before each interaction step (requires
 //   Graphviz).
