@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Statistics: measure maximum duplicator/delimiter indices & compression work %.
+
 ## 2.0.4 - 2026-05-25
 
 ### Changed

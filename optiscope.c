@@ -1593,6 +1593,9 @@ struct context {
     uint64_t nduplicator_itrs, ndelimiter_itrs;
     // The numbers of all non-interaction graph rewrites.
     uint64_t nmergings, nextrusions, ngc;
+    // The additional bookkeeping statistics.
+    uint64_t nmax_duplicator_index;
+    uint64_t nmax_delimiter_index;
     // The memory usage statistics.
     uint64_t ntotal, nmax_total;
 #endif
@@ -1639,6 +1642,22 @@ free_context(struct context *const restrict graph) {
 #ifdef OPTISCOPE_ENABLE_STATS
 
 COMPILER_NONNULL(1) //
+inline static void
+new_duplicator_index(struct context *const restrict graph, const uint64_t i) {
+    assert(graph);
+
+    if (i > graph->nmax_duplicator_index) { graph->nmax_duplicator_index = i; }
+}
+
+COMPILER_NONNULL(1) //
+inline static void
+new_delimiter_index(struct context *const restrict graph, const uint64_t i) {
+    assert(graph);
+
+    if (i > graph->nmax_delimiter_index) { graph->nmax_delimiter_index = i; }
+}
+
+COMPILER_NONNULL(1) //
 static void
 print_stats(const struct context *const restrict graph) {
     assert(graph);
@@ -1658,15 +1677,24 @@ print_stats(const struct context *const restrict graph) {
     const double gc_work =
         ((double)graph->ngc / (double)ntotal_rewrites) * 100.0;
 
-    printf("    Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
-    printf("Total interactions: %" PRIu64 "\n", graph->ninteractions);
-    printf("      Sharing work: %.2f%%\n", sharing_work);
-    printf("  Bookkeeping work: %.2f%%\n", bookkeeping_work);
-    printf("           GC work: %.2f%%\n", gc_work);
-    printf("   Peak node count: %" PRIu64 "\n", graph->nmax_total);
+    const double compression_work =
+        ((double)graph->nmergings / (double)ntotal_rewrites) * 100.0;
+
+    printf("      Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
+    printf("  Total interactions: %" PRIu64 "\n", graph->ninteractions);
+    printf("        Sharing work: %.2f%%\n", sharing_work);
+    printf("    Bookkeeping work: %.2f%%\n", bookkeeping_work);
+    printf("             GC work: %.2f%%\n", gc_work);
+    printf("    Compression work: %.2f%%\n", compression_work);
+    printf("Max duplicator index: %" PRIu64 "\n", graph->nmax_duplicator_index);
+    printf(" Max delimiter index: %" PRIu64 "\n", graph->nmax_delimiter_index);
+    printf("     Peak node count: %" PRIu64 "\n", graph->nmax_total);
 }
 
 #else
+
+#define new_duplicator_index(graph, i) ((void)0)
+#define new_delimiter_index(graph, i)  ((void)0)
 
 #define print_stats(graph) ((void)0)
 
@@ -1846,6 +1874,10 @@ free_node(struct context *const restrict graph, const struct node node) {
     }
 #endif
 
+#ifdef OPTISCOPE_ENABLE_STATS
+    graph->ntotal--;
+#endif
+
     switch (p[-1]) {
     case SYMBOL_ERASER:
     case SYMBOL_IDENTITY_LAMBDA: FREE_POOL_OBJECT(u64x2_pool, p); break;
@@ -1887,10 +1919,6 @@ free_node(struct context *const restrict graph, const struct node node) {
         else if (IS_DELIMITER(p[-1])) goto delimiter;
         else COMPILER_UNREACHABLE();
     }
-
-#ifdef OPTISCOPE_ENABLE_STATS
-    graph->ntotal--;
-#endif
 }
 
 // Graphviz Graph Generation
@@ -3427,8 +3455,6 @@ COMMUTATION_HELPER(commute_3_4_helper, graph, f, g) {
 // Generic Extrusion Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-// TODO: maybe print delimiter extrusions if tracing is enabled?
-
 // clang-format off
 #define EXTRUSION_RULE(name, graph, f, g) \
     COMPILER_NONNULL(1) COMPILER_HOT \
@@ -3535,12 +3561,14 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
 #define commute_gc_dup_lam(graph, f, g)                                        \
     do {                                                                       \
         f.ports[2] = bump_raw_index(f.ports[2], 1);                            \
+        new_duplicator_index(graph, f.ports[2]);                               \
         commute_2_3_helper(graph, f, g);                                       \
     } while (0)
 
 #define commute_gc_dup_gc_lam(graph, f, g)                                     \
     do {                                                                       \
         f.ports[2] = bump_raw_index(f.ports[2], 1);                            \
+        new_duplicator_index(graph, f.ports[2]);                               \
         commute_2_2_helper(graph, f, g);                                       \
     } while (0)
 
@@ -3548,6 +3576,7 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
     do {                                                                       \
         if (f.ports[2] >= SYMBOL_INDEX(g.ports[-1])) {                         \
             f.ports[2] = bump_raw_index(f.ports[2], g.ports[2]);               \
+            new_duplicator_index(graph, f.ports[2]);                           \
         }                                                                      \
         commute_2_2_helper(graph, f, g);                                       \
     } while (0)
@@ -3555,12 +3584,14 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
 #define commute_dup_lam(graph, f, g)                                           \
     do {                                                                       \
         f.ports[-1] = bump_index(f.ports[-1], 1);                              \
+        new_duplicator_index(graph, SYMBOL_INDEX(f.ports[-1]));                \
         commute_3_3_helper(graph, f, g);                                       \
     } while (0)
 
 #define commute_dup_gc_lam(graph, f, g)                                        \
     do {                                                                       \
         f.ports[-1] = bump_index(f.ports[-1], 1);                              \
+        new_duplicator_index(graph, SYMBOL_INDEX(f.ports[-1]));                \
         commute_3_2_helper(graph, f, g);                                       \
     } while (0)
 
@@ -3568,6 +3599,7 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
     do {                                                                       \
         if (SYMBOL_INDEX(f.ports[-1]) >= SYMBOL_INDEX(g.ports[-1])) {          \
             f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);                 \
+            new_duplicator_index(graph, SYMBOL_INDEX(f.ports[-1]));            \
         }                                                                      \
         commute_3_2_helper(graph, f, g);                                       \
     } while (0)
@@ -3575,12 +3607,14 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
 #define commute_del_lam(graph, f, g)                                           \
     do {                                                                       \
         f.ports[-1] = bump_index(f.ports[-1], 1);                              \
+        new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));                 \
         commute_2_3_helper(graph, f, g);                                       \
     } while (0)
 
 #define commute_del_gc_lam(graph, f, g)                                        \
     do {                                                                       \
         f.ports[-1] = bump_index(f.ports[-1], 1);                              \
+        new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));                 \
         commute_2_2_helper(graph, f, g);                                       \
     } while (0)
 
@@ -3588,8 +3622,10 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
     do {                                                                       \
         if (f.ports[-1] > g.ports[-1]) {                                       \
             f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);                 \
+            new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));             \
         } else {                                                               \
             g.ports[-1] = bump_index(g.ports[-1], f.ports[2]);                 \
+            new_delimiter_index(graph, SYMBOL_INDEX(g.ports[-1]));             \
         }                                                                      \
         commute_2_2_helper(graph, f, g);                                       \
     } while (0)
