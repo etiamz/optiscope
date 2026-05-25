@@ -2061,10 +2061,10 @@ graphviz_print_symbol(const struct node node) {
 }
 
 struct graphviz_context {
-    struct context *graph;     // our graph pointer
-    struct multifocus history; // every node visited so far
-    struct multifocus stack;   // nodes on the current DFS path
-    FILE *stream;              // the output stream
+    struct context *graph;
+    struct multifocus history;
+    struct multifocus stack;
+    FILE *stream;
 };
 
 COMPILER_NONNULL(1) //
@@ -2177,6 +2177,30 @@ graphviz_draw_clusters(
     }
 }
 
+enum graphviz_node_kind {
+    GRAPHVIZ_PENDING,   // this is a node on the current DFS path ("grey" per
+                        // Cormen)
+    GRAPHVIZ_UNVISITED, // undiscovered, about to become our child ("white" per
+                        // Cormen)
+    GRAPHVIZ_VISITED,   // a finished descendant ("black" per Cormen)
+};
+
+COMPILER_NONNULL(1) //
+static enum graphviz_node_kind
+graphviz_classify_node(
+    struct graphviz_context *const restrict ctx, const struct node node) {
+    assert(ctx);
+    XASSERT(node.ports);
+
+    if (!is_focused_on(ctx->history, node)) {
+        return GRAPHVIZ_UNVISITED;
+    } else if (is_focused_on(ctx->stack, node)) {
+        return GRAPHVIZ_PENDING;
+    } else {
+        return GRAPHVIZ_VISITED;
+    }
+}
+
 COMPILER_NONNULL(1) //
 static void
 go_graphviz(
@@ -2195,22 +2219,21 @@ go_graphviz(
     graphviz_draw_node(ctx, node);
 
     FOR_ALL_PORTS (node, j, 0) {
+        if (&node.ports[j] == port) { continue; } // this is our arrival port
+
         uint64_t *const target_port = DECODE_ADDRESS(node.ports[j]);
         const struct node target = node_of_port(target_port);
 
-        if (&node.ports[j] == port) {
-            // The edge we entered through.
-            continue;
-        } else if (!is_focused_on(ctx->history, target)) {
-            // `target` is a new child: draw down, descend.
+        switch (graphviz_classify_node(ctx, target)) {
+        case GRAPHVIZ_UNVISITED:
             graphviz_draw_edge(ctx, node, j, GRAPHVIZ_CONSTRAIN);
             go_graphviz(ctx, target_port);
-        } else if (is_focused_on(ctx->stack, target)) {
-            // `target` is an ancestor: draw up.
+            break;
+        case GRAPHVIZ_PENDING:
             graphviz_draw_edge(ctx, node, j, GRAPHVIZ_NO_CONSTRAIN);
-        } else {
-            // `target` is a visited child, skip.
-            continue;
+            break;
+        case GRAPHVIZ_VISITED: break;
+        default: COMPILER_UNREACHABLE();
         }
     }
 
