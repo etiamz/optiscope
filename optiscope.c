@@ -3786,6 +3786,7 @@ try_extrude(
     default: return false;
     }
 }
+
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 merge_delimiter(
