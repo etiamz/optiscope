@@ -2113,7 +2113,7 @@ graphviz_draw_edge(
     assert(ctx);
     XASSERT(ctx->stream);
     XASSERT(source.ports);
-    XASSERT(mode >= 0 && mode < CONSTRAIN_MODE_END);
+    XASSERT(mode >= 0 && mode < GRAPHVIZ_CONSTRAIN_MODE_END);
 
     uint64_t *const target_port = DECODE_ADDRESS(source.ports[i]);
     const struct node target = node_of_port(target_port);
