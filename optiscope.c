@@ -2105,6 +2105,7 @@ graphviz_draw_edge(
     const uint8_t i,
     const bool constrain) {
     assert(ctx);
+    XASSERT(ctx->stream);
     XASSERT(source.ports);
 
     uint64_t *const target_port = DECODE_ADDRESS(source.ports[i]);
@@ -2130,11 +2131,11 @@ graphviz_draw_edge(
 COMPILER_NONNULL(1) //
 static void
 go_graphviz(
-    struct graphviz_context *const restrict ctx, uint64_t *const restrict p) {
+    struct graphviz_context *const restrict ctx,
+    uint64_t *const restrict port) {
     assert(ctx);
-    XASSERT(ctx->stream);
 
-    const struct node node = p ? node_of_port(p) : ctx->graph->root;
+    const struct node node = port ? node_of_port(port) : ctx->graph->root;
 
     assert(!is_focused_on(ctx->history, node));
     assert(!is_focused_on(ctx->stack, node));
@@ -2148,7 +2149,7 @@ go_graphviz(
         uint64_t *const target_port = DECODE_ADDRESS(node.ports[j]);
         const struct node target = node_of_port(target_port);
 
-        if (&node.ports[j] == p) {
+        if (&node.ports[j] == port) {
             // The edge we entered through.
             continue;
         } else if (!is_focused_on(ctx->history, target)) {
@@ -2165,6 +2166,49 @@ go_graphviz(
     }
 
     unfocus(&ctx->stack);
+}
+
+// Draws a green translucent cluster for each active pair in the graph, except
+// the current one.
+COMPILER_NONNULL(1) //
+static void
+draw_green_clusters(
+    struct context *const restrict graph,
+    const struct node f,
+    const struct node g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+
+    CONSUME_MULTIFOCUS (&ctx.history, h) {
+        const struct node hx = follow_port(h, 0);
+
+        if (!is_interaction(h, hx)) { continue; }
+
+        // Onely draw a single cluster for two interacting nodes.
+        if ((uintptr_t)h.ports >= (uintptr_t)hx.ports) { continue; }
+
+        // We have already drawn a red cluster for these nodes.
+        if (h.ports == f.ports || h.ports == g.ports || //
+            hx.ports == f.ports || hx.ports == g.ports) {
+            continue;
+        }
+
+        // clang-format off
+        fprintf(
+            fp,
+            GRAPHVIZ_INDENT "subgraph cluster_redex_%p {\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "color=darkgreen;\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "bgcolor=\"#00800033\";\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "penwidth=1.5;\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
+            GRAPHVIZ_INDENT "}\n",
+            (void *)h.ports,
+            (void *)h.ports,
+            (void *)hx.ports);
+        // clang-format on
+    }
 }
 
 COMPILER_NONNULL(1, 2) //
@@ -2201,9 +2245,7 @@ graphviz(
         fp,
         GRAPHVIZ_INDENT
         "edge [fontname=\"bold helvetica\", fontsize=11, fontcolor=darkblue, style=dashed];\n");
-
     go_graphviz(&ctx, NULL);
-
     // The currently selected pair, as a darke red translucent cluster.
     // clang-format off
     fprintf(
@@ -2218,38 +2260,7 @@ graphviz(
         (void *)f.ports,
         (void *)g.ports);
     // clang-format on
-
-    // Every other active pair is put in a green translucent cluster.
-    CONSUME_MULTIFOCUS (&ctx.history, h) {
-        const struct node hx = follow_port(h, 0);
-
-        if (!is_interaction(h, hx)) { continue; }
-
-        // Onely draw a single cluster for two interacting nodes.
-        if ((uintptr_t)h.ports >= (uintptr_t)hx.ports) { continue; }
-
-        // We have already drawn a red cluster for these nodes.
-        if (h.ports == f.ports || h.ports == g.ports || //
-            hx.ports == f.ports || hx.ports == g.ports) {
-            continue;
-        }
-
-        // clang-format off
-        fprintf(
-            fp,
-            GRAPHVIZ_INDENT "subgraph cluster_redex_%p {\n"
-            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "color=darkgreen;\n"
-            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "bgcolor=\"#00800033\";\n"
-            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "penwidth=1.5;\n"
-            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
-            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
-            GRAPHVIZ_INDENT "}\n",
-            (void *)h.ports,
-            (void *)h.ports,
-            (void *)hx.ports);
-        // clang-format on
-    }
-
+    draw_green_clusters(&ctx, f, g);
     fprintf(fp, "}\n");
 
     free_focus(ctx.history);
