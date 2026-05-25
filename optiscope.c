@@ -2173,14 +2173,15 @@ go_graphviz(
 COMPILER_NONNULL(1) //
 static void
 draw_green_clusters(
-    struct context *const restrict graph,
+    struct graphviz_context *const restrict ctx,
     const struct node f,
     const struct node g) {
-    assert(graph);
+    assert(ctx);
+    XASSERT(ctx->stream);
     XASSERT(f.ports);
     XASSERT(g.ports);
 
-    CONSUME_MULTIFOCUS (&ctx.history, h) {
+    CONSUME_MULTIFOCUS (&ctx->history, h) {
         const struct node hx = follow_port(h, 0);
 
         if (!is_interaction(h, hx)) { continue; }
@@ -2196,7 +2197,7 @@ draw_green_clusters(
 
         // clang-format off
         fprintf(
-            fp,
+            ctx->stream,
             GRAPHVIZ_INDENT "subgraph cluster_redex_%p {\n"
             GRAPHVIZ_INDENT GRAPHVIZ_INDENT "color=darkgreen;\n"
             GRAPHVIZ_INDENT GRAPHVIZ_INDENT "bgcolor=\"#00800033\";\n"
