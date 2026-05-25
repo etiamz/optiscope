@@ -1292,6 +1292,7 @@ enum bc_instruction_type {
 };
 
 struct bc_attach_node_data {
+    // The memory occupied by template nodes is freed when closing the pools.
     struct node template;
     uint64_t interface_port_idx;
     uint64_t **connect_to;
