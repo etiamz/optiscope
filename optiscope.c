@@ -1292,7 +1292,6 @@ enum bc_instruction_type {
 };
 
 struct bc_attach_node_data {
-    // The memory occupied by template nodes is freed when closing the pools.
     struct node template;
     uint64_t interface_port_idx;
     uint64_t **connect_to;
@@ -2098,16 +2097,23 @@ graphviz_draw_node(
     free(xlabel);
 }
 
+enum graphviz_constrain_mode {
+    GRAPHVIZ_CONSTRAIN = 0,
+    GRAPHVIZ_NO_CONSTRAIN,
+    GRAPHVIZ_CONSTRAIN_MODE_END,
+};
+
 COMPILER_NONNULL(1) //
 static void
 graphviz_draw_edge(
     struct graphviz_context *const restrict ctx,
     const struct node source,
     const uint8_t i,
-    const bool constrain) {
+    const enum graphviz_constrain_mode mode) {
     assert(ctx);
     XASSERT(ctx->stream);
     XASSERT(source.ports);
+    XASSERT(mode >= 0 && mode < CONSTRAIN_MODE_END);
 
     uint64_t *const target_port = DECODE_ADDRESS(source.ports[i]);
     const struct node target = node_of_port(target_port);
@@ -2126,7 +2132,49 @@ graphviz_draw_edge(
         graphviz_port_orientation(target, j),
         arrowtail ? "dot" : "none",
         arrowhead ? "dot" : "none",
-        constrain ? "true" : "false");
+        GRAPHVIZ_CONSTRAIN == mode ? "true" : "false");
+}
+
+COMPILER_NONNULL(1) //
+static void
+graphviz_draw_clusters(
+    struct graphviz_context *const restrict ctx,
+    const struct node f,
+    const struct node g) {
+    assert(ctx);
+    XASSERT(ctx->stream);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+
+    CONSUME_MULTIFOCUS (&ctx->history, h) {
+        const struct node hx = follow_port(h, 0);
+
+        if (!is_interaction(h, hx)) { continue; }
+
+        // Onely draw a single cluster for two interacting nodes.
+        if ((uintptr_t)h.ports >= (uintptr_t)hx.ports) { continue; }
+
+        // These nodes are enclosed in a red cluster already.
+        if (h.ports == f.ports || h.ports == g.ports || hx.ports == f.ports ||
+            hx.ports == g.ports) {
+            continue;
+        }
+
+        // clang-format off
+        fprintf(
+            ctx->stream,
+            GRAPHVIZ_INDENT "subgraph cluster_redex_%p {\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "color=darkgreen;\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "bgcolor=\"#00800033\";\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "penwidth=1.5;\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
+            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
+            GRAPHVIZ_INDENT "}\n",
+            (void *)h.ports,
+            (void *)h.ports,
+            (void *)hx.ports);
+        // clang-format on
+    }
 }
 
 COMPILER_NONNULL(1) //
@@ -2155,11 +2203,11 @@ go_graphviz(
             continue;
         } else if (!is_focused_on(ctx->history, target)) {
             // `target` is a new child: draw down, descend.
-            graphviz_draw_edge(ctx, node, j, true /* constrain */);
+            graphviz_draw_edge(ctx, node, j, GRAPHVIZ_CONSTRAIN);
             go_graphviz(ctx, target_port);
         } else if (is_focused_on(ctx->stack, target)) {
             // `target` is an ancestor: draw up.
-            graphviz_draw_edge(ctx, node, j, false /* constrain */);
+            graphviz_draw_edge(ctx, node, j, GRAPHVIZ_NO_CONSTRAIN);
         } else {
             // `target` is a visited child, skip.
             continue;
@@ -2167,50 +2215,6 @@ go_graphviz(
     }
 
     unfocus(&ctx->stack);
-}
-
-// Draws a green translucent cluster for each active pair in the graph, except
-// the current one.
-COMPILER_NONNULL(1) //
-static void
-draw_green_clusters(
-    struct graphviz_context *const restrict ctx,
-    const struct node f,
-    const struct node g) {
-    assert(ctx);
-    XASSERT(ctx->stream);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-
-    CONSUME_MULTIFOCUS (&ctx->history, h) {
-        const struct node hx = follow_port(h, 0);
-
-        if (!is_interaction(h, hx)) { continue; }
-
-        // Onely draw a single cluster for two interacting nodes.
-        if ((uintptr_t)h.ports >= (uintptr_t)hx.ports) { continue; }
-
-        // We have already drawn a red cluster for these nodes.
-        if (h.ports == f.ports || h.ports == g.ports || //
-            hx.ports == f.ports || hx.ports == g.ports) {
-            continue;
-        }
-
-        // clang-format off
-        fprintf(
-            ctx->stream,
-            GRAPHVIZ_INDENT "subgraph cluster_redex_%p {\n"
-            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "color=darkgreen;\n"
-            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "bgcolor=\"#00800033\";\n"
-            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "penwidth=1.5;\n"
-            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
-            GRAPHVIZ_INDENT GRAPHVIZ_INDENT "n%p;\n"
-            GRAPHVIZ_INDENT "}\n",
-            (void *)h.ports,
-            (void *)h.ports,
-            (void *)hx.ports);
-        // clang-format on
-    }
 }
 
 COMPILER_NONNULL(1, 2) //
@@ -2248,7 +2252,6 @@ graphviz(
         GRAPHVIZ_INDENT
         "edge [fontname=\"bold helvetica\", fontsize=11, fontcolor=darkblue, style=dashed];\n");
     go_graphviz(&ctx, NULL);
-    // The currently selected pair, as a darke red translucent cluster.
     // clang-format off
     fprintf(
         fp,
@@ -2262,7 +2265,7 @@ graphviz(
         (void *)f.ports,
         (void *)g.ports);
     // clang-format on
-    draw_green_clusters(&ctx, f, g);
+    graphviz_draw_clusters(&ctx, f, g);
     fprintf(fp, "}\n");
 
     free_focus(ctx.history);
@@ -2316,6 +2319,8 @@ wait_for_user(
 // Bytecode Emission
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+enum emission_mode { QUOTE = 0, NO_QUOTE, EMISSION_MODE_END };
+
 COMPILER_NONNULL(1, 2, 3) COMPILER_COLD //
 static void
 emit_bytecode(
@@ -2323,7 +2328,7 @@ emit_bytecode(
     struct bytecode *const restrict bc,
     struct lambda_term *const restrict term,
     const uint64_t lvl,
-    const bool quote);
+    const enum emission_mode mode);
 
 COMPILER_NONNULL(1, 2, 3, 4) COMPILER_COLD //
 static void
@@ -2333,7 +2338,7 @@ emit_bytecode_for_body(
     struct lambda_data *const restrict binder,
     struct lambda_term *const restrict body,
     const uint64_t lvl,
-    const bool quote) {
+    const enum emission_mode mode) {
     assert(graph);
     assert(bc);
     assert(binder);
@@ -2351,7 +2356,7 @@ emit_bytecode_for_body(
     }
     uint64_t **const binder_ports = binder->binder_ports;
     BC_SAVE_PORT(bc, &body->connect_to, 2);
-    emit_bytecode(graph, bc, body, lvl + 1, quote);
+    emit_bytecode(graph, bc, body, lvl + 1, mode);
     // Restore the beginning of the allocation to free it later.
     binder->binder_ports = binder_ports;
 }
@@ -2363,11 +2368,12 @@ emit_bytecode(
     struct bytecode *const restrict bc,
     struct lambda_term *const restrict term,
     const uint64_t lvl,
-    const bool quote) {
+    const enum emission_mode mode) {
     assert(graph);
     assert(term);
+    XASSERT(mode >= 0 && mode < EMISSION_MODE_END);
 
-    if (quote && !is_quotable_term(term->ty)) {
+    if (QUOTE == mode && !is_quotable_term(term->ty)) {
         panic("Only pure LC terms can be quoted!");
     }
 
@@ -2378,7 +2384,7 @@ emit_bytecode(
         XASSERT(binder);
         XASSERT(body);
 
-        if (quote) {
+        if (QUOTE == mode) {
             const struct node qlam = alloc_node(graph, SYMBOL_QLAMBDA);
             BC_ATTACH_NODE(bc, qlam, 0, &term->connect_to);
             BC_SAVE_PORT(bc, &term->connect_to, 1);
@@ -2401,14 +2407,14 @@ emit_bytecode(
                 term->fv_count > 0 ? SYMBOL_GC_LAMBDA : SYMBOL_GC_LAMBDA_C);
             BC_ATTACH_NODE(bc, lam, 0, &term->connect_to);
             BC_SAVE_PORT(bc, &body->connect_to, 1);
-            emit_bytecode(graph, bc, body, lvl + 1, quote);
+            emit_bytecode(graph, bc, body, lvl + 1, mode);
             break;
         }
 
         const struct node lam = alloc_node(
             graph, term->fv_count > 0 ? SYMBOL_LAMBDA : SYMBOL_LAMBDA_C);
         BC_ATTACH_NODE(bc, lam, 0, &term->connect_to);
-        emit_bytecode_for_body(graph, bc, binder, body, lvl, quote);
+        emit_bytecode_for_body(graph, bc, binder, body, lvl, mode);
 
         break;
     }
@@ -2430,14 +2436,14 @@ emit_bytecode(
         struct lambda_term *const rator = term->data.app.rator, //
             *const rand = term->data.app.rand;
 
-        const struct node app =
-            alloc_node(graph, quote ? SYMBOL_MAPPLICATOR : SYMBOL_APPLICATOR);
+        const struct node app = alloc_node(
+            graph, QUOTE == mode ? SYMBOL_MAPPLICATOR : SYMBOL_APPLICATOR);
 
         BC_ATTACH_NODE(bc, app, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &rator->connect_to, 0);
         BC_SAVE_PORT(bc, &rand->connect_to, 2);
-        emit_bytecode(graph, bc, rator, lvl, quote);
-        emit_bytecode(graph, bc, rand, lvl, quote);
+        emit_bytecode(graph, bc, rator, lvl, mode);
+        emit_bytecode(graph, bc, rand, lvl, mode);
 
         break;
     }
@@ -2461,7 +2467,7 @@ emit_bytecode(
 
         BC_ATTACH_NODE(bc, ucall, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &rand->connect_to, 0);
-        emit_bytecode(graph, bc, rand, lvl, false /* quote */);
+        emit_bytecode(graph, bc, rand, lvl, NO_QUOTE);
 
         break;
     }
@@ -2480,8 +2486,8 @@ emit_bytecode(
         BC_ATTACH_NODE(bc, bcall, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &lhs->connect_to, 0);
         BC_SAVE_PORT(bc, &rhs->connect_to, 2);
-        emit_bytecode(graph, bc, lhs, lvl, false /* quote */);
-        emit_bytecode(graph, bc, rhs, lvl, false /* quote */);
+        emit_bytecode(graph, bc, lhs, lvl, NO_QUOTE);
+        emit_bytecode(graph, bc, rhs, lvl, NO_QUOTE);
 
         break;
     }
@@ -2496,9 +2502,9 @@ emit_bytecode(
         BC_SAVE_PORT(bc, &condition->connect_to, 0);
         BC_SAVE_PORT(bc, &if_else->connect_to, 2);
         BC_SAVE_PORT(bc, &if_then->connect_to, 3);
-        emit_bytecode(graph, bc, condition, lvl, false /* quote */);
-        emit_bytecode(graph, bc, if_else, lvl, false /* quote */);
-        emit_bytecode(graph, bc, if_then, lvl, false /* quote */);
+        emit_bytecode(graph, bc, condition, lvl, NO_QUOTE);
+        emit_bytecode(graph, bc, if_else, lvl, NO_QUOTE);
+        emit_bytecode(graph, bc, if_then, lvl, NO_QUOTE);
 
         break;
     }
@@ -2520,7 +2526,7 @@ emit_bytecode(
 
         BC_ATTACH_NODE(bc, rb, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &input->connect_to, 0);
-        emit_bytecode(graph, bc, input, lvl, true /* quote */);
+        emit_bytecode(graph, bc, input, lvl, QUOTE);
 
         break;
     }
@@ -2973,7 +2979,7 @@ COMPUTATION_RULE(do_expand, graph, f, g) {
     if (NULL == entry->expansion) {
         struct lambda_term *const term = entry->function();
         entry->expansion = term;
-        emit_bytecode(graph, &entry->bc, term, 0, false /* quote */);
+        emit_bytecode(graph, &entry->bc, term, 0, NO_QUOTE);
     }
 
     plug_into(entry, &g.ports[0]);
@@ -4463,7 +4469,7 @@ optiscope_algorithm(
 
     if (stream) { term = readback(term); }
     struct bytecode bc = alloc_bytecode(INITIAL_BYTECODE_CAPACITY);
-    emit_bytecode(graph, &bc, term, 0, false /* quote */);
+    emit_bytecode(graph, &bc, term, 0, NO_QUOTE);
     term->connect_to = &graph->root.ports[0];
     execute_bytecode(graph, bc);
     free_bytecode(bc);
