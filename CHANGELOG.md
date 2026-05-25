@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 2.0.4 - 2026-05-25
+
 ### Changed
 
  - Optimization: doe not extrude delimiters over other delimiters, doe not compresse delimiters after commutation, doe not duplicate atoms after commutation.
