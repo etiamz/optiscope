@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
-### Changed
+### Added
 
- - Statistics: measure maximum duplicator index, maximum delimiter index, family reductions, & compression work percentage.
+ - Statistics: report maximum symbol indices, family reductions, & compression work.
 
 ### Fixed
 
