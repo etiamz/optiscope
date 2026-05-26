@@ -1588,7 +1588,7 @@ struct context {
 
 #ifdef OPTISCOPE_ENABLE_STATS
     // The number of all proper interactions.
-    uint64_t ninteractions;
+    uint64_t ninteractions, nbetas;
     // The numbers of all interactions involving duplicators/delimiters.
     uint64_t nduplicator_itrs, ndelimiter_itrs;
     // The numbers of all non-interaction graph rewrites.
@@ -1682,6 +1682,7 @@ print_stats(const struct context *const restrict graph) {
 
     printf("      Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
     printf("  Total interactions: %" PRIu64 "\n", graph->ninteractions);
+    printf("   Family reductions: %" PRIu64 "\n", graph->nbetas);
     printf("        Sharing work: %.2f%%\n", sharing_work);
     printf("    Bookkeeping work: %.2f%%\n", bookkeeping_work);
     printf("             GC work: %.2f%%\n", gc_work);
@@ -4424,6 +4425,8 @@ loop: {
             graph->ndelimiter_itrs++;
         } else if (IS_ANY_DUPLICATOR(fsym) || IS_ANY_DUPLICATOR(gsym)) {
             graph->nduplicator_itrs++;
+        } else if (SYMBOL_APPLICATOR == fsym && IS_ANY_LAMBDA(gsym)) {
+            graph->nbetas++;
         }
     }
 #endif

@@ -47,6 +47,7 @@ Benchmark 1: ./ackermann
 ```
       Total rewrites: 97530171
   Total interactions: 45984161
+   Family reductions: 5571998
         Sharing work: 10.00%
     Bookkeeping work: 21.44%
              GC work: 45.70%
@@ -74,6 +75,7 @@ Benchmark 1: ./tak
 ```
       Total rewrites: 101280297
   Total interactions: 48318663
+   Family reductions: 4666911
         Sharing work: 9.98%
     Bookkeeping work: 31.14%
              GC work: 42.60%
@@ -101,6 +103,7 @@ Benchmark 1: ./scott-bubble-sort
 ```
       Total rewrites: 212467294
   Total interactions: 208401996
+   Family reductions: 633613
         Sharing work: 76.42%
     Bookkeeping work: 15.65%
              GC work: 0.98%
@@ -128,6 +131,7 @@ Benchmark 1: ./scott-insertion-sort
 ```
       Total rewrites: 55595578
   Total interactions: 25047039
+   Family reductions: 4018010
         Sharing work: 3.60%
     Bookkeeping work: 42.33%
              GC work: 40.53%
@@ -155,6 +159,7 @@ Benchmark 1: ./scott-merge-sort
 ```
       Total rewrites: 43104826
   Total interactions: 32321389
+   Family reductions: 226408
         Sharing work: 17.91%
     Bookkeeping work: 76.61%
              GC work: 1.73%
@@ -182,6 +187,7 @@ Benchmark 1: ./scott-quicksort
 ```
       Total rewrites: 157093335
   Total interactions: 100501953
+   Family reductions: 12020010
         Sharing work: 7.64%
     Bookkeeping work: 64.58%
              GC work: 14.08%
@@ -209,6 +215,7 @@ Benchmark 1: ./nqueens
 ```
       Total rewrites: 385695703
   Total interactions: 226461717
+   Family reductions: 16117939
         Sharing work: 24.13%
     Bookkeeping work: 36.61%
              GC work: 29.89%
