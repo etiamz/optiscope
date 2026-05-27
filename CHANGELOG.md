@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 2.1.0 - 2026-05-28
+
 ### Added
 
  - Optimization: implement per-node closednesse annotations & the segment agent.
