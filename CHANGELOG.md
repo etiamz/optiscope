@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+ - Optimization: implement per-node closednesse annotations & the segment agent.
  - Statistics: report maximum symbol indices, family reductions, & compression work.
 
 ### Fixed

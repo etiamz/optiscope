@@ -37,8 +37,8 @@ Description: Computes the Ackermann function with initial values _(3, 8)_.
 
 ```
 Benchmark 1: ./ackermann
-  Time (mean ± σ):      1.257 s ±  0.004 s    [User: 1.254 s, System: 0.003 s]
-  Range (min … max):    1.252 s …  1.262 s    5 runs
+  Time (mean ± σ):      1.246 s ±  0.013 s    [User: 1.244 s, System: 0.002 s]
+  Range (min … max):    1.227 s …  1.260 s    5 runs
 ```
 
 <details>
@@ -54,7 +54,7 @@ Benchmark 1: ./ackermann
     Compression work: 2.86%
 Max duplicator index: 2087945
  Max delimiter index: 0
-     Peak node count: 23549
+     Peak node count: 23550
 ```
 
 </details>
@@ -65,16 +65,16 @@ Description: Computes the Takeuchi function with initial values _(24, 9, 3)_.
 
 ```
 Benchmark 1: ./tak
-  Time (mean ± σ):      1.352 s ±  0.076 s    [User: 1.349 s, System: 0.003 s]
-  Range (min … max):    1.297 s …  1.484 s    5 runs
+  Time (mean ± σ):      1.241 s ±  0.011 s    [User: 1.238 s, System: 0.003 s]
+  Range (min … max):    1.228 s …  1.258 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 101280297
-  Total interactions: 48318663
+      Total rewrites: 101280294
+  Total interactions: 48318661
    Family reductions: 4666911
         Sharing work: 9.98%
     Bookkeeping work: 31.14%
@@ -82,7 +82,7 @@ Benchmark 1: ./tak
     Compression work: 6.28%
 Max duplicator index: 2017
  Max delimiter index: 0
-     Peak node count: 1514
+     Peak node count: 1515
 ```
 
 </details>
@@ -93,24 +93,24 @@ Description: Performes a bubble sort on a Scott-encoded list of 300 cells, then 
 
 ```
 Benchmark 1: ./scott-bubble-sort
-  Time (mean ± σ):      2.806 s ±  0.071 s    [User: 2.801 s, System: 0.005 s]
-  Range (min … max):    2.740 s …  2.909 s    5 runs
+  Time (mean ± σ):      2.849 s ±  0.026 s    [User: 2.844 s, System: 0.004 s]
+  Range (min … max):    2.813 s …  2.870 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 212467294
-  Total interactions: 208401996
+      Total rewrites: 212458817
+  Total interactions: 208396235
    Family reductions: 633613
         Sharing work: 76.42%
     Bookkeeping work: 15.65%
              GC work: 0.98%
     Compression work: 0.23%
-Max duplicator index: 5673
- Max delimiter index: 1502
-     Peak node count: 271338
+Max duplicator index: 5672
+ Max delimiter index: 896
+     Peak node count: 271337
 ```
 
 </details>
@@ -121,16 +121,16 @@ Description: Performes an insertion sort on a Scott-encoded list of 1000 cells, 
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):     902.0 ms ±   5.0 ms    [User: 899.7 ms, System: 1.9 ms]
-  Range (min … max):   895.1 ms … 907.4 ms    5 runs
+  Time (mean ± σ):     883.5 ms ±   7.7 ms    [User: 881.1 ms, System: 2.2 ms]
+  Range (min … max):   874.7 ms … 893.5 ms    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 55595578
-  Total interactions: 25047039
+      Total rewrites: 55595551
+  Total interactions: 25047020
    Family reductions: 4018010
         Sharing work: 3.60%
     Bookkeeping work: 42.33%
@@ -149,24 +149,24 @@ Description: Performes a merge sort on a Scott-encoded list of 1000 cells, then 
 
 ```
 Benchmark 1: ./scott-merge-sort
-  Time (mean ± σ):     602.8 ms ±   3.9 ms    [User: 593.2 ms, System: 9.4 ms]
-  Range (min … max):   597.1 ms … 607.0 ms    5 runs
+  Time (mean ± σ):     611.3 ms ±   5.3 ms    [User: 601.3 ms, System: 9.8 ms]
+  Range (min … max):   602.9 ms … 617.1 ms    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 43104826
-  Total interactions: 32321389
+      Total rewrites: 43090777
+  Total interactions: 32311354
    Family reductions: 226408
         Sharing work: 17.91%
-    Bookkeeping work: 76.61%
+    Bookkeeping work: 76.60%
              GC work: 1.73%
     Compression work: 0.40%
 Max duplicator index: 1611588
  Max delimiter index: 1611585
-     Peak node count: 2203877
+     Peak node count: 2201878
 ```
 
 </details>
@@ -177,24 +177,24 @@ Description: Performes a quicksort on a Scott-encoded list of 500 cells, then su
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):      2.586 s ±  0.007 s    [User: 2.574 s, System: 0.012 s]
-  Range (min … max):    2.578 s …  2.597 s    5 runs
+  Time (mean ± σ):      2.606 s ±  0.014 s    [User: 2.594 s, System: 0.012 s]
+  Range (min … max):    2.581 s …  2.616 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 157093335
-  Total interactions: 100501953
+      Total rewrites: 157093318
+  Total interactions: 100501942
    Family reductions: 12020010
         Sharing work: 7.64%
     Bookkeeping work: 64.58%
              GC work: 14.08%
     Compression work: 7.96%
-Max duplicator index: 8986
- Max delimiter index: 8989
-     Peak node count: 3605960
+Max duplicator index: 8985
+ Max delimiter index: 8988
+     Peak node count: 3605962
 ```
 
 </details>
@@ -205,24 +205,24 @@ Description: Solves the 10-queens problem using Scott-encoded lists.
 
 ```
 Benchmark 1: ./nqueens
-  Time (mean ± σ):      5.322 s ±  0.066 s    [User: 5.317 s, System: 0.004 s]
-  Range (min … max):    5.254 s …  5.425 s    5 runs
+  Time (mean ± σ):      5.249 s ±  0.012 s    [User: 5.245 s, System: 0.003 s]
+  Range (min … max):    5.237 s …  5.263 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 385695703
-  Total interactions: 226461717
+      Total rewrites: 379906038
+  Total interactions: 223567517
    Family reductions: 16117939
-        Sharing work: 24.13%
-    Bookkeeping work: 36.61%
-             GC work: 29.89%
-    Compression work: 2.77%
+        Sharing work: 24.50%
+    Bookkeeping work: 35.84%
+             GC work: 30.07%
+    Compression work: 2.75%
 Max duplicator index: 21
- Max delimiter index: 500931
-     Peak node count: 10558
+ Max delimiter index: 406932
+     Peak node count: 7391
 ```
 
 </details>

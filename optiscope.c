@@ -716,14 +716,9 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
 
 #define SYMBOL_IF_THEN_ELSE UINT64_C(8)
 
-#define SYMBOL_IDENTITY_LAMBDA UINT64_C(9) // the identity lambda
+#define SYMBOL_IDENTITY_LAMBDA UINT64_C(9)
 
-#define SYMBOL_GC_LAMBDA UINT64_C(10) // a lambda discarding its parameter
-
-#define SYMBOL_LAMBDA_C UINT64_C(11) // a closed lambda
-
-#define SYMBOL_GC_LAMBDA_C                                                     \
-    UINT64_C(12) // a closed lambda discarding its parameter
+#define SYMBOL_GC_LAMBDA UINT64_C(10)
 
 #define SYMBOL_REFERENCE UINT64_C(13)
 
@@ -733,13 +728,13 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
 
 #define SYMBOL_GC_DUPLICATOR_RIGHT UINT64_C(16)
 
-#define SYMBOL_QLAMBDA UINT64_C(17) // a quoted lambda
+#define SYMBOL_QLAMBDA UINT64_C(17)
 
-#define SYMBOL_QAPPLICATOR UINT64_C(18) // a quoted applicator
+#define SYMBOL_QAPPLICATOR UINT64_C(18)
 
-#define SYMBOL_QVARIABLE UINT64_C(19) // a quoted variable
+#define SYMBOL_QVARIABLE UINT64_C(19)
 
-#define SYMBOL_MAPPLICATOR UINT64_C(20) // a meta-applicator
+#define SYMBOL_MAPPLICATOR UINT64_C(20)
 
 #define SYMBOL_READBACK UINT64_C(21)
 
@@ -751,20 +746,15 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
 
 #define SYMBOL_QAPPLICATOR_PRINTER_AUX UINT64_C(25)
 
+#define SYMBOL_SEGMENT UINT64_C(26)
+
 #define SYMBOL_DUPLICATOR(i) (MAX_REGULAR_SYMBOL + 1 + (i))
 
 #define SYMBOL_DELIMITER(i) (MAX_DUPLICATOR_INDEX + 1 + (i))
 
 #define IS_ANY_LAMBDA(symbol)                                                  \
     (SYMBOL_LAMBDA == (symbol) || SYMBOL_IDENTITY_LAMBDA == (symbol) ||        \
-     SYMBOL_GC_LAMBDA == (symbol) || SYMBOL_LAMBDA_C == (symbol) ||            \
-     SYMBOL_GC_LAMBDA_C == (symbol))
-
-#define IS_RELEVANT_LAMBDA(symbol)                                             \
-    (SYMBOL_LAMBDA == (symbol) || SYMBOL_LAMBDA_C == (symbol))
-
-#define IS_GC_LAMBDA(symbol)                                                   \
-    (SYMBOL_GC_LAMBDA == (symbol) || SYMBOL_GC_LAMBDA_C == (symbol))
+     SYMBOL_GC_LAMBDA == (symbol))
 
 // clang-format off
 #define IS_DUPLICATOR(symbol) \
@@ -799,6 +789,25 @@ is_atomic_symbol(const uint64_t symbol) {
     }
 }
 
+COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
+inline static bool
+is_operator_symbol(const uint64_t symbol) {
+    switch (symbol) {
+    case SYMBOL_APPLICATOR:
+    case SYMBOL_UNARY_CALL:
+    case SYMBOL_BINARY_CALL:
+    case SYMBOL_BINARY_CALL_AUX:
+    case SYMBOL_IF_THEN_ELSE:
+    case SYMBOL_MAPPLICATOR:
+    case SYMBOL_READBACK:
+    case SYMBOL_QLAMBDA_PRINTER:
+    case SYMBOL_QAPPLICATOR_PRINTER:
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+    case SYMBOL_SEGMENT: return true;
+    default: return false;
+    }
+}
+
 #define SYMBOL_INDEX(symbol)                                                   \
     /* Extract the symbol without branching, considering that duplicators &    \
      * delimiters share the same symbol range. */                              \
@@ -821,8 +830,6 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_IF_THEN_ELSE: return format_string("if-then-else");
     case SYMBOL_IDENTITY_LAMBDA: return format_string("identity");
     case SYMBOL_GC_LAMBDA: return format_string("λ◉");
-    case SYMBOL_LAMBDA_C: return format_string("λc");
-    case SYMBOL_GC_LAMBDA_C: return format_string("λc◉");
     case SYMBOL_REFERENCE: return format_string("&");
     case SYMBOL_BARRIER: return format_string("🚧");
     case SYMBOL_GC_DUPLICATOR_LEFT: return format_string("◉δx");
@@ -836,6 +843,7 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_QLAMBDA_PRINTER: return format_string("P-λ");
     case SYMBOL_QAPPLICATOR_PRINTER: return format_string("P-@");
     case SYMBOL_QAPPLICATOR_PRINTER_AUX: return format_string("P-@'");
+    case SYMBOL_SEGMENT: return format_string("segment");
     default:
         if (IS_DUPLICATOR(symbol)) goto duplicator;
         else if (IS_DELIMITER(symbol)) goto delimiter;
@@ -898,7 +906,6 @@ ports_count(const uint64_t symbol) {
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_GC_LAMBDA:
-    case SYMBOL_GC_LAMBDA_C:
     case SYMBOL_BARRIER:
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
@@ -906,12 +913,12 @@ ports_count(const uint64_t symbol) {
     case SYMBOL_READBACK:
     case SYMBOL_QLAMBDA_PRINTER:
     case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+    case SYMBOL_SEGMENT:
     delimiter:
         return 2;
     case SYMBOL_APPLICATOR:
     case SYMBOL_LAMBDA:
     case SYMBOL_BINARY_CALL:
-    case SYMBOL_LAMBDA_C:
     case SYMBOL_QAPPLICATOR:
     case SYMBOL_MAPPLICATOR:
     case SYMBOL_QAPPLICATOR_PRINTER:
@@ -950,13 +957,32 @@ get_principal_port(uint64_t *const restrict port) {
     return (port - DECODE_OFFSET_METADATA(port[0]));
 }
 
-#define PHASE_DEFAULT  UINT64_C(0) // all nodes not in the reduction stack
-#define PHASE_GC       UINT64_C(1) // active GC erasers
-#define PHASE_GC_AUX   UINT64_C(2) // GC erasers scheduled for deletion
-#define PHASE_IN_STACK UINT64_C(3) // operators in the reduction stack
+#define PHASE_VALUE_DEFAULT UINT64_C(0) // nodes not in the reduction stack
+#define PHASE_VALUE_GC      UINT64_C(1) // active GC erasers
+#define PHASE_VALUE_GC_AUX  UINT64_C(2) // GC erasers scheduled for deletion
+#define PHASE_VALUE_PENDING UINT64_C(3) // operators in the reduction stack
+
+#define PHASE_VALUE_BITS UINT64_C(2)
 
 #define PHASE_MASK                                                             \
-    UINT64_C(0xC3FFFFFFFFFFFFFF) /* clear the phase bits (61-58) */
+    UINT64_C(0xC3FFFFFFFFFFFFFF) /* clear all the four phase bits (61-58) in   \
+                                    the addresse */
+#define REVEAL_PHASE_VALUE                                                     \
+    UINT64_C(0x0C00000000000000) /* clear all the addresse bits except the     \
+                                    phase value */
+#define REVEAL_CLOSEDNESS_BIT                                                  \
+    UINT64_C(0x1000000000000000) /* clear all the addresse bits except the     \
+                                    closednesse bit */
+#define PHASE_VALUE_MASK                                                       \
+    (~REVEAL_PHASE_VALUE) /* clear the phase value bits in the addresse */
+
+#define ENCODE_PHASE(value, closedness)                                        \
+    ((value) | ((closedness) << PHASE_VALUE_BITS))
+#define DECODE_PHASE_VALUE(address)                                            \
+    (((address) & REVEAL_PHASE_VALUE) >> EFFECTIVE_ADDRESS_BITS)
+#define DECODE_CLOSEDNESS_BIT(address)                                         \
+    (((address) & REVEAL_CLOSEDNESS_BIT) >>                                    \
+     (PHASE_VALUE_BITS + EFFECTIVE_ADDRESS_BITS))
 
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
@@ -967,6 +993,19 @@ set_phase(uint64_t *const restrict port, const uint64_t phase) {
     *port = (*port & PHASE_MASK) | (phase << EFFECTIVE_ADDRESS_BITS);
 
     assert(DECODE_PHASE_METADATA(*port) == phase);
+}
+
+COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
+inline static void
+set_phase_value(uint64_t *const restrict port, const uint64_t value) {
+    assert(port);
+    assert(IS_PRINCIPAL_PORT(*port));
+
+    const uint64_t closedness = DECODE_CLOSEDNESS_BIT(*port);
+    const uint64_t phase = ENCODE_PHASE(value, closedness);
+    set_phase(port, phase);
+
+    assert(DECODE_PHASE_VALUE(*port) == value);
 }
 
 // Native Function Pointers
@@ -1613,7 +1652,10 @@ static struct context *
 alloc_context(void) {
     const struct node root = {(uint64_t *)xcalloc(2, sizeof(uint64_t)) + 1};
     root.ports[-1] = SYMBOL_ROOT;
-    root.ports[0] = PORT_VALUE(UINT64_C(0), PHASE_DEFAULT, UINT64_C(0));
+    root.ports[0] = PORT_VALUE(
+        UINT64_C(0),
+        ENCODE_PHASE(PHASE_VALUE_DEFAULT, UINT64_C(1)),
+        UINT64_C(0));
 
     struct context *const graph = xcalloc(1, sizeof *graph);
     graph->root = root;
@@ -1725,11 +1767,14 @@ alloc_node_from(
 
     (void)graph; // `graph` is onely needed for `OPTISCOPE_ENABLE_STATS`
 
+    const uint64_t phase =
+        prototype ? DECODE_PHASE_METADATA(prototype->ports[0]) : UINT64_C(0);
+
     uint64_t *p = NULL;
 
 #define SET_SYMBOL() (p[-1] = symbol)
 #define SET_PORTS_0()                                                          \
-    (SET_SYMBOL(), p[0] = PORT_VALUE(UINT64_C(0), PHASE_DEFAULT, UINT64_C(0)))
+    (SET_SYMBOL(), p[0] = PORT_VALUE(UINT64_C(0), phase, UINT64_C(0)))
 #define SET_PORTS_1()                                                          \
     (SET_PORTS_0(), p[1] = PORT_VALUE(UINT64_C(1), UINT64_C(0), UINT64_C(0)))
 #define SET_PORTS_2()                                                          \
@@ -1744,9 +1789,9 @@ alloc_node_from(
         SET_PORTS_0();
         break;
     case SYMBOL_GC_LAMBDA:
-    case SYMBOL_GC_LAMBDA_C:
     case SYMBOL_QLAMBDA:
     case SYMBOL_QLAMBDA_PRINTER:
+    case SYMBOL_SEGMENT:
         p = ALLOC_POOL_OBJECT(u64x3_pool);
         SET_PORTS_1();
         break;
@@ -1766,7 +1811,6 @@ alloc_node_from(
         break;
     case SYMBOL_APPLICATOR:
     case SYMBOL_LAMBDA:
-    case SYMBOL_LAMBDA_C:
     case SYMBOL_QAPPLICATOR:
     case SYMBOL_MAPPLICATOR:
     case SYMBOL_QAPPLICATOR_PRINTER:
@@ -1848,7 +1892,7 @@ alloc_gc_node(
     const struct node node = alloc_node(graph, SYMBOL_ERASER);
     // Mark this eraser as garbage-collecting, which is necessary for
     // successfull operation of the garbage collector.
-    set_phase(&node.ports[0], PHASE_GC);
+    set_phase_value(&node.ports[0], PHASE_VALUE_GC);
     connect_ports(&node.ports[0], points_to);
 
     return node;
@@ -1883,11 +1927,11 @@ free_node(struct context *const restrict graph, const struct node node) {
     case SYMBOL_ERASER:
     case SYMBOL_IDENTITY_LAMBDA: FREE_POOL_OBJECT(u64x2_pool, p); break;
     case SYMBOL_GC_LAMBDA:
-    case SYMBOL_GC_LAMBDA_C:
     case SYMBOL_CELL:
     case SYMBOL_REFERENCE:
     case SYMBOL_QVARIABLE:
     case SYMBOL_QLAMBDA:
+    case SYMBOL_SEGMENT:
     case SYMBOL_QLAMBDA_PRINTER: FREE_POOL_OBJECT(u64x3_pool, p); break;
     case SYMBOL_PRINTOUT:
         free((char *)p[1]);
@@ -1895,7 +1939,6 @@ free_node(struct context *const restrict graph, const struct node node) {
         break;
     case SYMBOL_APPLICATOR:
     case SYMBOL_LAMBDA:
-    case SYMBOL_LAMBDA_C:
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BARRIER:
     case SYMBOL_GC_DUPLICATOR_LEFT:
@@ -1987,7 +2030,6 @@ graphviz_port_orientation(const struct node node, const uint8_t i) {
         default: COMPILER_UNREACHABLE();
         }
     case SYMBOL_GC_LAMBDA:
-    case SYMBOL_GC_LAMBDA_C:
     case SYMBOL_QLAMBDA:
         switch (i) {
         case 0: return "n";
@@ -2002,6 +2044,7 @@ graphviz_port_orientation(const struct node node, const uint8_t i) {
     case SYMBOL_READBACK:
     case SYMBOL_QLAMBDA_PRINTER:
     case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+    case SYMBOL_SEGMENT:
     delimiter:
         switch (i) {
         case 0: return "s";
@@ -2018,7 +2061,6 @@ graphviz_port_orientation(const struct node node, const uint8_t i) {
         default: COMPILER_UNREACHABLE();
         }
     case SYMBOL_LAMBDA:
-    case SYMBOL_LAMBDA_C:
     case SYMBOL_QAPPLICATOR:
         switch (i) {
         case 0: return "n";
@@ -2106,7 +2148,7 @@ graphviz_draw_node(
 
     const uint64_t *const p = node.ports;
 
-    const bool is_root = SYMBOL_ROOT == p[-1];
+    const bool is_closed = DECODE_CLOSEDNESS_BIT(p[0]);
 
     char *const ssymbol = graphviz_print_symbol(node);
     char *const xlabel = graphviz_node_xlabel(node);
@@ -2115,12 +2157,12 @@ graphviz_draw_node(
         ctx->stream,
         GRAPHVIZ_INDENT
         "n%p [label=\"%s\", "
-        "xlabel=<<FONT FACE=\"Courier\" COLOR=\"blue\" POINT-SIZE=\"8\">%s</FONT>>, "
-        "style=%s];\n",
+        "xlabel=<<FONT FACE=\"Courier\" COLOR=\"blue\" POINT-SIZE=\"8\">%s</FONT>>"
+        "%s];\n",
         (void *)p,
         ssymbol,
         xlabel,
-        (is_root ? "filled" : "none"));
+        is_closed ? ", style=filled" : "");
 
     free(ssymbol);
     free(xlabel);
@@ -2154,14 +2196,14 @@ graphviz_draw_edge(
         ctx->stream,
         GRAPHVIZ_INDENT
         "n%p -> n%p "
-        "[dir=both, tailport=%s, headport=%s, arrowtail=%s, arrowhead=%s, constraint=%s];\n",
+        "[dir=both, constrain=%s, tailport=%s, headport=%s%s%s];\n",
         (void *)source.ports,
         (void *)target.ports,
+        GRAPHVIZ_CONSTRAIN == mode ? "true" : "false",
         graphviz_port_orientation(source, i),
         graphviz_port_orientation(target, j),
-        arrowtail ? "dot" : "none",
-        arrowhead ? "dot" : "none",
-        GRAPHVIZ_CONSTRAIN == mode ? "true" : "false");
+        arrowtail ? ", arrowtail=dot" : "",
+        arrowhead ? ", arrowhead=dot" : "");
 }
 
 COMPILER_NONNULL(1) //
@@ -2448,23 +2490,23 @@ emit_bytecode(
             LAMBDA_TERM_VAR == body->ty && binder == *body->data.var;
         if (is_identity) {
             const struct node lam = alloc_node(graph, SYMBOL_IDENTITY_LAMBDA);
+            lam.ports[0] |= REVEAL_CLOSEDNESS_BIT;
             BC_ATTACH_NODE(bc, lam, 0, &term->connect_to);
             break;
         }
 
         if (0 == binder->nusages) {
             // This is a lambda that "garbage-collects" its argument.
-            const struct node lam = alloc_node(
-                graph,
-                term->fv_count > 0 ? SYMBOL_GC_LAMBDA : SYMBOL_GC_LAMBDA_C);
+            const struct node lam = alloc_node(graph, SYMBOL_GC_LAMBDA);
+            if (0 == term->fv_count) { lam.ports[0] |= REVEAL_CLOSEDNESS_BIT; }
             BC_ATTACH_NODE(bc, lam, 0, &term->connect_to);
             BC_SAVE_PORT(bc, &body->connect_to, 1);
             emit_bytecode(graph, bc, body, lvl + 1, mode);
             break;
         }
 
-        const struct node lam = alloc_node(
-            graph, term->fv_count > 0 ? SYMBOL_LAMBDA : SYMBOL_LAMBDA_C);
+        const struct node lam = alloc_node(graph, SYMBOL_LAMBDA);
+        if (0 == term->fv_count) { lam.ports[0] |= REVEAL_CLOSEDNESS_BIT; }
         BC_ATTACH_NODE(bc, lam, 0, &term->connect_to);
         emit_bytecode_for_body(graph, bc, binder, body, lvl, mode);
 
@@ -2490,6 +2532,7 @@ emit_bytecode(
 
         const struct node app = alloc_node(
             graph, QUOTE == mode ? SYMBOL_MAPPLICATOR : SYMBOL_APPLICATOR);
+        if (0 == term->fv_count) { app.ports[0] |= REVEAL_CLOSEDNESS_BIT; }
 
         BC_ATTACH_NODE(bc, app, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &rator->connect_to, 0);
@@ -2501,6 +2544,7 @@ emit_bytecode(
     }
     case LAMBDA_TERM_CELL: {
         const struct node cell = alloc_node(graph, SYMBOL_CELL);
+        cell.ports[0] |= REVEAL_CLOSEDNESS_BIT;
         cell.ports[1] = term->data.cell;
 
         BC_ATTACH_NODE(bc, cell, 0, &term->connect_to);
@@ -2512,6 +2556,7 @@ emit_bytecode(
         struct lambda_term *const rand = term->data.ucall.rand;
 
         const struct node ucall = alloc_node(graph, SYMBOL_UNARY_CALL);
+        if (0 == term->fv_count) { ucall.ports[0] |= REVEAL_CLOSEDNESS_BIT; }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
         ucall.ports[2] = U64_OF_FUNCTION(function);
@@ -2530,6 +2575,7 @@ emit_bytecode(
             *const rhs = term->data.bcall.rhs;
 
         const struct node bcall = alloc_node(graph, SYMBOL_BINARY_CALL);
+        if (0 == term->fv_count) { bcall.ports[0] |= REVEAL_CLOSEDNESS_BIT; }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
         bcall.ports[3] = U64_OF_FUNCTION(function);
@@ -2549,6 +2595,7 @@ emit_bytecode(
                 *const if_else = term->data.ite.if_else;
 
         const struct node ite = alloc_node(graph, SYMBOL_IF_THEN_ELSE);
+        if (0 == term->fv_count) { ite.ports[0] |= REVEAL_CLOSEDNESS_BIT; }
 
         BC_ATTACH_NODE(bc, ite, 1, &term->connect_to);
         BC_SAVE_PORT(bc, &condition->connect_to, 0);
@@ -2564,6 +2611,7 @@ emit_bytecode(
         struct lambda_term *(*const function)(void) = term->data.ref.function;
 
         const struct node ref = alloc_node(graph, SYMBOL_REFERENCE);
+        ref.ports[0] |= REVEAL_CLOSEDNESS_BIT;
         ref.ports[1] = lookup_function(&graph->book, function);
 
         BC_ATTACH_NODE(bc, ref, 0, &term->connect_to);
@@ -2574,6 +2622,7 @@ emit_bytecode(
         struct lambda_term *const input = term->data.rb.input;
 
         const struct node rb = alloc_node(graph, SYMBOL_READBACK);
+        if (0 == term->fv_count) { rb.ports[0] |= REVEAL_CLOSEDNESS_BIT; }
         rb.ports[2] = 0;
 
         BC_ATTACH_NODE(bc, rb, 1, &term->connect_to);
@@ -2753,7 +2802,6 @@ gc_step(
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_GC_LAMBDA:
-    case SYMBOL_GC_LAMBDA_C:
     case SYMBOL_BARRIER:
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
@@ -2761,6 +2809,7 @@ gc_step(
     case SYMBOL_READBACK:
     case SYMBOL_QLAMBDA_PRINTER:
     case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+    case SYMBOL_SEGMENT:
     delimiter:
         goto commute_1_2;
     case SYMBOL_APPLICATOR:
@@ -2776,12 +2825,11 @@ gc_step(
     case SYMBOL_QVARIABLE:
     case SYMBOL_PRINTOUT: goto annihilate;
     case SYMBOL_LAMBDA:
-    case SYMBOL_LAMBDA_C:
         if (1 == i) {
-            const struct node replacement = alloc_node(
-                graph,
-                SYMBOL_LAMBDA_C == g.ports[-1] ? SYMBOL_GC_LAMBDA_C
-                                               : SYMBOL_GC_LAMBDA);
+            const struct node replacement = alloc_node(graph, SYMBOL_GC_LAMBDA);
+            if (DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+                replacement.ports[0] |= REVEAL_CLOSEDNESS_BIT;
+            }
 
             connect_ports(&replacement.ports[0], DECODE_ADDRESS(g.ports[0]));
             connect_ports(&replacement.ports[1], DECODE_ADDRESS(g.ports[2]));
@@ -2804,11 +2852,11 @@ gc_step(
                               shared = node_of_port(points_to);
 
             if (SYMBOL_ERASER == h.ports[-1]) {
-                assert(PHASE_GC == DECODE_PHASE_METADATA(h.ports[0]));
+                assert(PHASE_VALUE_GC == DECODE_PHASE_VALUE(h.ports[0]));
                 connect_ports(&f.ports[0], points_to);
                 focus_on(&graph->gc_focus, f);
                 free_node(graph, g);
-                set_phase(&h.ports[0], PHASE_GC_AUX);
+                set_phase_value(&h.ports[0], PHASE_VALUE_GC_AUX);
             } else if (is_atomic_symbol(shared.ports[-1])) {
                 connect_ports(&shared.ports[0], shares_with);
                 free_node(graph, f);
@@ -2861,7 +2909,7 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
     CONSUME_MULTIFOCUS (&graph->gc_focus, f) {
         XASSERT(f.ports);
 
-        if (PHASE_GC_AUX == DECODE_PHASE_METADATA(f.ports[0])) {
+        if (PHASE_VALUE_GC_AUX == DECODE_PHASE_VALUE(f.ports[0])) {
             free_node(graph, f);
         } else {
             uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
@@ -2869,12 +2917,12 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
             const struct node g = node_of_port(points_to);
             XASSERT(g.ports);
 
-            switch (DECODE_PHASE_METADATA(g.ports[0])) {
-            case PHASE_GC:
+            switch (DECODE_PHASE_VALUE(g.ports[0])) {
+            case PHASE_VALUE_GC:
                 free_node(graph, f);
-                set_phase(&g.ports[0], PHASE_GC_AUX);
+                set_phase_value(&g.ports[0], PHASE_VALUE_GC_AUX);
                 break;
-            case PHASE_IN_STACK:
+            case PHASE_VALUE_PENDING:
                 graph->rescan = true;
                 // fallthrough
             default: //
@@ -2922,9 +2970,30 @@ COMPUTATION_RULE(beta_c, graph, f, g) {
     XASSERT(g.ports);
     assert(is_interaction(f, g));
     XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
-    XASSERT(SYMBOL_LAMBDA_C == g.ports[-1]);
+    XASSERT(SYMBOL_LAMBDA == g.ports[-1]);
+    XASSERT(DECODE_CLOSEDNESS_BIT(g.ports[0]));
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[2]));
+    connect_ports(DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[1]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+COMPUTATION_RULE(beta_cx, graph, f, g) { // when the argument is closed
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+    XASSERT(SYMBOL_LAMBDA == g.ports[-1]);
+    XASSERT(DECODE_CLOSEDNESS_BIT(g.ports[0]));
+
+    const struct node seg = alloc_node(graph, SYMBOL_SEGMENT);
+    seg.ports[0] |= REVEAL_CLOSEDNESS_BIT;
+    connect_ports(&seg.ports[0], DECODE_ADDRESS(g.ports[2]));
+    connect_ports(&seg.ports[1], DECODE_ADDRESS(f.ports[1]));
+
     connect_ports(DECODE_ADDRESS(f.ports[2]), DECODE_ADDRESS(g.ports[1]));
 
     free_node(graph, f);
@@ -2958,8 +3027,6 @@ COMPUTATION_RULE(gc_beta, graph, f, g) {
     connect_ports(&del.ports[0], DECODE_ADDRESS(f.ports[1]));
     connect_ports(&del.ports[1], DECODE_ADDRESS(g.ports[1]));
 
-    // There is a chance that the argument is fully disconnected from the root;
-    // if so, we must garbage-collect it.
     gc(graph, DECODE_ADDRESS(f.ports[2]));
 
     free_node(graph, f);
@@ -2972,9 +3039,30 @@ COMPUTATION_RULE(gc_beta_c, graph, f, g) {
     XASSERT(g.ports);
     assert(is_interaction(f, g));
     XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
-    XASSERT(SYMBOL_GC_LAMBDA_C == g.ports[-1]);
+    XASSERT(SYMBOL_GC_LAMBDA == g.ports[-1]);
+    XASSERT(DECODE_CLOSEDNESS_BIT(g.ports[0]));
 
     connect_ports(DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[1]));
+    gc(graph, DECODE_ADDRESS(f.ports[2]));
+
+    free_node(graph, f);
+    free_node(graph, g);
+}
+
+COMPUTATION_RULE(gc_beta_cx, graph, f, g) { // when the argument is closed
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_APPLICATOR == f.ports[-1]);
+    XASSERT(SYMBOL_GC_LAMBDA == g.ports[-1]);
+    XASSERT(DECODE_CLOSEDNESS_BIT(g.ports[0]));
+
+    const struct node seg = alloc_node(graph, SYMBOL_SEGMENT);
+    seg.ports[0] |= REVEAL_CLOSEDNESS_BIT;
+    connect_ports(&seg.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&seg.ports[1], DECODE_ADDRESS(f.ports[1]));
+
     gc(graph, DECODE_ADDRESS(f.ports[2]));
 
     free_node(graph, f);
@@ -3023,6 +3111,20 @@ COMPUTATION_RULE(unbarrier, graph, f, g) {
     del.ports[2] = f.ports[2];
     connect_ports(&del.ports[0], DECODE_ADDRESS(f.ports[1]));
     connect_ports(&del.ports[1], &g.ports[0]);
+
+    free_node(graph, f);
+}
+
+COMPUTATION_RULE(enclose, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    assert(is_interaction(f, g));
+    XASSERT(SYMBOL_SEGMENT == f.ports[-1]);
+    // `g` is unspecified.
+
+    g.ports[0] |= REVEAL_CLOSEDNESS_BIT;
+    connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
 
     free_node(graph, f);
 }
@@ -3178,6 +3280,7 @@ COMPUTATION_RULE(do_readback_lam, graph, f, g) {
     const uint64_t lvl = f.ports[2];
 
     const struct node neutral = alloc_node(graph, SYMBOL_QVARIABLE);
+    neutral.ports[0] |= REVEAL_CLOSEDNESS_BIT;
     neutral.ports[1] = lvl;
 
     const struct node app = alloc_node(graph, SYMBOL_APPLICATOR);
@@ -3234,6 +3337,7 @@ COMPUTATION_RULE(do_readback_var, graph, f, g) {
     const uint64_t lvl = f.ports[2], var = g.ports[1];
 
     const struct node out = alloc_node(graph, SYMBOL_PRINTOUT);
+    out.ports[0] |= REVEAL_CLOSEDNESS_BIT;
     out.ports[1] =
         (uint64_t)format_string("%" PRIu64, de_bruijn_level_to_index(lvl, var));
     connect_ports(&out.ports[0], DECODE_ADDRESS(f.ports[1]));
@@ -3255,6 +3359,7 @@ COMPUTATION_RULE(do_print_lam, graph, f, g) {
     char *const s = format_string("(λ %s)", body_s);
 
     const struct node out = alloc_node(graph, SYMBOL_PRINTOUT);
+    out.ports[0] |= REVEAL_CLOSEDNESS_BIT;
     out.ports[1] = (uint64_t)s;
     connect_ports(&out.ports[0], DECODE_ADDRESS(f.ports[1]));
 
@@ -3294,6 +3399,7 @@ COMPUTATION_RULE(do_print_app_aux, graph, f, g) {
     char *const s = format_string("(%s %s)", rator_s, rand_s);
 
     const struct node out = alloc_node(graph, SYMBOL_PRINTOUT);
+    out.ports[0] |= REVEAL_CLOSEDNESS_BIT;
     out.ports[1] = (uint64_t)s;
     connect_ports(&out.ports[0], DECODE_ADDRESS(f.ports[1]));
 
@@ -3572,6 +3678,12 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
         free_node(graph, f);                                                   \
     } while (0)
 
+#define remove_delimiter(graph, f, g)                                          \
+    do {                                                                       \
+        connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));                \
+        free_node(graph, f);                                                   \
+    } while (0)
+
 // Specialized Commutation Helpers
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -3667,13 +3779,9 @@ debug_rewrite(
     char *const f_ssymbol = print_symbol(f.ports[-1]), //
         *const g_ssymbol = print_symbol(g.ports[-1]);
 
-    debug(
-        "%s(%p %s, %p %s)",
-        caller,
-        (void *)f.ports,
-        f_ssymbol,
-        (void *)g.ports,
-        g_ssymbol);
+    void *const f_p = (void *)f.ports, *const g_p = (void *)g.ports;
+
+    debug("%s(%p %s, %p %s)", caller, f_p, f_ssymbol, g_p, g_ssymbol);
 
     free(f_ssymbol);
     free(g_ssymbol);
@@ -3747,6 +3855,25 @@ barrier_condition(const struct node f, const struct node g) {
            DECODE_ADDRESS(h.ports[0]) != &g.ports[1];
 }
 
+COMPILER_NONNULL(1) COMPILER_HOT //
+static void
+merge_delimiter(
+    struct context *const restrict graph,
+    const struct node f,
+    const struct node g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(IS_DELIMITER(f.ports[-1]));
+    XASSERT(IS_DELIMITER(g.ports[-1]));
+    XASSERT(f.ports[-1] == g.ports[-1]);
+    XASSERT(DECODE_ADDRESS(f.ports[0]) == &g.ports[1]);
+
+    g.ports[2] = checked_add(g.ports[2], f.ports[2]);
+    connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
+    free_node(graph, f);
+}
+
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
 static bool
 try_extrude(
@@ -3765,8 +3892,7 @@ try_extrude(
     // A heuristic: blocke extrusion of a zero-indexed delimiter when another
     // delimiter points to its auxiliary port.
     if (SYMBOL_DELIMITER(UINT64_C(0)) == f.ports[-1]) {
-        uint64_t *const aux_target = DECODE_ADDRESS(f.ports[1]);
-        const struct node aux = node_of_port(aux_target);
+        const struct node aux = follow_port(f, 1);
         if (IS_DELIMITER(aux.ports[-1]) &&
             DECODE_ADDRESS(aux.ports[0]) == &f.ports[1]) {
             return false;
@@ -3794,25 +3920,6 @@ try_extrude(
     }
 }
 
-COMPILER_NONNULL(1) COMPILER_HOT //
-static void
-merge_delimiter(
-    struct context *const restrict graph,
-    const struct node f,
-    const struct node g) {
-    assert(graph);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-    XASSERT(IS_DELIMITER(f.ports[-1]));
-    XASSERT(IS_DELIMITER(g.ports[-1]));
-    XASSERT(f.ports[-1] == g.ports[-1]);
-    XASSERT(DECODE_ADDRESS(f.ports[0]) == &g.ports[1]);
-
-    g.ports[2] = checked_add(g.ports[2], f.ports[2]);
-    connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
-    free_node(graph, f);
-}
-
 CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
     assert(graph);
     XASSERT(f.ports);
@@ -3823,10 +3930,10 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
 
     if (!points_to(g, f)) {
         return REDUCE_PUSH;
-    } else if (IS_RELEVANT_LAMBDA(gsym)) {
+    } else if (SYMBOL_LAMBDA == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_gc_dup_lam(graph, f, g); });
-    } else if (IS_GC_LAMBDA(gsym)) {
+    } else if (SYMBOL_GC_LAMBDA == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_gc_dup_gc_lam(graph, f, g); });
     } else if (SYMBOL_REFERENCE == gsym) {
@@ -3895,9 +4002,9 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
 
     if (!points_to(g, f)) {
         return REDUCE_PUSH;
-    } else if (IS_RELEVANT_LAMBDA(gsym)) {
+    } else if (SYMBOL_LAMBDA == gsym) {
         INTERACTION(graph, f, g, REDUCE_POP, { commute_dup_lam(graph, f, g); });
-    } else if (IS_GC_LAMBDA(gsym)) {
+    } else if (SYMBOL_GC_LAMBDA == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_dup_gc_lam(graph, f, g); });
     } else if (SYMBOL_REFERENCE == gsym) {
@@ -3957,29 +4064,27 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
 
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
-    if (is_atomic_symbol(gsym)) {
+    if (points_to(g, f) && DECODE_CLOSEDNESS_BIT(g.ports[0])) {
         INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
+            graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
     } else if (SYMBOL_LAMBDA == gsym) {
         INTERACTION(graph, f, g, REDUCE_POP, { commute_del_lam(graph, f, g); });
     } else if (SYMBOL_GC_LAMBDA == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_del_gc_lam(graph, f, g); });
-    } else if (
-        SYMBOL_LAMBDA_C == gsym || //
-        SYMBOL_GC_LAMBDA_C == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
     } else if (SYMBOL_QLAMBDA == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
     } else if (SYMBOL_QAPPLICATOR == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
-    } else if (try_extrude(graph, f, g)) {
-        return REDUCE_POP;
     } else if (fsym == gsym && DECODE_ADDRESS(f.ports[0]) == &g.ports[1]) {
         REWRITE(graph, f, g, nmergings, { merge_delimiter(graph, f, g); });
+        return REDUCE_POP;
+    } else if (is_operator_symbol(gsym) && DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+        REWRITE(graph, f, g, nextrusions, { remove_delimiter(graph, f, g); });
+        return REDUCE_POP;
+    } else if (try_extrude(graph, f, g)) {
         return REDUCE_POP;
     } else if (!points_to(g, f)) {
         return REDUCE_PUSH;
@@ -4014,20 +4119,32 @@ CONTROL_FUNCTION(interact_with_app, graph, f, g) {
 
     const uint64_t gsym = g.ports[-1];
 
+    const struct node h = follow_port(f, 2);
+
+    const bool is_beta_c =
+        SYMBOL_LAMBDA == gsym && DECODE_CLOSEDNESS_BIT(g.ports[0]);
+    const bool is_gc_beta_c =
+        SYMBOL_GC_LAMBDA == gsym && DECODE_CLOSEDNESS_BIT(g.ports[0]);
+
     if (!points_to(g, f)) {
         return REDUCE_PUSH;
+    } else if (is_beta_c && DECODE_CLOSEDNESS_BIT(h.ports[0])) {
+        INTERACTION(graph, f, g, REDUCE_POP, { beta_cx(graph, f, g); });
+    } else if (is_beta_c) {
+        INTERACTION(graph, f, g, REDUCE_POP, { beta_c(graph, f, g); });
     } else if (SYMBOL_LAMBDA == gsym) {
         INTERACTION(graph, f, g, REDUCE_POP, { beta(graph, f, g); });
-    } else if (SYMBOL_LAMBDA_C == gsym) {
-        INTERACTION(graph, f, g, REDUCE_POP, { beta_c(graph, f, g); });
     } else if (SYMBOL_IDENTITY_LAMBDA == gsym) {
         INTERACTION(graph, f, g, REDUCE_POP, { identity_beta(graph, f, g); });
+    } else if (is_gc_beta_c && DECODE_CLOSEDNESS_BIT(h.ports[0])) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta_cx(graph, f, g); });
+    } else if (is_gc_beta_c) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta_c(graph, f, g); });
     } else if (SYMBOL_GC_LAMBDA == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta(graph, f, g); });
-    } else if (SYMBOL_GC_LAMBDA_C == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta_c(graph, f, g); });
     } else if (SYMBOL_REFERENCE == gsym) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
     } else if (IS_GC_DUPLICATOR(gsym)) {
@@ -4193,6 +4310,30 @@ CONTROL_FUNCTION(interact_with_barr, graph, f, g) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { barrier(graph, f, g); });
     } else {
         INTERACTION(graph, f, g, REDUCE_POP, { unbarrier(graph, f, g); });
+    }
+}
+
+CONTROL_FUNCTION(interact_with_seg, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_SEGMENT == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+    } else if (IS_DELIMITER(gsym)) {
+        INTERACTION(
+            graph, f, g, REDUCE_LOOP, { absorb_delimiter(graph, g, f); });
+    } else {
+        INTERACTION(graph, f, g, REDUCE_POP, { enclose(graph, f, g); });
     }
 }
 
@@ -4443,6 +4584,7 @@ loop: {
         break;
     case SYMBOL_IF_THEN_ELSE: action = interact_with_ite(graph, f, g); break;
     case SYMBOL_BARRIER: action = interact_with_barr(graph, f, g); break;
+    case SYMBOL_SEGMENT: action = interact_with_seg(graph, f, g); break;
     case SYMBOL_MAPPLICATOR: action = interact_with_mapp(graph, f, g); break;
     case SYMBOL_READBACK: action = interact_with_rb(graph, f, g); break;
     case SYMBOL_QLAMBDA_PRINTER:
@@ -4481,7 +4623,7 @@ loop: {
 }
 
 push: {
-    set_phase(&f.ports[0], PHASE_IN_STACK);
+    set_phase_value(&f.ports[0], PHASE_VALUE_PENDING);
     focus_on(&stack, f);
     f = g;
     goto loop;
@@ -4489,26 +4631,22 @@ push: {
 
 pop: {
     f = unfocus(&stack);
-    f.ports[0] &= PHASE_MASK;
+    f.ports[0] &= PHASE_VALUE_MASK;
     goto loop;
 }
 
 pop_with_check: {
     if (graph->rescan) {
         // Proceed with resetting the phases of nodes from the stack.
-        // clang-format off
         CONSUME_MULTIFOCUS (&stack, node) {
 #ifdef COMPILER_ASAN_AVAILABLE
             if (!COMPILER_IS_POISONED_ADDRESS(node.ports)) {
 #endif
-            if (PHASE_IN_STACK == DECODE_PHASE_METADATA(node.ports[0])) {
-                node.ports[0] &= PHASE_MASK;
-            }
+                node.ports[0] &= PHASE_VALUE_MASK;
 #ifdef COMPILER_ASAN_AVAILABLE
             }
 #endif
         }
-        // clang-format on
         graph->rescan = false;
         goto rescan;
     } else {
