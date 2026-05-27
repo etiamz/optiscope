@@ -69,6 +69,16 @@ By adding the following lines into [`optiscope.h`]:
   </a>
 </div>
 
+<details>
+<summary>Visualization notes</summary>
+
+ - The current graph rewrite is always enclosed in a red cluster.
+ - All other interactions (but not all graph rewrites) are enclosed in green clusters.
+ - Nodes with closednesse bit set to 1 are coloured grey.
+ - Tiny black circles on nodes' borders denote principal ports.
+
+</details>
+
 ## Full Reduction
 
 We mimicke full reduction as a normalization-by-evaluation procedure running on weak reduction. Consider another example [`examples/2-power-2.c`], which computes _2^2_ using Church numerals:
