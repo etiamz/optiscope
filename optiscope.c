@@ -2196,7 +2196,7 @@ graphviz_draw_edge(
         ctx->stream,
         GRAPHVIZ_INDENT
         "n%p -> n%p "
-        "[dir=both, constrain=%s, tailport=%s, headport=%s%s%s];\n",
+        "[dir=both, constraint=%s, tailport=%s, headport=%s%s%s];\n",
         (void *)source.ports,
         (void *)target.ports,
         GRAPHVIZ_CONSTRAIN == mode ? "true" : "false",
