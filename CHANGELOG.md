@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
-## 2.1.1 - 2026-05-28
-
 ### Fixed
 
  - Miscellaneouse: print the closednesse annotations when debugging a graph rewrite.
