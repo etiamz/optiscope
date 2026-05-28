@@ -2480,6 +2480,7 @@ emit_bytecode(
 
         if (QUOTE == mode) {
             const struct node qlam = alloc_node(graph, SYMBOL_QLAMBDA);
+            if (0 == term->fv_count) { qlam.ports[0] |= REVEAL_CLOSEDNESS_BIT; }
             BC_ATTACH_NODE(bc, qlam, 0, &term->connect_to);
             BC_SAVE_PORT(bc, &term->connect_to, 1);
             // Fall through: the "real" lambda abstraction will be attached

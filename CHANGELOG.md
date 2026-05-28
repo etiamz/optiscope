@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
- - Miscellaneouse: print closednesse annotations when debugging a graph rewrite.
+ - Miscellaneouse: print the closednesse annotations when debugging a graph rewrite.
+ - Optimization: set `SYMBOL_QLAMBDA`'s closedness bit during bytecode emission.
 
 ## 2.1.0 - 2026-05-28
 
