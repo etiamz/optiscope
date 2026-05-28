@@ -3779,9 +3779,15 @@ debug_rewrite(
     char *const f_ssymbol = print_symbol(f.ports[-1]), //
         *const g_ssymbol = print_symbol(g.ports[-1]);
 
-    void *const f_p = (void *)f.ports, *const g_p = (void *)g.ports;
-
-    debug("%s(%p %s, %p %s)", caller, f_p, f_ssymbol, g_p, g_ssymbol);
+    debug(
+        "%s(%p %s%s, %p %s%s)",
+        caller,
+        (void *)f.ports,
+        f_ssymbol,
+        DECODE_CLOSEDNESS_BIT(f.ports[0]) ? " c" : "",
+        (void *)g.ports,
+        g_ssymbol,
+        DECODE_CLOSEDNESS_BIT(g.ports[0]) ? " c" : "");
 
     free(f_ssymbol);
     free(g_ssymbol);
