@@ -357,7 +357,7 @@ format_string(const char *const format, ...) {
     const int length = vsnprintf(NULL, 0, format, args);
     va_end(args);
     char *const result = xmalloc(length + 1);
-    vsprintf(result, format, args_copy);
+    vsnprintf(result, (size_t)(length + 1), format, args_copy);
     va_end(args_copy);
 
     return result;
