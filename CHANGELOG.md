@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Added
+
+ - Miscellaneouse: gate all the bookkeeping optimizations under the following options:
+   - `OPTISCOPE_DISABLE_DELIMITER_COMPRESSION`
+   - `OPTISCOPE_DISABLE_DELIMITER_SCHEDULING`
+   - `OPTISCOPE_DISABLE_DELIMITER_EXTRUSION`
+   - `OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS`
+   - `OPTISCOPE_DISABLE_SEGMENTATION`
+
 ## 2.1.1 - 2026-05-28
 
 ### Fixed

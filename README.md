@@ -266,12 +266,10 @@ What conclusions should we draw from this? Have Haskell & OCaml so advanced in e
    - We extrude to the operands onely if the operator is not marked _closed_; otherwise, we just remove the delimiter.
 
  - **Closednesse annotations.** As described in the port layout paragraph, there is a closednesse marker in every principal port. When set, this marker means that the term from which the subnet rooted at this node has been compiled had no free variables in it. Although this annotation costs ~nothing & occupies no extra space in memory, it allows us to elide delimiters in a lot of situations. Below is a comprehensive list of situations where delimiters can be safely elided:
-   - When delimiter `d` interacts with a lambda node marked closed, elide `d`.
    - When an applicator meets a lambda node marked closed, just rewire the ports.
-   - When delimiter `d` interacts with an atomic node, elide `d`.
-   - When delimiter `d` connects to an output port of an operator, elide `d`.
-     - Operators are applicators, binary calls, etc.
-   - When delimiter `d` interacts with a _segment_, elide `d`.
+   - When delimiter `d` interacts with a lambda node marked closed, elide `d`.
+   - When delimiter `d` connects to an output port of an operator node marked closed, elide `d`.
+   - When delimiter `d` interacts with a _segment_ node, elide `d`.
 
  - **Segmentation.** Segmentation is a concept tightly coupled with closednesse annotations. Initially, all lambda nodes compiled from closed lambda abstractions are marked closed; however, there are situations when a lambda node may _become_ closed. More concretely, consider the following situation: lambda `f` of `x` conteyns lambda `g` of `y`, which uses `x`; `f` is applied to node `n` marked closed; the result is node `g`. But observe that after opening `f`, `g` can now be marked closed, because we could have built `g` directly from some closed lambda term by swapping the usage of `x` with `n`! We realize this intuition as follows: when an applicator meets a lambda node marked closed _and_ the argument port points to a node marked closed, we remove the lambda node and instantiate a _segment operator_ marked closed. When this operator meets an open lambda node `f`, it markes `f` closed and disappears, which allows for more delimiter-lesse Beta interactions with `f`, according to the previous paragraph.
 

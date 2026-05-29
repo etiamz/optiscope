@@ -287,6 +287,9 @@ PRINTER(panic, stderr, abort())
 
 #undef PRINTER
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function" // may be unused
+
 COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static uint64_t
 checked_add(const uint64_t value, const uint64_t offset) {
@@ -296,6 +299,8 @@ checked_add(const uint64_t value, const uint64_t offset) {
 
     return value + offset;
 }
+
+#pragma GCC diagnostic pop // "-Wunused-function"
 
 // Checked Memory Allocation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -964,36 +969,26 @@ get_principal_port(uint64_t *const restrict port) {
 
 #define PHASE_VALUE_BITS UINT64_C(2)
 
-#define PHASE_MASK                                                             \
-    UINT64_C(0xC3FFFFFFFFFFFFFF) /* clear all the four phase bits (61-58) in   \
-                                    the addresse */
-#define REVEAL_PHASE_VALUE                                                     \
-    UINT64_C(0x0C00000000000000) /* clear all the addresse bits except the     \
-                                    phase value */
-#define REVEAL_CLOSEDNESS_BIT                                                  \
-    UINT64_C(0x1000000000000000) /* clear all the addresse bits except the     \
-                                    closednesse bit */
-#define PHASE_VALUE_MASK                                                       \
-    (~REVEAL_PHASE_VALUE) /* clear the phase value bits in the addresse */
+// The phase value bits are ones; the rest of the port bits are zeroes.
+#define REVEAL_PHASE_VALUE UINT64_C(0x0C00000000000000)
+// The closednesse bit is one; the rest of the port bits are zeroes.
+#define REVEAL_CLOSEDNESS_BIT UINT64_C(0x1000000000000000)
 
 #define ENCODE_PHASE(value, closedness)                                        \
     ((value) | ((closedness) << PHASE_VALUE_BITS))
+
 #define DECODE_PHASE_VALUE(address)                                            \
     (((address) & REVEAL_PHASE_VALUE) >> EFFECTIVE_ADDRESS_BITS)
+
+#ifdef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
+// If closednesse annotations are disabled, the closednesse bit will be intact,
+// but will always be read as 0.
+#define DECODE_CLOSEDNESS_BIT(address) UINT64_C(0)
+#else
 #define DECODE_CLOSEDNESS_BIT(address)                                         \
     (((address) & REVEAL_CLOSEDNESS_BIT) >>                                    \
      (PHASE_VALUE_BITS + EFFECTIVE_ADDRESS_BITS))
-
-COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static void
-set_phase(uint64_t *const restrict port, const uint64_t phase) {
-    assert(port);
-    assert(IS_PRINCIPAL_PORT(*port));
-
-    *port = (*port & PHASE_MASK) | (phase << EFFECTIVE_ADDRESS_BITS);
-
-    assert(DECODE_PHASE_METADATA(*port) == phase);
-}
+#endif
 
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static void
@@ -1001,9 +996,7 @@ set_phase_value(uint64_t *const restrict port, const uint64_t value) {
     assert(port);
     assert(IS_PRINCIPAL_PORT(*port));
 
-    const uint64_t closedness = DECODE_CLOSEDNESS_BIT(*port);
-    const uint64_t phase = ENCODE_PHASE(value, closedness);
-    set_phase(port, phase);
+    *port = (*port & ~REVEAL_PHASE_VALUE) | (value << EFFECTIVE_ADDRESS_BITS);
 
     assert(DECODE_PHASE_VALUE(*port) == value);
 }
@@ -2668,6 +2661,57 @@ build_duplicator_tree(
     connect_ports(&current.ports[0], binder_port);
 }
 
+#ifdef OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
+
+COMPILER_NONNULL(1, 2, 3) //
+static void
+build_delimiter_chain(
+    struct context *const restrict graph,
+    uint64_t *const restrict points_to,
+    uint64_t *const restrict goes_from,
+    const uint64_t n) {
+    assert(graph);
+    assert(points_to);
+    assert(goes_from);
+    XASSERT(n >= 1);
+
+    struct node prev = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+    prev.ports[2] = 1;
+    connect_ports(&prev.ports[0], points_to);
+
+    for (uint64_t i = 1; i < n; i++) {
+        const struct node next =
+            alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+        next.ports[2] = 1;
+        connect_ports(&prev.ports[1], &next.ports[0]);
+        prev = next;
+    }
+
+    connect_ports(&prev.ports[1], goes_from);
+}
+
+#else
+
+COMPILER_NONNULL(1, 2, 3) //
+static void
+build_delimiter_chain(
+    struct context *const restrict graph,
+    uint64_t *const restrict points_to,
+    uint64_t *const restrict goes_from,
+    const uint64_t n) {
+    assert(graph);
+    assert(points_to);
+    assert(goes_from);
+    XASSERT(n >= 1);
+
+    const struct node del = alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
+    del.ports[2] = n;
+    connect_ports(&del.ports[0], points_to);
+    connect_ports(&del.ports[1], goes_from);
+}
+
+#endif // OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
+
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
 execute_bytecode(
@@ -2714,11 +2758,7 @@ execute_bytecode(
                 **const goes_from = instr.data.delimit.goes_from;
             const uint64_t n = instr.data.delimit.n;
 
-            const struct node del =
-                alloc_node(graph, SYMBOL_DELIMITER(UINT64_C(0)));
-            del.ports[2] = n;
-            connect_ports(&del.ports[0], *points_to);
-            connect_ports(&del.ports[1], *goes_from);
+            build_delimiter_chain(graph, *points_to, *goes_from, n);
 
             break;
         }
@@ -2965,6 +3005,8 @@ COMPUTATION_RULE(beta, graph, f, g) {
     free_node(graph, g);
 }
 
+#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
+
 COMPUTATION_RULE(beta_c, graph, f, g) {
     assert(graph);
     XASSERT(f.ports);
@@ -2980,6 +3022,10 @@ COMPUTATION_RULE(beta_c, graph, f, g) {
     free_node(graph, f);
     free_node(graph, g);
 }
+
+#endif // OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
+
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
 
 COMPUTATION_RULE(beta_cx, graph, f, g) { // when the argument is closed
     assert(graph);
@@ -3000,6 +3046,8 @@ COMPUTATION_RULE(beta_cx, graph, f, g) { // when the argument is closed
     free_node(graph, f);
     free_node(graph, g);
 }
+
+#endif // OPTISCOPE_DISABLE_SEGMENTATION
 
 COMPUTATION_RULE(identity_beta, graph, f, g) {
     assert(graph);
@@ -3034,6 +3082,8 @@ COMPUTATION_RULE(gc_beta, graph, f, g) {
     free_node(graph, g);
 }
 
+#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
+
 COMPUTATION_RULE(gc_beta_c, graph, f, g) {
     assert(graph);
     XASSERT(f.ports);
@@ -3049,6 +3099,10 @@ COMPUTATION_RULE(gc_beta_c, graph, f, g) {
     free_node(graph, f);
     free_node(graph, g);
 }
+
+#endif // OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
+
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
 
 COMPUTATION_RULE(gc_beta_cx, graph, f, g) { // when the argument is closed
     assert(graph);
@@ -3069,6 +3123,10 @@ COMPUTATION_RULE(gc_beta_cx, graph, f, g) { // when the argument is closed
     free_node(graph, f);
     free_node(graph, g);
 }
+
+#endif // OPTISCOPE_DISABLE_SEGMENTATION
+
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
 
 COMPUTATION_RULE(new_barrier, graph, f, g) {
     assert(graph);
@@ -3116,6 +3174,10 @@ COMPUTATION_RULE(unbarrier, graph, f, g) {
     free_node(graph, f);
 }
 
+#endif // OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
+
 COMPUTATION_RULE(enclose, graph, f, g) {
     assert(graph);
     XASSERT(f.ports);
@@ -3129,6 +3191,8 @@ COMPUTATION_RULE(enclose, graph, f, g) {
 
     free_node(graph, f);
 }
+
+#endif // OPTISCOPE_DISABLE_SEGMENTATION
 
 COMPUTATION_RULE(do_expand, graph, f, g) {
     assert(graph);
@@ -3579,6 +3643,8 @@ COMMUTATION_HELPER(commute_3_4_helper, graph, f, g) {
 // Generic Extrusion Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+#ifndef OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
+
 // clang-format off
 #define EXTRUSION_RULE(name, graph, f, g) \
     COMPILER_NONNULL(1) COMPILER_HOT \
@@ -3636,6 +3702,8 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
 
 #undef EXTRUSION_PROLOGUE
 #undef EXTRUSION_RULE
+
+#endif // OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
 
 // Specialized Annihilation Helpers
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -3845,6 +3913,8 @@ enum reduce_action {
         NREWRITES_PLUS_PLUS(graph, r);                                         \
     } while (false)
 
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+
 COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
 inline static bool
 barrier_condition(const struct node f, const struct node g) {
@@ -3861,6 +3931,10 @@ barrier_condition(const struct node f, const struct node g) {
     return SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1] &&
            DECODE_ADDRESS(h.ports[0]) != &g.ports[1];
 }
+
+#endif // OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+
+#ifndef OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
 
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
@@ -3880,6 +3954,10 @@ merge_delimiter(
     connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
     free_node(graph, f);
 }
+
+#endif // OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
+
+#ifndef OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
 static bool
@@ -3926,6 +4004,8 @@ try_extrude(
     default: return false;
     }
 }
+
+#endif // OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
 
 CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
     assert(graph);
@@ -3974,8 +4054,10 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, f, g); });
@@ -4039,8 +4121,10 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(graph, f, g, REDUCE_POP, { commute_dup_del(graph, f, g); });
     } else if (
@@ -4071,9 +4155,14 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
 
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
-    if (points_to(g, f) && DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+    if (is_atomic_symbol(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
+    } else if (points_to(g, f) && DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
+#endif
     } else if (SYMBOL_LAMBDA == gsym) {
         INTERACTION(graph, f, g, REDUCE_POP, { commute_del_lam(graph, f, g); });
     } else if (SYMBOL_GC_LAMBDA == gsym) {
@@ -4085,14 +4174,20 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
     } else if (SYMBOL_QAPPLICATOR == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
     } else if (fsym == gsym && DECODE_ADDRESS(f.ports[0]) == &g.ports[1]) {
         REWRITE(graph, f, g, nmergings, { merge_delimiter(graph, f, g); });
         return REDUCE_POP;
+#endif
+#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
     } else if (is_operator_symbol(gsym) && DECODE_CLOSEDNESS_BIT(g.ports[0])) {
         REWRITE(graph, f, g, nextrusions, { remove_delimiter(graph, f, g); });
         return REDUCE_POP;
+#endif
+#ifndef OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
     } else if (try_extrude(graph, f, g)) {
         return REDUCE_POP;
+#endif
     } else if (!points_to(g, f)) {
         return REDUCE_PUSH;
     } else if (IS_GC_DUPLICATOR(gsym)) {
@@ -4126,29 +4221,41 @@ CONTROL_FUNCTION(interact_with_app, graph, f, g) {
 
     const uint64_t gsym = g.ports[-1];
 
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
     const struct node h = follow_port(f, 2);
+#endif
 
+#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
     const bool is_beta_c =
         SYMBOL_LAMBDA == gsym && DECODE_CLOSEDNESS_BIT(g.ports[0]);
     const bool is_gc_beta_c =
         SYMBOL_GC_LAMBDA == gsym && DECODE_CLOSEDNESS_BIT(g.ports[0]);
+#endif
 
     if (!points_to(g, f)) {
         return REDUCE_PUSH;
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
     } else if (is_beta_c && DECODE_CLOSEDNESS_BIT(h.ports[0])) {
         INTERACTION(graph, f, g, REDUCE_POP, { beta_cx(graph, f, g); });
+#endif
+#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
     } else if (is_beta_c) {
         INTERACTION(graph, f, g, REDUCE_POP, { beta_c(graph, f, g); });
+#endif
     } else if (SYMBOL_LAMBDA == gsym) {
         INTERACTION(graph, f, g, REDUCE_POP, { beta(graph, f, g); });
     } else if (SYMBOL_IDENTITY_LAMBDA == gsym) {
         INTERACTION(graph, f, g, REDUCE_POP, { identity_beta(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
     } else if (is_gc_beta_c && DECODE_CLOSEDNESS_BIT(h.ports[0])) {
         INTERACTION(
             graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta_cx(graph, f, g); });
+#endif
+#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
     } else if (is_gc_beta_c) {
         INTERACTION(
             graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta_c(graph, f, g); });
+#endif
     } else if (SYMBOL_GC_LAMBDA == gsym) {
         INTERACTION(
             graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta(graph, f, g); });
@@ -4160,8 +4267,10 @@ CONTROL_FUNCTION(interact_with_app, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
@@ -4192,8 +4301,10 @@ CONTROL_FUNCTION(interact_with_ucall, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
@@ -4224,8 +4335,10 @@ CONTROL_FUNCTION(interact_with_bcall, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
@@ -4257,8 +4370,10 @@ CONTROL_FUNCTION(interact_with_bcall_aux, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
@@ -4291,8 +4406,10 @@ CONTROL_FUNCTION(interact_with_ite, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_4_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_4_2_helper(graph, f, g); });
@@ -4302,6 +4419,8 @@ CONTROL_FUNCTION(interact_with_ite, graph, f, g) {
 
     return REDUCE_POP;
 }
+
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
 
 CONTROL_FUNCTION(interact_with_barr, graph, f, g) {
     assert(graph);
@@ -4319,6 +4438,10 @@ CONTROL_FUNCTION(interact_with_barr, graph, f, g) {
         INTERACTION(graph, f, g, REDUCE_POP, { unbarrier(graph, f, g); });
     }
 }
+
+#endif // OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
 
 CONTROL_FUNCTION(interact_with_seg, graph, f, g) {
     assert(graph);
@@ -4343,6 +4466,8 @@ CONTROL_FUNCTION(interact_with_seg, graph, f, g) {
         INTERACTION(graph, f, g, REDUCE_POP, { enclose(graph, f, g); });
     }
 }
+
+#endif // OPTISCOPE_DISABLE_SEGMENTATION
 
 CONTROL_FUNCTION(interact_with_root, graph, f, g) {
     assert(graph);
@@ -4388,8 +4513,10 @@ CONTROL_FUNCTION(interact_with_mapp, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
@@ -4424,8 +4551,10 @@ CONTROL_FUNCTION(interact_with_rb, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
@@ -4456,8 +4585,10 @@ CONTROL_FUNCTION(interact_with_qlam_printer, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
@@ -4488,8 +4619,10 @@ CONTROL_FUNCTION(interact_with_qapp_printer, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
@@ -4521,8 +4654,10 @@ CONTROL_FUNCTION(interact_with_qapp_printer_aux, graph, f, g) {
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+#endif
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
@@ -4590,8 +4725,12 @@ loop: {
         action = interact_with_bcall_aux(graph, f, g);
         break;
     case SYMBOL_IF_THEN_ELSE: action = interact_with_ite(graph, f, g); break;
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_BARRIER: action = interact_with_barr(graph, f, g); break;
+#endif
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
     case SYMBOL_SEGMENT: action = interact_with_seg(graph, f, g); break;
+#endif
     case SYMBOL_MAPPLICATOR: action = interact_with_mapp(graph, f, g); break;
     case SYMBOL_READBACK: action = interact_with_rb(graph, f, g); break;
     case SYMBOL_QLAMBDA_PRINTER:
@@ -4638,7 +4777,7 @@ push: {
 
 pop: {
     f = unfocus(&stack);
-    f.ports[0] &= PHASE_VALUE_MASK;
+    f.ports[0] &= ~REVEAL_PHASE_VALUE;
     goto loop;
 }
 
@@ -4649,7 +4788,7 @@ pop_with_check: {
 #ifdef COMPILER_ASAN_AVAILABLE
             if (!COMPILER_IS_POISONED_ADDRESS(node.ports)) {
 #endif
-                node.ports[0] &= PHASE_VALUE_MASK;
+                node.ports[0] &= ~REVEAL_PHASE_VALUE;
 #ifdef COMPILER_ASAN_AVAILABLE
             }
 #endif

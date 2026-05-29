@@ -50,6 +50,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // - `OPTISCOPE_ENABLE_HUGE_PAGES`
 //   Use 2 MB huge pages for the memory pools (improves performance; requires
 //   Linux).
+// - `OPTISCOPE_DISABLE_DELIMITER_COMPRESSION`
+//   Disable static & dynamic run-length encoding of chained delimiters;
+//   requires `OPTISCOPE_DISABLE_DELIMITER_SCHEDULING`.
+// - `OPTISCOPE_DISABLE_DELIMITER_SCHEDULING`
+//   Disable barrier nodes that prioritize delimiter compression.
+// - `OPTISCOPE_DISABLE_DELIMITER_EXTRUSION`
+//   Disable extruding delimiters over operator nodes.
+// - `OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS`
+//   Disable per-node closednesse annotations & the delimiter elisions they
+//   enable; requires `OPTISCOPE_DISABLE_SEGMENTATION`.
+// - `OPTISCOPE_DISABLE_SEGMENTATION`
+//   Disable the segment agent that markes open lambda nodes closed.
 
 #if (                                                                          \
     defined(OPTISCOPE_ENABLE_TRACING) ||                                       \
@@ -66,6 +78,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if defined(OPTISCOPE_ENABLE_GRAPHVIZ) &&                                      \
     !defined(OPTISCOPE_ENABLE_STEP_BY_STEP)
 #error `OPTISCOPE_ENABLE_GRAPHVIZ` requires `OPTISCOPE_ENABLE_STEP_BY_STEP`!
+#endif
+
+#if defined(OPTISCOPE_DISABLE_DELIMITER_COMPRESSION) &&                        \
+    !defined(OPTISCOPE_DISABLE_DELIMITER_SCHEDULING)
+#error `OPTISCOPE_DISABLE_DELIMITER_COMPRESSION` requires `OPTISCOPE_DISABLE_DELIMITER_SCHEDULING`!
+#endif
+
+#if defined(OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS) &&                       \
+    !defined(OPTISCOPE_DISABLE_SEGMENTATION)
+#error `OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS` requires `OPTISCOPE_DISABLE_SEGMENTATION`!
 #endif
 
 #ifdef __GNUC__
