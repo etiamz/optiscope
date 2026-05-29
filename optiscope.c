@@ -794,6 +794,9 @@ is_atomic_symbol(const uint64_t symbol) {
     }
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function" // may be unused
+
 COMPILER_CONST COMPILER_WARN_UNUSED_RESULT COMPILER_HOT //
 inline static bool
 is_operator_symbol(const uint64_t symbol) {
@@ -812,6 +815,8 @@ is_operator_symbol(const uint64_t symbol) {
     default: return false;
     }
 }
+
+#pragma GCC diagnostic pop // "-Wunused-function"
 
 #define SYMBOL_INDEX(symbol)                                                   \
     /* Extract the symbol without branching, considering that duplicators &    \
