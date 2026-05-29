@@ -638,7 +638,7 @@ free_lambda_term(struct lambda_term *const restrict term) {
 
 #define MACHINE_WORD_BITS    UINT64_C(64)
 #define OFFSET_METADATA_BITS UINT64_C(2)
-#define PHASE_METADATA_BITS  UINT64_C(4)
+#define PHASE_METADATA_BITS  UINT64_C(2)
 #define EFFECTIVE_ADDRESS_BITS                                                 \
     (MACHINE_WORD_BITS - OFFSET_METADATA_BITS - PHASE_METADATA_BITS)
 #define UNUSED_ADDRESS_BITS (MACHINE_WORD_BITS - EFFECTIVE_ADDRESS_BITS)
@@ -709,49 +709,51 @@ STATIC_ASSERT(UINT64_MAX == MAX_DELIMITER_INDEX);
 
 #define SYMBOL_LAMBDA UINT64_C(2)
 
-#define SYMBOL_ERASER UINT64_C(3)
+#define SYMBOL_ERASER UINT64_C(3) // active GC nodes that erase their targets
 
-#define SYMBOL_CELL UINT64_C(4)
+#define SYMBOL_ERASER_AUX UINT64_C(4) // GC nodes scheduled for deletion
 
-#define SYMBOL_UNARY_CALL UINT64_C(5)
+#define SYMBOL_CELL UINT64_C(5)
 
-#define SYMBOL_BINARY_CALL UINT64_C(6)
+#define SYMBOL_UNARY_CALL UINT64_C(6)
 
-#define SYMBOL_BINARY_CALL_AUX UINT64_C(7)
+#define SYMBOL_BINARY_CALL UINT64_C(7)
 
-#define SYMBOL_IF_THEN_ELSE UINT64_C(8)
+#define SYMBOL_BINARY_CALL_AUX UINT64_C(8)
 
-#define SYMBOL_IDENTITY_LAMBDA UINT64_C(9)
+#define SYMBOL_IF_THEN_ELSE UINT64_C(9)
 
-#define SYMBOL_GC_LAMBDA UINT64_C(10)
+#define SYMBOL_IDENTITY_LAMBDA UINT64_C(10)
 
-#define SYMBOL_REFERENCE UINT64_C(13)
+#define SYMBOL_GC_LAMBDA UINT64_C(11)
 
-#define SYMBOL_BARRIER UINT64_C(14)
+#define SYMBOL_REFERENCE UINT64_C(12)
 
-#define SYMBOL_GC_DUPLICATOR_LEFT UINT64_C(15)
+#define SYMBOL_BARRIER UINT64_C(13)
 
-#define SYMBOL_GC_DUPLICATOR_RIGHT UINT64_C(16)
+#define SYMBOL_GC_DUPLICATOR_LEFT UINT64_C(14)
 
-#define SYMBOL_QLAMBDA UINT64_C(17)
+#define SYMBOL_GC_DUPLICATOR_RIGHT UINT64_C(15)
 
-#define SYMBOL_QAPPLICATOR UINT64_C(18)
+#define SYMBOL_QLAMBDA UINT64_C(16)
 
-#define SYMBOL_QVARIABLE UINT64_C(19)
+#define SYMBOL_QAPPLICATOR UINT64_C(17)
 
-#define SYMBOL_MAPPLICATOR UINT64_C(20)
+#define SYMBOL_QVARIABLE UINT64_C(18)
 
-#define SYMBOL_READBACK UINT64_C(21)
+#define SYMBOL_MAPPLICATOR UINT64_C(19)
 
-#define SYMBOL_PRINTOUT UINT64_C(22)
+#define SYMBOL_READBACK UINT64_C(20)
 
-#define SYMBOL_QLAMBDA_PRINTER UINT64_C(23)
+#define SYMBOL_PRINTOUT UINT64_C(21)
 
-#define SYMBOL_QAPPLICATOR_PRINTER UINT64_C(24)
+#define SYMBOL_QLAMBDA_PRINTER UINT64_C(22)
 
-#define SYMBOL_QAPPLICATOR_PRINTER_AUX UINT64_C(25)
+#define SYMBOL_QAPPLICATOR_PRINTER UINT64_C(23)
 
-#define SYMBOL_SEGMENT UINT64_C(26)
+#define SYMBOL_QAPPLICATOR_PRINTER_AUX UINT64_C(24)
+
+#define SYMBOL_SEGMENT UINT64_C(25)
 
 #define SYMBOL_DUPLICATOR(i) (MAX_REGULAR_SYMBOL + 1 + (i))
 
@@ -785,6 +787,7 @@ inline static bool
 is_atomic_symbol(const uint64_t symbol) {
     switch (symbol) {
     case SYMBOL_ERASER:
+    case SYMBOL_ERASER_AUX:
     case SYMBOL_CELL:
     case SYMBOL_IDENTITY_LAMBDA:
     case SYMBOL_REFERENCE:
@@ -833,6 +836,7 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_APPLICATOR: return format_string("@");
     case SYMBOL_LAMBDA: return format_string("λ");
     case SYMBOL_ERASER: return format_string("◉");
+    case SYMBOL_ERASER_AUX: return format_string("◉'");
     case SYMBOL_CELL: return format_string("cell");
     case SYMBOL_UNARY_CALL: return format_string("unary-call");
     case SYMBOL_BINARY_CALL: return format_string("binary-call");
@@ -907,6 +911,7 @@ ports_count(const uint64_t symbol) {
     switch (symbol) {
     case SYMBOL_ROOT:
     case SYMBOL_ERASER:
+    case SYMBOL_ERASER_AUX:
     case SYMBOL_CELL:
     case SYMBOL_IDENTITY_LAMBDA:
     case SYMBOL_REFERENCE:
@@ -967,23 +972,13 @@ get_principal_port(uint64_t *const restrict port) {
     return (port - DECODE_OFFSET_METADATA(port[0]));
 }
 
-#define PHASE_VALUE_DEFAULT UINT64_C(0) // nodes not in the reduction stack
-#define PHASE_VALUE_GC      UINT64_C(1) // active GC erasers
-#define PHASE_VALUE_GC_AUX  UINT64_C(2) // GC erasers scheduled for deletion
-#define PHASE_VALUE_PENDING UINT64_C(3) // operators in the reduction stack
+#define ENCODE_PHASE(pending, closedness) ((pending) | ((closedness) << 1))
 
-#define PHASE_VALUE_BITS UINT64_C(2)
+#define REVEAL_PENDING_BIT    (UINT64_C(1) << EFFECTIVE_ADDRESS_BITS)
+#define REVEAL_CLOSEDNESS_BIT (UINT64_C(1) << (EFFECTIVE_ADDRESS_BITS + 1))
 
-// The phase value bits are ones; the rest of the port bits are zeroes.
-#define REVEAL_PHASE_VALUE UINT64_C(0x0C00000000000000)
-// The closednesse bit is one; the rest of the port bits are zeroes.
-#define REVEAL_CLOSEDNESS_BIT UINT64_C(0x1000000000000000)
-
-#define ENCODE_PHASE(value, closedness)                                        \
-    ((value) | ((closedness) << PHASE_VALUE_BITS))
-
-#define DECODE_PHASE_VALUE(address)                                            \
-    (((address) & REVEAL_PHASE_VALUE) >> EFFECTIVE_ADDRESS_BITS)
+#define DECODE_PENDING_BIT(address)                                            \
+    (((address) & REVEAL_PENDING_BIT) >> EFFECTIVE_ADDRESS_BITS)
 
 #ifdef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
 // If closednesse annotations are disabled, the closednesse bit will be intact,
@@ -991,20 +986,8 @@ get_principal_port(uint64_t *const restrict port) {
 #define DECODE_CLOSEDNESS_BIT(address) UINT64_C(0)
 #else
 #define DECODE_CLOSEDNESS_BIT(address)                                         \
-    (((address) & REVEAL_CLOSEDNESS_BIT) >>                                    \
-     (PHASE_VALUE_BITS + EFFECTIVE_ADDRESS_BITS))
+    (((address) & REVEAL_CLOSEDNESS_BIT) >> (EFFECTIVE_ADDRESS_BITS + 1))
 #endif
-
-COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static void
-set_phase_value(uint64_t *const restrict port, const uint64_t value) {
-    assert(port);
-    assert(IS_PRINCIPAL_PORT(*port));
-
-    *port = (*port & ~REVEAL_PHASE_VALUE) | (value << EFFECTIVE_ADDRESS_BITS);
-
-    assert(DECODE_PHASE_VALUE(*port) == value);
-}
 
 // Native Function Pointers
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -1651,9 +1634,7 @@ alloc_context(void) {
     const struct node root = {(uint64_t *)xcalloc(2, sizeof(uint64_t)) + 1};
     root.ports[-1] = SYMBOL_ROOT;
     root.ports[0] = PORT_VALUE(
-        UINT64_C(0),
-        ENCODE_PHASE(PHASE_VALUE_DEFAULT, UINT64_C(1)),
-        UINT64_C(0));
+        UINT64_C(0), ENCODE_PHASE(UINT64_C(0), UINT64_C(1)), UINT64_C(0));
 
     struct context *const graph = xcalloc(1, sizeof *graph);
     graph->root = root;
@@ -1782,6 +1763,7 @@ alloc_node_from(
 
     switch (symbol) {
     case SYMBOL_ERASER:
+    case SYMBOL_ERASER_AUX:
     case SYMBOL_IDENTITY_LAMBDA:
         p = ALLOC_POOL_OBJECT(u64x2_pool);
         SET_PORTS_0();
@@ -1888,9 +1870,6 @@ alloc_gc_node(
     assert(points_to);
 
     const struct node node = alloc_node(graph, SYMBOL_ERASER);
-    // Mark this eraser as garbage-collecting, which is necessary for
-    // successfull operation of the garbage collector.
-    set_phase_value(&node.ports[0], PHASE_VALUE_GC);
     connect_ports(&node.ports[0], points_to);
 
     return node;
@@ -1923,6 +1902,7 @@ free_node(struct context *const restrict graph, const struct node node) {
 
     switch (p[-1]) {
     case SYMBOL_ERASER:
+    case SYMBOL_ERASER_AUX:
     case SYMBOL_IDENTITY_LAMBDA: FREE_POOL_OBJECT(u64x2_pool, p); break;
     case SYMBOL_GC_LAMBDA:
     case SYMBOL_CELL:
@@ -2018,6 +1998,7 @@ graphviz_port_orientation(const struct node node, const uint8_t i) {
         default: COMPILER_UNREACHABLE();
         }
     case SYMBOL_ERASER:
+    case SYMBOL_ERASER_AUX:
     case SYMBOL_CELL:
     case SYMBOL_IDENTITY_LAMBDA:
     case SYMBOL_REFERENCE:
@@ -2865,6 +2846,7 @@ gc_step(
     case SYMBOL_QAPPLICATOR_PRINTER: goto commute_1_3;
     case SYMBOL_IF_THEN_ELSE: goto commute_1_4;
     case SYMBOL_ERASER:
+    case SYMBOL_ERASER_AUX:
     case SYMBOL_CELL:
     case SYMBOL_IDENTITY_LAMBDA:
     case SYMBOL_REFERENCE:
@@ -2898,11 +2880,10 @@ gc_step(
                               shared = node_of_port(points_to);
 
             if (SYMBOL_ERASER == h.ports[-1]) {
-                assert(PHASE_VALUE_GC == DECODE_PHASE_VALUE(h.ports[0]));
                 connect_ports(&f.ports[0], points_to);
                 focus_on(&graph->gc_focus, f);
                 free_node(graph, g);
-                set_phase_value(&h.ports[0], PHASE_VALUE_GC_AUX);
+                h.ports[-1] = SYMBOL_ERASER_AUX;
             } else if (is_atomic_symbol(shared.ports[-1])) {
                 connect_ports(&shared.ports[0], shares_with);
                 free_node(graph, f);
@@ -2955,7 +2936,7 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
     CONSUME_MULTIFOCUS (&graph->gc_focus, f) {
         XASSERT(f.ports);
 
-        if (PHASE_VALUE_GC_AUX == DECODE_PHASE_VALUE(f.ports[0])) {
+        if (SYMBOL_ERASER_AUX == f.ports[-1]) {
             free_node(graph, f);
         } else {
             uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
@@ -2963,15 +2944,13 @@ gc(struct context *const restrict graph, uint64_t *const restrict port) {
             const struct node g = node_of_port(points_to);
             XASSERT(g.ports);
 
-            switch (DECODE_PHASE_VALUE(g.ports[0])) {
-            case PHASE_VALUE_GC:
+            if (SYMBOL_ERASER == g.ports[-1]) {
                 free_node(graph, f);
-                set_phase_value(&g.ports[0], PHASE_VALUE_GC_AUX);
-                break;
-            case PHASE_VALUE_PENDING:
-                graph->rescan = true;
-                // fallthrough
-            default: //
+                g.ports[-1] = SYMBOL_ERASER_AUX;
+            } else {
+                if (DECODE_PENDING_BIT(g.ports[0])) { //
+                    graph->rescan = true;
+                }
                 gc_step(graph, f, g, points_to - g.ports);
             }
         }
@@ -4774,7 +4753,7 @@ loop: {
 }
 
 push: {
-    set_phase_value(&f.ports[0], PHASE_VALUE_PENDING);
+    f.ports[0] |= REVEAL_PENDING_BIT;
     focus_on(&stack, f);
     f = g;
     goto loop;
@@ -4782,7 +4761,7 @@ push: {
 
 pop: {
     f = unfocus(&stack);
-    f.ports[0] &= ~REVEAL_PHASE_VALUE;
+    f.ports[0] &= ~REVEAL_PENDING_BIT;
     goto loop;
 }
 
@@ -4793,7 +4772,7 @@ pop_with_check: {
 #ifdef COMPILER_ASAN_AVAILABLE
             if (!COMPILER_IS_POISONED_ADDRESS(node.ports)) {
 #endif
-                node.ports[0] &= ~REVEAL_PHASE_VALUE;
+                node.ports[0] &= ~REVEAL_PENDING_BIT;
 #ifdef COMPILER_ASAN_AVAILABLE
             }
 #endif
