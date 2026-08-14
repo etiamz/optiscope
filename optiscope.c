@@ -4813,15 +4813,21 @@ optiscope_algorithm(
     reduce(graph);
     const struct node result = follow_port(graph->root, 0);
     const uint64_t symbol = result.ports[-1];
-    const uint64_t value = (SYMBOL_CELL == symbol || SYMBOL_PRINTOUT == symbol)
-                               ? result.ports[1]
-                               : 0;
     if (stream) {
-        char *const s = (char *)value;
+        XASSERT(SYMBOL_PRINTOUT == symbol);
+        char *const s = (char *)result.ports[1];
         IO_CALL(fputs, s, stream);
         free(s);
     }
     print_stats(graph);
     free_context(graph);
-    return stream ? 0 : value;
+    if (stream) {
+        return 0;
+    } else if (SYMBOL_CELL == symbol) {
+        return result.ports[1];
+    } else if (IS_ANY_LAMBDA(symbol)) {
+        return 0;
+    } else {
+        COMPILER_UNREACHABLE();
+    }
 }
