@@ -4012,32 +4012,32 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
     } else if (is_atomic_symbol(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
-    } else if (fsym == gsym && f.ports[2] == g.ports[2]) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { annihilate_2_2_helper(graph, f, g); });
-    } else if (
-        IS_GC_DUPLICATOR(gsym) && fsym != gsym && f.ports[2] == g.ports[2]) {
-        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
-            gc_both_directions(graph, f, g);
-        });
     } else if (IS_GC_DUPLICATOR(gsym)) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
-    } else if (
-        fsym == SYMBOL_GC_DUPLICATOR_LEFT && IS_DUPLICATOR(gsym) &&
-        f.ports[2] == SYMBOL_INDEX(gsym)) {
-        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
-            annihilate_gc_dup_dup(graph, f, g, 2, 1);
-        });
-    } else if (
-        fsym == SYMBOL_GC_DUPLICATOR_RIGHT && IS_DUPLICATOR(gsym) &&
-        f.ports[2] == SYMBOL_INDEX(gsym)) {
-        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
-            annihilate_gc_dup_dup(graph, f, g, 1, 2);
-        });
+        if (f.ports[2] != g.ports[2]) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        } else if (fsym == gsym) {
+            INTERACTION(graph, f, g, REDUCE_POP, {
+                annihilate_2_2_helper(graph, f, g);
+            });
+        } else {
+            INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+                gc_both_directions(graph, f, g);
+            });
+        }
     } else if (IS_DUPLICATOR(gsym)) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+        if (f.ports[2] != SYMBOL_INDEX(gsym)) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+        } else if (fsym == SYMBOL_GC_DUPLICATOR_LEFT) {
+            INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+                annihilate_gc_dup_dup(graph, f, g, 2, 1);
+            });
+        } else {
+            INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+                annihilate_gc_dup_dup(graph, f, g, 1, 2);
+            });
+        }
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
@@ -4085,26 +4085,28 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
     } else if (is_atomic_symbol(gsym)) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_1_helper(graph, f, g); });
-    } else if (
-        SYMBOL_GC_DUPLICATOR_LEFT == gsym && SYMBOL_INDEX(fsym) == g.ports[2]) {
-        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
-            annihilate_dup_gc_dup(graph, f, g, 2, 1);
-        });
-    } else if (
-        SYMBOL_GC_DUPLICATOR_RIGHT == gsym &&
-        SYMBOL_INDEX(fsym) == g.ports[2]) {
-        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
-            annihilate_dup_gc_dup(graph, f, g, 1, 2);
-        });
     } else if (IS_GC_DUPLICATOR(gsym)) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
-    } else if (fsym == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { annihilate_3_3_helper(graph, f, g); });
+        if (SYMBOL_INDEX(fsym) != g.ports[2]) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        } else if (SYMBOL_GC_DUPLICATOR_LEFT == gsym) {
+            INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+                annihilate_dup_gc_dup(graph, f, g, 2, 1);
+            });
+        } else {
+            INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+                annihilate_dup_gc_dup(graph, f, g, 1, 2);
+            });
+        }
     } else if (IS_DUPLICATOR(gsym)) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+        if (fsym == gsym) {
+            INTERACTION(graph, f, g, REDUCE_POP, {
+                annihilate_3_3_helper(graph, f, g);
+            });
+        } else {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+        }
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     } else if (barrier_condition(f, g)) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
@@ -4179,15 +4181,20 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
             graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, g, f); });
     } else if (IS_DUPLICATOR(gsym)) {
         INTERACTION(graph, f, g, REDUCE_POP, { commute_dup_del(graph, g, f); });
-    } else if (fsym == gsym && f.ports[2] == g.ports[2]) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { annihilate_2_2_helper(graph, f, g); });
-    } else if (fsym == gsym && f.ports[2] > g.ports[2]) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { annihilate_delimiter(graph, f, g); });
     } else if (fsym == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { annihilate_delimiter(graph, g, f); });
+        if (f.ports[2] == g.ports[2]) {
+            INTERACTION(graph, f, g, REDUCE_POP, {
+                annihilate_2_2_helper(graph, f, g);
+            });
+        } else if (f.ports[2] > g.ports[2]) {
+            INTERACTION(graph, f, g, REDUCE_POP, {
+                annihilate_delimiter(graph, f, g);
+            });
+        } else {
+            INTERACTION(graph, f, g, REDUCE_POP, {
+                annihilate_delimiter(graph, g, f);
+            });
+        }
     } else if (IS_DELIMITER(gsym)) {
         INTERACTION(graph, f, g, REDUCE_POP, { commute_del_del(graph, f, g); });
     } else {
@@ -4209,40 +4216,47 @@ CONTROL_FUNCTION(interact_with_app, graph, f, g) {
     const struct node h = follow_port(f, 2);
 #endif
 
-#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
-    const bool is_beta_c =
-        SYMBOL_LAMBDA == gsym && DECODE_CLOSEDNESS_BIT(g.ports[0]);
-    const bool is_gc_beta_c =
-        SYMBOL_GC_LAMBDA == gsym && DECODE_CLOSEDNESS_BIT(g.ports[0]);
-#endif
-
     if (!points_to(g, f)) {
         return REDUCE_PUSH;
-#ifndef OPTISCOPE_DISABLE_SEGMENTATION
-    } else if (is_beta_c && DECODE_CLOSEDNESS_BIT(h.ports[0])) {
-        INTERACTION(graph, f, g, REDUCE_POP, { beta_cx(graph, f, g); });
-#endif
-#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
-    } else if (is_beta_c) {
-        INTERACTION(graph, f, g, REDUCE_POP, { beta_c(graph, f, g); });
-#endif
     } else if (SYMBOL_LAMBDA == gsym) {
-        INTERACTION(graph, f, g, REDUCE_POP, { beta(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
+        if (DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
+            if (DECODE_CLOSEDNESS_BIT(h.ports[0])) {
+                INTERACTION(graph, f, g, REDUCE_POP, { beta_cx(graph, f, g); });
+            } else
+#endif
+            {
+                INTERACTION(graph, f, g, REDUCE_POP, { beta_c(graph, f, g); });
+            }
+        } else
+#endif
+        {
+            INTERACTION(graph, f, g, REDUCE_POP, { beta(graph, f, g); });
+        }
     } else if (SYMBOL_IDENTITY_LAMBDA == gsym) {
         INTERACTION(graph, f, g, REDUCE_POP, { identity_beta(graph, f, g); });
-#ifndef OPTISCOPE_DISABLE_SEGMENTATION
-    } else if (is_gc_beta_c && DECODE_CLOSEDNESS_BIT(h.ports[0])) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta_cx(graph, f, g); });
-#endif
-#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
-    } else if (is_gc_beta_c) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta_c(graph, f, g); });
-#endif
     } else if (SYMBOL_GC_LAMBDA == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta(graph, f, g); });
+#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
+        if (DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
+            if (DECODE_CLOSEDNESS_BIT(h.ports[0])) {
+                INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+                    gc_beta_cx(graph, f, g);
+                });
+            } else
+#endif
+            {
+                INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+                    gc_beta_c(graph, f, g);
+                });
+            }
+        } else
+#endif
+        {
+            INTERACTION(
+                graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta(graph, f, g); });
+        }
     } else if (SYMBOL_REFERENCE == gsym) {
         INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
     } else if (IS_GC_DUPLICATOR(gsym)) {
