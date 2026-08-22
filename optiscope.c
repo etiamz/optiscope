@@ -811,6 +811,13 @@ is_operator_symbol(const uint64_t symbol) {
      * delimiters share the same symbol range. */                              \
     (((symbol) - MAX_REGULAR_SYMBOL - 1) % INDEX_RANGE)
 
+#define GOTO_INDEXED_SYMBOL(symbol, duplicator, delimiter)                     \
+    do {                                                                       \
+        if (IS_DUPLICATOR((symbol))) goto duplicator;                          \
+        else if (IS_DELIMITER((symbol))) goto delimiter;                       \
+        else COMPILER_UNREACHABLE();                                           \
+    } while (false)
+
 #if defined(OPTISCOPE_ENABLE_TRACING) || defined(OPTISCOPE_ENABLE_GRAPHVIZ)
 
 COMPILER_MALLOC(free, 1) COMPILER_RETURNS_NONNULL COMPILER_WARN_UNUSED_RESULT //
@@ -844,9 +851,7 @@ print_symbol(const uint64_t symbol) {
     case SYMBOL_QAPPLICATOR_PRINTER_AUX: return format_string("P-@'");
     case SYMBOL_SEGMENT: return format_string("segment");
     default:
-        if (IS_DUPLICATOR(symbol)) goto duplicator;
-        else if (IS_DELIMITER(symbol)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(symbol, duplicator, delimiter);
     duplicator:
         return format_string("δ/%" PRIi64, SYMBOL_INDEX(symbol));
     delimiter:
@@ -941,10 +946,7 @@ ports_count(const uint64_t symbol) {
         return 3;
     case SYMBOL_IF_THEN_ELSE: //
         return 4;
-    default:
-        if (IS_DUPLICATOR(symbol)) goto duplicator;
-        else if (IS_DELIMITER(symbol)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+    default: GOTO_INDEXED_SYMBOL(symbol, duplicator, delimiter);
     }
 }
 
@@ -1832,10 +1834,7 @@ alloc_node_from(
         }
         SET_PORTS_1();
         break;
-    default:
-        if (IS_DUPLICATOR(symbol)) goto duplicator;
-        else if (IS_DELIMITER(symbol)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+    default: GOTO_INDEXED_SYMBOL(symbol, duplicator, delimiter);
     }
 
 #undef SET_PORTS_3
@@ -1936,10 +1935,7 @@ free_node(struct context *const restrict graph, const struct node node) {
     case SYMBOL_BINARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_IF_THEN_ELSE: FREE_POOL_OBJECT(u64x5_pool, p); break;
-    default:
-        if (IS_DUPLICATOR(p[-1])) goto duplicator;
-        else if (IS_DELIMITER(p[-1])) goto delimiter;
-        else COMPILER_UNREACHABLE();
+    default: GOTO_INDEXED_SYMBOL(p[-1], duplicator, delimiter);
     }
 }
 
@@ -2069,10 +2065,7 @@ graphviz_port_orientation(const struct node node, const uint8_t i) {
         case 2: return "ne";
         default: COMPILER_UNREACHABLE();
         }
-    default:
-        if (IS_DUPLICATOR(node.ports[-1])) goto duplicator;
-        else if (IS_DELIMITER(node.ports[-1])) goto delimiter;
-        else COMPILER_UNREACHABLE();
+    default: GOTO_INDEXED_SYMBOL(node.ports[-1], duplicator, delimiter);
     }
 }
 
@@ -2911,10 +2904,7 @@ gc_step(
         default: COMPILER_UNREACHABLE();
         }
         break;
-    default:
-        if (IS_DUPLICATOR(g.ports[-1])) goto duplicator;
-        else if (IS_DELIMITER(g.ports[-1])) goto delimiter;
-        else COMPILER_UNREACHABLE();
+    default: GOTO_INDEXED_SYMBOL(g.ports[-1], duplicator, delimiter);
     }
 
 #ifdef OPTISCOPE_ENABLE_STATS
@@ -4058,9 +4048,7 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
             graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
         break;
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         if (f.ports[2] != SYMBOL_INDEX(gsym)) {
             INTERACTION(
@@ -4150,9 +4138,7 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
             graph, f, g, REDUCE_POP, { commute_3_1_helper(graph, f, g); });
         break;
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         if (fsym == gsym) {
             INTERACTION(graph, f, g, REDUCE_POP, {
@@ -4317,9 +4303,7 @@ CONTROL_FUNCTION(interact_with_app, graph, f, g) {
         goto delimiter;
 #endif
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
@@ -4365,9 +4349,7 @@ CONTROL_FUNCTION(interact_with_ucall, graph, f, g) {
         goto delimiter;
 #endif
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
@@ -4413,9 +4395,7 @@ CONTROL_FUNCTION(interact_with_bcall, graph, f, g) {
         goto delimiter;
 #endif
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
@@ -4462,9 +4442,7 @@ CONTROL_FUNCTION(interact_with_bcall_aux, graph, f, g) {
         goto delimiter;
 #endif
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
@@ -4512,9 +4490,7 @@ CONTROL_FUNCTION(interact_with_ite, graph, f, g) {
         goto delimiter;
 #endif
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_4_3_helper(graph, f, g); });
@@ -4633,9 +4609,7 @@ CONTROL_FUNCTION(interact_with_mapp, graph, f, g) {
         goto delimiter;
 #endif
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
@@ -4687,9 +4661,7 @@ CONTROL_FUNCTION(interact_with_rb, graph, f, g) {
         goto delimiter;
 #endif
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
@@ -4735,9 +4707,7 @@ CONTROL_FUNCTION(interact_with_qlam_printer, graph, f, g) {
         goto delimiter;
 #endif
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
@@ -4783,9 +4753,7 @@ CONTROL_FUNCTION(interact_with_qapp_printer, graph, f, g) {
         goto delimiter;
 #endif
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
@@ -4832,9 +4800,7 @@ CONTROL_FUNCTION(interact_with_qapp_printer_aux, graph, f, g) {
         goto delimiter;
 #endif
     default:
-        if (IS_DUPLICATOR(gsym)) goto duplicator;
-        else if (IS_DELIMITER(gsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
@@ -4927,9 +4893,7 @@ loop: {
         action = interact_with_gc_dup(graph, f, g);
         break;
     default:
-        if (IS_DUPLICATOR(fsym)) goto duplicator;
-        else if (IS_DELIMITER(fsym)) goto delimiter;
-        else COMPILER_UNREACHABLE();
+        GOTO_INDEXED_SYMBOL(fsym, duplicator, delimiter);
     duplicator:
         action = interact_with_dup(graph, f, g);
         break;
