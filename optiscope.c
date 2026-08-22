@@ -4165,48 +4165,69 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
 
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
-    if (is_atomic_symbol(gsym)) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
-#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
-    } else if (points_to(g, f) && DECODE_CLOSEDNESS_BIT(g.ports[0])) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
-#endif
-    } else if (SYMBOL_LAMBDA == gsym) {
-        INTERACTION(graph, f, g, REDUCE_POP, { commute_del_lam(graph, f, g); });
-    } else if (SYMBOL_GC_LAMBDA == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_del_gc_lam(graph, f, g); });
-    } else if (SYMBOL_QLAMBDA == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
-    } else if (SYMBOL_QAPPLICATOR == gsym) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
 #ifndef OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
-    } else if (fsym == gsym && DECODE_ADDRESS(f.ports[0]) == &g.ports[1]) {
+    if (fsym == gsym && DECODE_ADDRESS(f.ports[0]) == &g.ports[1]) {
         REWRITE(graph, f, g, nmergings, { merge_delimiter(graph, f, g); });
         return REDUCE_POP;
+    }
 #endif
+
 #ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
-    } else if (is_operator_symbol(gsym) && DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+    if (!DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+    } else if (points_to(g, f)) {
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
+    } else if (is_operator_symbol(gsym)) {
         REWRITE(graph, f, g, nextrusions, { remove_delimiter(graph, f, g); });
         return REDUCE_POP;
+    }
 #endif
+
 #ifndef OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
-    } else if (try_extrude(graph, f, g)) {
-        return REDUCE_POP;
+    if (try_extrude(graph, f, g)) { return REDUCE_POP; }
 #endif
-    } else if (!points_to(g, f)) {
-        return REDUCE_PUSH;
-    } else if (IS_GC_DUPLICATOR(gsym)) {
+
+    if (!points_to(g, f)) { return REDUCE_PUSH; }
+
+    switch (gsym) {
+    case SYMBOL_CELL:
+    case SYMBOL_IDENTITY_LAMBDA:
+    case SYMBOL_REFERENCE:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_PRINTOUT:
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
+        break;
+    case SYMBOL_LAMBDA:
+        INTERACTION(graph, f, g, REDUCE_POP, { commute_del_lam(graph, f, g); });
+        break;
+    case SYMBOL_GC_LAMBDA:
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_del_gc_lam(graph, f, g); });
+        break;
+    case SYMBOL_QLAMBDA:
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        break;
+    case SYMBOL_QAPPLICATOR:
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+        break;
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, g, f); });
-    } else if (IS_DUPLICATOR(gsym)) {
+        break;
+    default:
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
+    duplicator:
         INTERACTION(graph, f, g, REDUCE_POP, { commute_dup_del(graph, g, f); });
-    } else if (fsym == gsym) {
-        if (f.ports[2] == g.ports[2]) {
+        break;
+    delimiter:
+        if (fsym != gsym) {
+            INTERACTION(
+                graph, f, g, REDUCE_POP, { commute_del_del(graph, f, g); });
+        } else if (f.ports[2] == g.ports[2]) {
             INTERACTION(graph, f, g, REDUCE_POP, {
                 annihilate_2_2_helper(graph, f, g);
             });
@@ -4219,10 +4240,7 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
                 annihilate_delimiter(graph, g, f);
             });
         }
-    } else if (IS_DELIMITER(gsym)) {
-        INTERACTION(graph, f, g, REDUCE_POP, { commute_del_del(graph, f, g); });
-    } else {
-        COMPILER_UNREACHABLE();
+        break;
     }
 
     return REDUCE_POP;
