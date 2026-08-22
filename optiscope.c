@@ -4050,18 +4050,17 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
         break;
+    case SYMBOL_CELL:
+    case SYMBOL_IDENTITY_LAMBDA:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_PRINTOUT:
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
+        break;
     default:
-        if (is_atomic_symbol(gsym)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
-            break;
-        } else if (IS_DUPLICATOR(gsym)) {
-            goto duplicator;
-        } else if (IS_DELIMITER(gsym)) {
-            goto delimiter;
-        } else {
-            COMPILER_UNREACHABLE();
-        }
+        if (IS_DUPLICATOR(gsym)) goto duplicator;
+        else if (IS_DELIMITER(gsym)) goto delimiter;
+        else COMPILER_UNREACHABLE();
     duplicator:
         if (f.ports[2] != SYMBOL_INDEX(gsym)) {
             INTERACTION(
@@ -4143,18 +4142,17 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
         INTERACTION(
             graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
         break;
+    case SYMBOL_CELL:
+    case SYMBOL_IDENTITY_LAMBDA:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_PRINTOUT:
+        INTERACTION(
+            graph, f, g, REDUCE_POP, { commute_3_1_helper(graph, f, g); });
+        break;
     default:
-        if (is_atomic_symbol(gsym)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_3_1_helper(graph, f, g); });
-            break;
-        } else if (IS_DUPLICATOR(gsym)) {
-            goto duplicator;
-        } else if (IS_DELIMITER(gsym)) {
-            goto delimiter;
-        } else {
-            COMPILER_UNREACHABLE();
-        }
+        if (IS_DUPLICATOR(gsym)) goto duplicator;
+        else if (IS_DELIMITER(gsym)) goto delimiter;
+        else COMPILER_UNREACHABLE();
     duplicator:
         if (fsym == gsym) {
             INTERACTION(graph, f, g, REDUCE_POP, {
