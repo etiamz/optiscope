@@ -3899,11 +3899,11 @@ barrier_condition(const struct node f, const struct node g) {
 #else
     (void)f;
 #endif
+    XASSERT(SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1]);
 
     const struct node h = follow_port(g, 1);
 
-    return SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1] &&
-           DECODE_ADDRESS(h.ports[0]) != &g.ports[1];
+    return DECODE_ADDRESS(h.ports[0]) != &g.ports[1];
 }
 
 #endif // OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
