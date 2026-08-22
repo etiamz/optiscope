@@ -287,21 +287,6 @@ PRINTER(panic, stderr, abort())
 
 #undef PRINTER
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function" // may be unused
-
-COMPILER_HOT COMPILER_ALWAYS_INLINE //
-inline static uint64_t
-checked_add(const uint64_t value, const uint64_t offset) {
-    if (value > UINT64_MAX - offset) {
-        panic("Maximum `uint64_t` value is reached!");
-    }
-
-    return value + offset;
-}
-
-#pragma GCC diagnostic pop // "-Wunused-function"
-
 // Checked Memory Allocation
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -898,6 +883,21 @@ bump_raw_index(const uint64_t index, const uint64_t offset) {
 }
 
 #undef INDEX_OVERFLOW
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function" // may be unused
+
+COMPILER_HOT COMPILER_ALWAYS_INLINE //
+inline static uint64_t
+bump_multiplicity(const uint64_t value, const uint64_t offset) {
+    if (value > UINT64_MAX - offset) {
+        panic("Maximum multiplicity of %" PRIu64 " is reached!", UINT64_MAX);
+    }
+
+    return value + offset;
+}
+
+#pragma GCC diagnostic pop // "-Wunused-function"
 
 #define FOR_ALL_PORTS(node, i, seed)                                           \
     for (uint8_t i = seed; i < ports_count((node).ports[-1]); i++)
@@ -3137,7 +3137,7 @@ COMPUTATION_RULE(barrier, graph, f, g) {
     XASSERT(SYMBOL_DELIMITER(UINT64_C(0)) == g.ports[-1]);
 
     connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
-    f.ports[2] = checked_add(f.ports[2], g.ports[2]);
+    f.ports[2] = bump_multiplicity(f.ports[2], g.ports[2]);
 
     free_node(graph, g);
 }
@@ -3934,7 +3934,7 @@ merge_delimiter(
     XASSERT(f.ports[-1] == g.ports[-1]);
     XASSERT(DECODE_ADDRESS(f.ports[0]) == &g.ports[1]);
 
-    g.ports[2] = checked_add(g.ports[2], f.ports[2]);
+    g.ports[2] = bump_multiplicity(g.ports[2], f.ports[2]);
     connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));
     free_node(graph, f);
 }
