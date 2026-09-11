@@ -56,3 +56,10 @@ target/
 
 # IDE files
 .vscode/
+
+# Coding agents' configurations
+.claude/
+.codex/
+
+# My local investigations
+investigations/
