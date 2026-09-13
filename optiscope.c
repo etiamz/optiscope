@@ -2770,55 +2770,61 @@ gc_step(
     XASSERT(SYMBOL_ERASER == f.ports[-1]);
 
     switch (g.ports[-1]) {
-    commute_1_2: {
-        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0 == i ? 1 : 0]));
+    commute_1_2:
+        {
+            connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[0 == i ? 1 : 0]));
 
-        focus_on(&graph->gc_focus, f);
+            focus_on(&graph->gc_focus, f);
 
-        free_node(graph, g);
+            free_node(graph, g);
 
-        break;
-    }
-    commute_1_3: {
-        const uint8_t indices[] = {1, 2, 0};
-        ptrdiff_t j = i;
+            break;
+        }
+    commute_1_3:
+        {
+            const uint8_t indices[] = {1, 2, 0};
+            ptrdiff_t j = i;
 
-        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[indices[j++ % 3]]));
+            connect_ports(
+                &f.ports[0], DECODE_ADDRESS(g.ports[indices[j++ % 3]]));
 
-        const struct node fx =
-            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[indices[j % 3]]));
+            const struct node fx =
+                alloc_gc_node(graph, DECODE_ADDRESS(g.ports[indices[j % 3]]));
 
-        focus_on(&graph->gc_focus, f);
-        focus_on(&graph->gc_focus, fx);
+            focus_on(&graph->gc_focus, f);
+            focus_on(&graph->gc_focus, fx);
 
-        free_node(graph, g);
+            free_node(graph, g);
 
-        break;
-    }
-    commute_1_4: {
-        const uint8_t indices[] = {1, 2, 3, 0};
-        ptrdiff_t j = i;
+            break;
+        }
+    commute_1_4:
+        {
+            const uint8_t indices[] = {1, 2, 3, 0};
+            ptrdiff_t j = i;
 
-        connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[indices[j++ % 4]]));
+            connect_ports(
+                &f.ports[0], DECODE_ADDRESS(g.ports[indices[j++ % 4]]));
 
-        const struct node fx =
-            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[indices[j++ % 4]]));
-        const struct node fxx =
-            alloc_gc_node(graph, DECODE_ADDRESS(g.ports[indices[j % 4]]));
+            const struct node fx =
+                alloc_gc_node(graph, DECODE_ADDRESS(g.ports[indices[j++ % 4]]));
+            const struct node fxx =
+                alloc_gc_node(graph, DECODE_ADDRESS(g.ports[indices[j % 4]]));
 
-        focus_on(&graph->gc_focus, f);
-        focus_on(&graph->gc_focus, fx);
-        focus_on(&graph->gc_focus, fxx);
+            focus_on(&graph->gc_focus, f);
+            focus_on(&graph->gc_focus, fx);
+            focus_on(&graph->gc_focus, fxx);
 
-        free_node(graph, g);
+            free_node(graph, g);
 
-        break;
-    }
-    annihilate: {
-        free_node(graph, f);
-        free_node(graph, g);
-        break;
-    }
+            break;
+        }
+    annihilate:
+        {
+            free_node(graph, f);
+            free_node(graph, g);
+            break;
+        }
     case SYMBOL_UNARY_CALL:
     case SYMBOL_BINARY_CALL_AUX:
     case SYMBOL_GC_LAMBDA:
@@ -4850,118 +4856,135 @@ reduce(struct context *const restrict graph) {
 
     struct multifocus stack = alloc_focus(INITIAL_MULTIFOCUS_CAPACITY);
 
-rescan: {
-    struct node f = graph->root, g = {NULL};
+rescan:
+    {
+        struct node f = graph->root, g = {NULL};
 
-loop: {
-    g = follow_port(f, 0);
-    XASSERT(g.ports);
+    loop:
+        {
+            g = follow_port(f, 0);
+            XASSERT(g.ports);
 
-    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
+            const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
-    (void)gsym; // `gsym` is onely needed for `OPTISCOPE_ENABLE_STATS`
+            (void)gsym; // `gsym` is onely needed for `OPTISCOPE_ENABLE_STATS`
 
-    // Ideally, these counters need to be incremented _after_ an interaction
-    // takes place. Incrementing them beforehand is just following the path of
-    // least resistance to keep the code readable.
+            // TODO: increment these counters _after_ an interaction takes
+            // place, not before.
 #ifdef OPTISCOPE_ENABLE_STATS
-    if (is_interaction(f, g)) {
-        const bool has_delimiter = IS_DELIMITER(fsym) || IS_DELIMITER(gsym);
+            if (is_interaction(f, g)) {
+                const bool has_delimiter =
+                    IS_DELIMITER(fsym) || IS_DELIMITER(gsym);
 
-        if (has_delimiter) {
-            graph->ndelimiter_itrs++;
-        } else if (IS_ANY_DUPLICATOR(fsym) || IS_ANY_DUPLICATOR(gsym)) {
-            graph->nduplicator_itrs++;
-        } else if (SYMBOL_APPLICATOR == fsym && IS_ANY_LAMBDA(gsym)) {
-            graph->nbetas++;
-        }
-    }
-#endif
-
-    enum reduce_action action = REDUCE_POP;
-
-    switch (fsym) {
-    case SYMBOL_ROOT: action = interact_with_root(graph, f, g); break;
-    case SYMBOL_APPLICATOR: action = interact_with_app(graph, f, g); break;
-    case SYMBOL_UNARY_CALL: action = interact_with_ucall(graph, f, g); break;
-    case SYMBOL_BINARY_CALL: action = interact_with_bcall(graph, f, g); break;
-    case SYMBOL_BINARY_CALL_AUX:
-        action = interact_with_bcall_aux(graph, f, g);
-        break;
-    case SYMBOL_IF_THEN_ELSE: action = interact_with_ite(graph, f, g); break;
-#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
-    case SYMBOL_BARRIER: action = interact_with_barr(graph, f, g); break;
-#endif
-#ifndef OPTISCOPE_DISABLE_SEGMENTATION
-    case SYMBOL_SEGMENT: action = interact_with_seg(graph, f, g); break;
-#endif
-    case SYMBOL_MAPPLICATOR: action = interact_with_mapp(graph, f, g); break;
-    case SYMBOL_READBACK: action = interact_with_rb(graph, f, g); break;
-    case SYMBOL_QLAMBDA_PRINTER:
-        action = interact_with_qlam_printer(graph, f, g);
-        break;
-    case SYMBOL_QAPPLICATOR_PRINTER:
-        action = interact_with_qapp_printer(graph, f, g);
-        break;
-    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
-        action = interact_with_qapp_printer_aux(graph, f, g);
-        break;
-    case SYMBOL_GC_DUPLICATOR_LEFT:
-    case SYMBOL_GC_DUPLICATOR_RIGHT:
-        action = interact_with_gc_dup(graph, f, g);
-        break;
-    default:
-        GOTO_INDEXED_SYMBOL(fsym, duplicator, delimiter);
-    duplicator:
-        action = interact_with_dup(graph, f, g);
-        break;
-    delimiter:
-        action = interact_with_del(graph, f, g);
-        break;
-    }
-
-    switch (action) {
-    case REDUCE_LOOP: goto loop;
-    case REDUCE_PUSH: goto push;
-    case REDUCE_POP_WITH_CHECK: goto pop_with_check;
-    case REDUCE_POP: goto pop;
-    case REDUCE_STOP: goto stop;
-    default: COMPILER_UNREACHABLE();
-    }
-}
-
-push: {
-    f.ports[0] |= REVEAL_PENDING_BIT;
-    focus_on(&stack, f);
-    f = g;
-    goto loop;
-}
-
-pop: {
-    f = unfocus(&stack);
-    f.ports[0] &= ~REVEAL_PENDING_BIT;
-    goto loop;
-}
-
-pop_with_check: {
-    if (graph->rescan) {
-        // Proceed with resetting the phases of nodes from the stack.
-        CONSUME_MULTIFOCUS (&stack, node) {
-#ifdef COMPILER_ASAN_AVAILABLE
-            if (!COMPILER_IS_POISONED_ADDRESS(node.ports)) {
-#endif
-                node.ports[0] &= ~REVEAL_PENDING_BIT;
-#ifdef COMPILER_ASAN_AVAILABLE
+                if (has_delimiter) {
+                    graph->ndelimiter_itrs++;
+                } else if (IS_ANY_DUPLICATOR(fsym) || IS_ANY_DUPLICATOR(gsym)) {
+                    graph->nduplicator_itrs++;
+                } else if (SYMBOL_APPLICATOR == fsym && IS_ANY_LAMBDA(gsym)) {
+                    graph->nbetas++;
+                }
             }
 #endif
+
+            enum reduce_action action = REDUCE_POP;
+
+            switch (fsym) {
+            case SYMBOL_ROOT: action = interact_with_root(graph, f, g); break;
+            case SYMBOL_APPLICATOR:
+                action = interact_with_app(graph, f, g);
+                break;
+            case SYMBOL_UNARY_CALL:
+                action = interact_with_ucall(graph, f, g);
+                break;
+            case SYMBOL_BINARY_CALL:
+                action = interact_with_bcall(graph, f, g);
+                break;
+            case SYMBOL_BINARY_CALL_AUX:
+                action = interact_with_bcall_aux(graph, f, g);
+                break;
+            case SYMBOL_IF_THEN_ELSE:
+                action = interact_with_ite(graph, f, g);
+                break;
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+            case SYMBOL_BARRIER:
+                action = interact_with_barr(graph, f, g);
+                break;
+#endif
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
+            case SYMBOL_SEGMENT: action = interact_with_seg(graph, f, g); break;
+#endif
+            case SYMBOL_MAPPLICATOR:
+                action = interact_with_mapp(graph, f, g);
+                break;
+            case SYMBOL_READBACK: action = interact_with_rb(graph, f, g); break;
+            case SYMBOL_QLAMBDA_PRINTER:
+                action = interact_with_qlam_printer(graph, f, g);
+                break;
+            case SYMBOL_QAPPLICATOR_PRINTER:
+                action = interact_with_qapp_printer(graph, f, g);
+                break;
+            case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+                action = interact_with_qapp_printer_aux(graph, f, g);
+                break;
+            case SYMBOL_GC_DUPLICATOR_LEFT:
+            case SYMBOL_GC_DUPLICATOR_RIGHT:
+                action = interact_with_gc_dup(graph, f, g);
+                break;
+            default:
+                GOTO_INDEXED_SYMBOL(fsym, duplicator, delimiter);
+            duplicator:
+                action = interact_with_dup(graph, f, g);
+                break;
+            delimiter:
+                action = interact_with_del(graph, f, g);
+                break;
+            }
+
+            switch (action) {
+            case REDUCE_LOOP: goto loop;
+            case REDUCE_PUSH: goto push;
+            case REDUCE_POP_WITH_CHECK: goto pop_with_check;
+            case REDUCE_POP: goto pop;
+            case REDUCE_STOP: goto stop;
+            default: COMPILER_UNREACHABLE();
+            }
         }
-        graph->rescan = false;
-        goto rescan;
-    } else {
-        goto pop;
+
+    push:
+        {
+            f.ports[0] |= REVEAL_PENDING_BIT;
+            focus_on(&stack, f);
+            f = g;
+            goto loop;
+        }
+
+    pop:
+        {
+            f = unfocus(&stack);
+            f.ports[0] &= ~REVEAL_PENDING_BIT;
+            goto loop;
+        }
+
+    pop_with_check:
+        {
+            if (graph->rescan) {
+                // Proceed with resetting the phases of nodes from the stack.
+                CONSUME_MULTIFOCUS (&stack, node) {
+#ifdef COMPILER_ASAN_AVAILABLE
+                    if (!COMPILER_IS_POISONED_ADDRESS(node.ports)) {
+#endif
+                        node.ports[0] &= ~REVEAL_PENDING_BIT;
+#ifdef COMPILER_ASAN_AVAILABLE
+                    }
+#endif
+                }
+                graph->rescan = false;
+                goto rescan;
+            } else {
+                goto pop;
+            }
+        }
     }
-}
-}
 
 stop:
     free_focus(stack);
