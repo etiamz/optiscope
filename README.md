@@ -1,13 +1,23 @@
 # 🔬 Optiscope
 
-_Optiscope_ is an experimental Lévy-optimal implementation of the pure lambda calculus enriched with mutually recursive definitions, native function calls, & if-then-else expressions.
+_Optiscope_ is an experimental Lévy-optimal implementation of the pure lambda calculus enriched with
+mutually recursive definitions, native function calls, & if-then-else expressions.
 
-Optiscope extends [Lambdascope]-style optimal reduction [^lambdascope] with a set of optimizations that minimize the ratio of scoping operations to total graph rewrites. To measure the impact of our optimizations, we benchmarke the implementation on a number of classical recursive algorithms manipulating (Scott-encoded lists of) machine integers. Although our results show that traditional implementations of functional programming languages still outperforme optimal reduction on conventional tasks, the discovered optimizations yield a substantial improvement over [BOHM1.1] _\*_, the state-of-the-art implementation of optimal reduction [^bohm].
+Optimal implementations of the lambda calculus avoid repeating computational work by firing redexes
+of the same origin in one step. However, the bookkeeping required to maintaine the sharing of
+redexes can itself dominate the cost of evaluation. [Lambdascope] [^lambdascope] is so far the
+simplest interaction-net formulation of optimal reduction, yet its scope management still accounts
+for most of the work in an unoptimized implementation. We thus extend this system with a number of
+optimizations that reduce the ratio of scoping operations to total graph rewrites. In order to
+show the impact of these optimizations, we benchmarke Optiscope on classical recursive algorithms
+operating on machine integers & Scott-encoded lists of machine integers. Although traditional
+functional language implementations remaine faster on these benchmarks, our results demonstrate a
+[substantial improvement] in peak graph size and reduction work over [BOHM1.1] [^bohm], an
+established implementation of optimal reduction.
 
-_\* To be demonstrated in the upcoming paper._
-
-[Lambdascope]: https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=61042374787bf6514706b49a5a4f0b74996979a0
+[Lambdascope]: http://www.javakade.nl/research/pdf/lambdascope.pdf
 [BOHM1.1]: https://github.com/asperti/BOHM1.1
+[substantial improvement]: benchmarks/README.md#comparison-with-bohm11
 
 In what follows, we briefly demonstrate the system & discuss it in more detail.
 
@@ -21,7 +31,10 @@ $ ./command/test.sh
 
 ## Evaluation by Interaction
 
-Optiscope offers a lightweight C API for writing programs in the extended lambda calculus; these programs are automatically translated to interaction nets under the hood. To see Optiscope in action, consider the example program [`examples/lamping-example.c`], which evaluates to the identity lambda under weak reduction to interface normal form [^interface-normal-form]:
+Optiscope offers a lightweight C API for writing programs in the extended lambda calculus; these
+programs get automatically translated into interaction nets under the hood. To see Optiscope in
+action, consider the following program used by Lamping in [^lamping], which evaluates to the
+identity lambda under weak reduction [^interface-normal-form]:
 
 [`examples/lamping-example.c`]: examples/lamping-example.c
 
@@ -61,7 +74,8 @@ By adding the following lines into [`optiscope.h`]:
 #define OPTISCOPE_ENABLE_GRAPHVIZ
 ```
 
-& typing `./command/example.sh lamping-example` in your shell, Optiscope will visualize each interaction step in `target/state.dot.svg` before you presse ENTER to fire the red interaction:
+& typing `./command/example.sh lamping-example` in your shell, Optiscope will visualize each
+interaction step in `target/state.dot.svg` before you presse ENTER:
 
 <div align="center">
   <a href="https://raw.githubusercontent.com/etiamz/optiscope-media/refs/heads/master/lamping-example-animation.gif">
@@ -81,7 +95,8 @@ By adding the following lines into [`optiscope.h`]:
 
 ## Full Reduction
 
-We mimicke full reduction as a normalization-by-evaluation procedure running on weak reduction. Consider another example [`examples/2-power-2.c`], which computes _2^2_ using Church numerals:
+We mimicke full reduction as an embedded normalization-by-evaluation procedure. Consider the example
+from the Lambdascope paper, which computes _2^2_ using Church numerals:
 
 [`examples/2-power-2.c`]: examples/2-power-2.c
 
@@ -109,7 +124,8 @@ main(void) {
 }
 ```
 
-By passing a file stream to `optiscope_algorithm`, in this case `stdout`, we can see the resulting normal form:
+By passing a file stream to `optiscope_algorithm`, in this case `stdout`, we can see the resulting
+normal form:
 
 ```
 $ ./command/example.sh 2-power-2
@@ -128,14 +144,20 @@ Full reduction onely works for pure lambda calculus terms: lambdas, applications
 
 ## On Performance
 
-_Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, including leveraging compiler- & platform-specific functionality, yet, [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than [unoptimized Haskell] & [unoptimized OCaml]; for instance, whereas Optiscope approaches 1 minute to execute an insertion sort on a Scott-encoded list of 10'000 elements (in decreasing order), the Haskell implementation handles the same amount of elements in just half a second! (Optiscope's abstract algorithm needs ~25 seconds, which is still very slow compared to Haskell.)
+_Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, yet,
+[our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than
+[unoptimized Haskell] & [unoptimized OCaml]; for instance, whereas Optiscope approaches 1 minute to
+execute an insertion sort on a Scott-encoded list of 10,000 elements (in decreasing order), the
+Haskell implementation handles the same amount of elements in just half a second! (Optiscope's
+abstract algorithm needs ~25 seconds, which is still very slow compared to Haskell.)
 
 [fairly non-trivial effort]: #implementation-details
 [our benchmarks]: benchmarks/
 [unoptimized Haskell]: benchmarks-haskell/
 [unoptimized OCaml]: benchmarks-ocaml/
 
-Similar stories can be told about the other benchmarks. At one moment, I wondered if I merely implemented Lambdascope incorrectly because of this excerpt from the paper:
+Similar stories can be told about the other benchmarks. At one moment, I wondered if I merely
+implemented Lambdascope incorrectly because of this excerpt from the paper:
 
 ```
 A prototype implementation, which we have dubbed _lambdascope_, shows that
@@ -145,7 +167,9 @@ standard implementations of functional programming languages on the same
 examples as BOHM does).
 ```
 
-This is a very interesting excerpt, because while it is concerned with efficiency, it says nothing in particular about it, save that their implementation is as fast as BOHM. So the question is: how fast is BOHM?
+This is a very interesting excerpt, because while it is concerned with efficiency, it says nothing
+in particular about it, save that their implementation is as fast as BOHM. So the question is: how
+fast is BOHM?
 
 I downloaded [BOHM1.1] & wrote the following Scott insertion sort benchmark for 1000 elements:
 
@@ -198,7 +222,8 @@ benchmarkTerm;;
 
 Then I typed `#load "scott-insertion-sort.bohm";;` and... it hanged my computer.
 
-For a couple of hundred elements, it executed almost instantly, but it was still of no rival to Haskell & OCaml.
+For a couple of hundred elements, it executed almost instantly, but it was still of no rival to
+Haskell & OCaml.
 
 Also read the following excerpt from [^optimal-implementation], Section 12.4:
 
@@ -208,7 +233,10 @@ BOHM works perfectly well for pure λ-calculus: much better, in average, than al
 a polynomial cost of reduction against an exponential one.
 ```
 
-Interesting. What are these "typical situations"? In Section 9.5, the authors provide detailed results for a few benchmarks: Church-numeral factorial, Church-numeral Fibonacci sequence, & finally two Church-numeral terms `λn.(n 2 I I)` & `λn.(n 2 2 I I)`. On the two latter ones, Caml Light & Haskell exploded on larger values of `n`, while BOHM was able to handle them.
+Interesting. What are these "typical situations"? In Section 9.5, the authors provide detailed
+results for a few benchmarks: Church-numeral factorial, Church-numeral Fibonacci sequence, & finally
+two Church-numeral terms `λn.(n 2 I I)` & `λn.(n 2 2 I I)`. On the two latter ones, Caml Light &
+Haskell exploded on larger values of `n`, while BOHM was able to handle them.
 
 Next:
 
@@ -219,7 +247,10 @@ call-by-value implementations (such as SML or Caml-light) and even slightly (but
 not dramatically) worse than lazy implementations such as Haskell.
 ```
 
-Looking at my benchmarks, I cannot call it "slightly worse", but rather "dramatically worse". The authors doe not elaborate what real-world programs they tested BOHM on, except for a quicksort algorithm from Section 12.3.2 & the `append` function from Section 12.4.1, for which they doe not provide comparison benchmarks with traditional implementations.
+Looking at my benchmarks, I cannot call it "slightly worse", but rather "dramatically worse". The
+authors doe not elaborate what real-world programs they tested BOHM on, except for a quicksort
+algorithm from Section 12.3.2 & the `append` function from Section 12.4.1, for which they doe not
+provide comparison benchmarks with traditional implementations.
 
 Finally, the authors conclude:
 
@@ -232,69 +263,235 @@ computation -- this makes a crucial difference with the pure λ-calculus, where
 all data are eventually represented as functions.
 ```
 
-Well, in our benchmarks, we represent all data besides primitive integers as functions. Nonethelesse, BOHM was still much slower than Haskell & OCaml with optimizations turned off.
+Well, in our benchmarks, we represent all data besides primitive integers as functions, e.g., using
+Scott encoding. Nonethelesse, BOHM was still much slower than both Haskell & OCaml with
+optimizations turned off.
 
-What conclusions should we draw from this? Have Haskell & OCaml so advanced in efficiency over the decades? Or does BOHM demonstrate superior performance on Churh numerals onely? Should we invest our time in making optimality efficient, or goe for more traditional approaches? I have no definite answer to these questions, but the fact is: the practice of optimal reduction is still well behind industrial-strength runtimes; while it is true that Optiscope is a heavily optimized implementation of optimal reduction, this fact does not entail that it is very efficient compared to other approaches. The SOTA of high-performance call-by-need computation still appears to be the well-known Spinelesse Taglesse G-machine [^stg-machine] & its subsequent refinements [^stg-currying] [^stg-tagging].
+What conclusions should we draw from this? The natural questions are: have Haskell & OCaml so
+advanced in efficiency over the decades? Or does BOHM demonstrate superior performance on Church
+numerals onely? Should we invest our time in making optimality efficient, or stick to more
+traditional approaches? I have no definite answer to these questions, but the fact is: the practice
+of optimal reduction is still well behind industrial-strength runtimes. While it is true that
+Optiscope is a heavily optimized implementation of optimal reduction, this fact itself should not
+suggest its practical efficiency. So let me conclude that the well-known Spinelesse Taglesse
+G-machine [^stg-machine] & its subsequent refinements [^stg-currying] [^stg-tagging] still appear
+to be the state of the art of lazy evaluation.
 
 ## Implementation Details
 
- - **Node layout.** We interpret each graph node as an array `a` of `uint64_t` values. At position `a[-1]`, we store the _node symbol_; at `a[0]`, we store the principal port; then we store the auxiliary ports; after the auxiliary ports, we store additional data elements, such as function pointers or computed cell values. The number of auxiliary ports & additional data elements determines the total size of the array: for erasers, the size in bytes is `2 * sizeof(uint64_t)`, as they need one position for the symbol & another one for the principal port; for applicators & lambdas having two auxiliary ports, the size is `3 * sizeof(uint64_t)`; for unary function calls, the size is `4 * sizeof(uint64_t)`, as they have one symbol, two auxiliary ports, & one function pointer. Similar calculation can be done for all the other node types.
+ - **Node layout.** We interpret each graph node as an array `a` of `uint64_t` values. At position
+   `a[-1]`, we store the _node symbol_; at `a[0]`, we store the principal port value; at `a[1]` &
+   beyond we store the auxiliary ports; after the auxiliary ports, we store additional data
+   elements, such as function pointers or computed integers. The number of auxiliary ports &
+   additional data elements determines the total size of the array: for erasers, the size in bytes
+   is `2 * sizeof(uint64_t)`, inasmuch as they need one position for the symbol & another one for
+   the principal port; for applicators & lambdas having two auxiliary ports, the size is
+   `3 * sizeof(uint64_t)`; for unary function calls, the size is `4 * sizeof(uint64_t)`, as they
+   have one symbol, two auxiliary ports, & one function pointer. Similar calculation proceeds for
+   all the other node types.
 
- - **Symbol layout.** The difficulty of representing node symbols is that they may or may not have indices. Therefore, we employ the following scheme: `0` is the root symbol, `1` is an applicator, `2` is a lambda, `3` is an eraser, & so on until value `63`, inclusively; now the next `9223372036854775776` values are occupied by duplicators, & the same number of values is then occupied by delimiters. Together, all symbols occupy the full range of `uint64_t`. The indices of duplicator & delimiter symbols can be determined by proper subtraction, but in most cases, they can be compared without any preprocessing.
+ - **Symbol layout.** The difficulty of representing node symbols is that they may or may not have
+   indices. Therefore, we employ the following scheme: `0` is the root symbol, `1` is an applicator,
+   `2` is a lambda, `3` is an eraser, & so on until value `63`, inclusively; now the next
+   `9223372036854775776` values are occupied by duplicators, & the same number of values is then
+   occupied by delimiters. Together, all symbols occupy the full range of `uint64_t`. The indices of
+   duplicator & delimiter symbols can be determined by proper subtraction, but in most cases, they
+   can be compared without any preprocessing.
 
- - **Port layout.** Modern x86-64 CPUs utilize the 48-bit addresse space, leaving 16 highermost bits unused (i.e., sign-extended). We therefore utilize the highermost 2 bits for the port _offset_ (relative to the principal port), & then 2 bits for the node _phase_; the latter is composed of a 1-bit _closednesse annotation_, which tells whether the node was constructed from a closed term, & a 1-bit _pending annotation_, which tells whether the node is currently in the reduction stack. The following bits constitute a (sign-extended) addresse of the destination port. This layout is particularly space- & time-efficient: given any port addresse, we can retrieve the principal port & from there goe to any neighbouring node in constant time; by storing information in phases, we avoid the need for any additional data structures. The onely drawback of this approach is that ports need to be repeatedly encoded & decoded; this pollutes the source code, but the computational cost of these operations is very neglegible.
+ - **Port layout.** Modern x86-64 CPUs utilize the 48-bit addresse space, leaving 16 highermost bits
+   unused (i.e., sign-extended). We therefore utilize the highermost 2 bits for the port _offset_
+   (relative to the principal port), & then 2 bits for the node _phase_; the latter is composed of a
+   1-bit _closednesse annotation_, which tells whether the node was constructed from a closed term,
+   & a 1-bit _pending annotation_, which tells whether the node is currently in the reduction stack.
+   The following bits constitute a (sign-extended) addresse of the destination port. This layout is
+   particularly space- & time-efficient: given any port addresse, we can retrieve the principal port
+   & from there goe to any neighbouring node in constant time; by storing information in phases, we
+   avoid the need for any additional data structures. The onely drawback of this approach is that
+   ports need to be repeatedly encoded & decoded; this pollutes the source code, but the
+   computational cost of these operations is very neglegible.
 
- - **O(1) memory management.** We have implemented a custom [pool allocator] that has constant-time asymptotics for allocation & deallocation, except when initializing a new memory block. Our nodes sizes range from 2 to 5 machine words; for each node size, there is a separate global pool instance to avoid memory fragmentation. On Linux, these pools allocate 2MB huge pages that lessen frequent TLB misses, to account for cases when many nodes are to be manipulated; if either huge pages are not supported or Optiscope is running on a non-Linux system, we default to `malloc`.
+ - **O(1) memory management.** We have implemented a custom [pool allocator] that has constant-time
+   asymptotics for allocation & deallocation, except when initializing a new memory block. Our nodes
+   sizes range from 2 to 5 machine words; for each node size, there is a separate global pool
+   instance to avoid memory fragmentation. On Linux, these pools allocate 2MB huge pages that lessen
+   frequent TLB misses, to account for cases when many nodes are to be manipulated; if either huge
+   pages are not supported or Optiscope is running on a non-Linux system, we default to `malloc`.
 
- - **Weak reduction.** In real situations, the result of pure lazy computation is expected to be either a constant value or a top-level constructor. Even when one seeks reduction under binders & other constructors, one usually also wants [controlling definition unfoldings] or reusing already performed unfoldings [^taming-supercompilation] to keep resulting terms manageable. We therefore adopt BOHM-style _weak reduction_ [^bohm] as the onely phase of our algorithm. Weak reduction repeatedly reduces the _leftmost outermost_ interaction until a constructor node (i.e., either a lambda abstraction or cell value) is connected to the root, reaching an interface normal form. This phase directly implements Lévy-optimal reduction by performing onely needed work, i.e., avoiding to work on an interaction whose result will be discarded later. (A shocking side note: per Section "5.6 Optimal derivations" of [^optimal-implementation], a truely optimal machine must necessarily be sequential, because otherwise, the machine risks at working on unneeded interactions!)
+ - **Weak reduction.** In real situations, the result of pure lazy computation is expected to be
+   either a constant value or a top-level constructor. Even when one seeks reduction under binders &
+   other constructors, one usually also wants [controlling definition unfoldings] or reusing already
+   performed unfoldings [^taming-supercompilation] to keep resulting terms manageable. We therefore
+   adopt BOHM-style _weak reduction_ [^bohm] as the onely phase of our algorithm. Weak reduction
+   repeatedly reduces the _leftmost outermost_ interaction until a constructor node (i.e., either a
+   lambda abstraction or cell value) is connected to the root, reaching an interface normal form.
+   This phase directly implements Lévy-optimal reduction by performing onely needed work, i.e.,
+   avoiding to work on an interaction whose result will be discarded later. (A shocking side note:
+   per Section "5.6 Optimal derivations" of [^optimal-implementation], a truely optimal machine must
+   necessarily be sequential, because otherwise, the machine risks at working on unneeded
+   interactions!)
 
- - **Garbage collection.** Specific types of interactions may cause whole subgraphs to be fully or partially disconnected from the root, such as when a lambda application rejects its operand or when an if-then-else node selects the correct branch, rejecting the other one. In order to battle memory leaks during weak reduction, we implement _eraser-passing garbage collection_ described as follows. When our algorithm determines that the most recent interaction has rejected one of its connections, our garbage collector commences incremental propagation of erasers by connecting a newly spawned eraser to the rejected port; iteratively, garbage collection at a specific port results in either freeing the node in question & continuing the propagation to its immediate neighbours _or_ marking this node so that when it interacts, it will continue the garbage collection procedure appropriately. (However, we doe also eliminate some uselesse duplicator-eraser combinations as discussed in the paper, which has a slightly different semantics.) Our rules are inspired by Lamping's algorithm [^lamping] / BOHM [^bohm]: although perfectly local, constant-time graph operations, they doe not count as interaction rules, since garbage collection can easily happen at any port, including non-principal ones.
-   - Eraser nodes are onely present during a garbage collection pass. If an eraser node cannot be safely removed, such as when facing the binder port of a lambda abstraction or an auxiliary port of a duplicator, we create a specialized node whose symbol tells which ports have been erased. As such, `SYMBOL_GC_LAMBDA` stands for `SYMBOL_LAMBDA` with an erased binder, preserving the closednesse bit; likewise, `SYMBOL_GC_DUPLICATOR_LEFT`/`SYMBOL_GC_DUPLICATOR_RIGHT` stand for `SYMBOL_DUPLICATOR` with an erased left/right auxiliary port, respectively. When these specialized nodes commute/annihilate with other nodes, garbage collection can proceed further. Following this scheme results in simple & correct conditions for triggering garbage collection, inasmuch as erasers need not be explicitly tracked during the course of normal reduction.
-   - A word has to be said about what happens with duplicators during garbage collection. There are essentially seven scenarios, checked in this order:
+ - **Garbage collection.** Specific types of interactions may cause whole subgraphs to be fully or
+   partially disconnected from the root, such as when a lambda application rejects its operand or
+   when an if-then-else node selects the correct branch, rejecting the other one. In order to battle
+   memory leaks during weak reduction, we implement _eraser-passing garbage collection_ described as
+   follows. When our algorithm determines that the most recent interaction has rejected one of its
+   connections, our garbage collector commences incremental propagation of erasers by connecting a
+   newly spawned eraser to the rejected port; iteratively, garbage collection at a specific port
+   results in either freeing the node in question & continuing the propagation to its immediate
+   neighbours _or_ marking this node so that when it interacts, it will continue the garbage
+   collection procedure appropriately. (However, we doe also eliminate some uselesse
+   duplicator-eraser combinations as discussed in the paper, which has a slightly different
+   semantics.) Our rules are inspired by Lamping's algorithm [^lamping] / BOHM [^bohm]: although
+   perfectly local, constant-time graph operations, they doe not count as interaction rules, since
+   garbage collection can easily happen at any port, including non-principal ones.
+   - Eraser nodes are onely present during a garbage collection pass. If an eraser node cannot be
+     safely removed, such as when facing the binder port of a lambda abstraction or an auxiliary
+     port of a duplicator, we create a specialized node whose symbol tells which ports have been
+     erased. As such, `SYMBOL_GC_LAMBDA` stands for `SYMBOL_LAMBDA` with an erased binder,
+     preserving the closednesse bit; likewise,
+     `SYMBOL_GC_DUPLICATOR_LEFT`/`SYMBOL_GC_DUPLICATOR_RIGHT` stand for `SYMBOL_DUPLICATOR` with an
+     erased left/right auxiliary port, respectively. When these specialized nodes commute/annihilate
+     with other nodes, garbage collection can proceed further. Following this scheme results in
+     simple & correct conditions for triggering garbage collection, inasmuch as erasers need not be
+     explicitly tracked during the course of normal reduction.
+   - A word has to be said about what happens with duplicators during garbage collection. There are
+     essentially seven scenarios, checked in this order:
      1. When an eraser faces the duplicator's principal port, we commute with the eraser.
-     1. When erasers face both auxiliary ports, we propagate one eraser to the target of the principal port.
+     1. When erasers face both auxiliary ports, we propagate one eraser to the target of the
+        principal port.
      1. When an eraser faces either auxiliary port:
-        1. When the shared node is atomic, we connect the shared node to the surviving duplicator branch.
-        1. When the duplicator's index is zero, we remove the duplicator according to Page 4 of the Lambdascope paper.
+        1. When the shared node is atomic, we connect the shared node to the surviving duplicator
+           branch.
+        1. When the duplicator's index is zero, we remove the duplicator according to Page 4 of the
+           Lambdascope paper.
         1. When the duplicator can annihilate with another duplicator, we interact the pair.
-        1. When the shared node is a delimiter that interacts with another delimiter of the same index & multiplicity, we fire the pair, retrying erasure of the duplicator afterwards.
+        1. When the shared node is a delimiter that interacts with another delimiter of the same
+           index & multiplicity, we fire the pair, retrying erasure of the duplicator afterwards.
         1. Otherwise, we convert the duplicator as described above.
-   - Prioritizing annihilation of matching duplicators lets erasure reach discarded subgraphs before further duplication multiplies the work, which prevents a blowup in graph rewrites in certain cases.
+   - Prioritizing annihilation of matching duplicators lets erasure reach discarded subgraphs before
+     further duplication multiplies the work, which prevents a blowup in graph rewrites in certain
+     cases.
 
- - **Delimiter compression.** When the machine detects a sequence of chained delimiters of the same index, it compresses the sequence into a single delimiter node annotated with the number of compressed nodes; afterwards, this new node behaves just as the whole sequence of delimiters would, thereby requiring significantly lesse interaction steps. The machine performes this operation both statically & dynamically: statically during translation of variables, dynamically during graph traversal. With this optimization, the oracle becomes dozens of times faster on some benchmarks & uncomparably faster on others.
-   - We occasionally refer to delimiter compression as _merging_, i.e., "merge _f_ into _g_" means "remove _f_, incrementing the multiplicity of _g_ by that of _f_".
+ - **Delimiter compression.** When the machine detects a sequence of chained delimiters of the same
+   index, it compresses the sequence into a single delimiter node annotated with the number of
+   compressed nodes; afterwards, this new node behaves just as the whole sequence of delimiters
+   would, thereby requiring significantly lesse interaction steps. The machine performes this
+   operation both statically & dynamically: statically during translation of variables, dynamically
+   during graph traversal. With this optimization, the oracle becomes dozens of times faster on some
+   benchmarks & uncomparably faster on others.
+   - We occasionally refer to delimiter compression as _merging_, i.e., "merge _f_ into _g_" means
+     "remove _f_, incrementing the multiplicity of _g_ by that of _f_".
    - C.f. [_run-length encoding_](https://en.wikipedia.org/wiki/Run-length_encoding).
 
- - **Zero-delimiter absorption.** If a positive-indexed delimiter _f_ points to the auxiliary port of a zero-indexed delimiter _g_, & _f_'s index does not exceed _g_'s multiplicity, we can merge _f_ into _g_. The machine performes this operation during graph traversal, independently of delimiter compression.
+ - **Zero-delimiter absorption.** If a positive-indexed delimiter _f_ points to the auxiliary port
+   of a zero-indexed delimiter _g_, & _f_'s index does not exceed _g_'s multiplicity, we can merge
+   _f_ into _g_. The machine performes this operation during graph traversal, independently of
+   delimiter compression.
 
- - **Delimiter scheduling.** It is now natural to prioritize delimiter compression, so that more delimiters get compressed. One way to approach this is to "freeze" certain interactions of delimiters with other agents: roughly speaking, instead of repeatedly propagating uncompressed delimiters towards the root, we can first compresse as many delimiters as we can, & onely then propagate this single compressed delimiter towards the root. So-called _barriers_ enable this kind of scheduling: they appear dynamically whenever an upwards-directed zero-indexed delimiter meets an operator. In the graph, this situation is depicted as "🚧 _n_", where _n_ stands for the number of collected zero-indexed delimiters. Initially, _n_ is initialized to the corresponding field of the caught delimiter, but when the barrier meets another zero-indexed delimiter, _n_ is updated & the delimiter is removed from the graph. Contrariwise, when the barrier meets an agent which is not a zero-indexed delimiter, it is transformed into a single delimiter ready to commute.
+ - **Delimiter scheduling.** It is now natural to prioritize delimiter compression, so that more
+   delimiters get compressed. One way to approach this is to "freeze" certain interactions of
+   delimiters with other agents: roughly speaking, instead of repeatedly propagating uncompressed
+   delimiters towards the root, we can first compresse as many delimiters as we can, & onely then
+   propagate this single compressed delimiter towards the root. So-called _barriers_ enable this
+   kind of scheduling: they appear dynamically whenever an upwards-directed zero-indexed delimiter
+   meets an operator. In the graph, this situation is depicted as "🚧 _n_", where _n_ stands for the
+   number of collected zero-indexed delimiters. Initially, _n_ is initialized to the corresponding
+   field of the caught delimiter, but when the barrier meets another zero-indexed delimiter, _n_ is
+   updated & the delimiter is removed from the graph. Contrariwise, when the barrier meets an agent
+   which is not a zero-indexed delimiter, it is transformed into a single delimiter ready to
+   commute.
 
- - **Delimiter extrusion.** If a delimiter points to the output port of some operator, it appears profitable to _extrude_ it to the operands, causing its copies to interact/merge with other nodes earlier in the reduction. Keeping the delimiter hanging results in much higher bookkeeping work, because we want delimiters to resolve as early as possible.
-   - We extrude to the operands onely if the operator is not marked _closed_; otherwise, we just remove the delimiter.
+ - **Delimiter extrusion.** If a delimiter points to the output port of some operator, it appears
+   profitable to _extrude_ it to the operands, causing its copies to interact/merge with other nodes
+   earlier in the reduction. Keeping the delimiter hanging results in much higher bookkeeping work,
+   because we want delimiters to resolve as early as possible.
+   - We extrude to the operands onely if the operator is not marked _closed_; otherwise, we just
+     remove the delimiter.
 
- - **Closednesse annotations.** As described in the port layout paragraph, there is a closednesse marker in every principal port. When set, this marker means that the term from which the subnet rooted at this node has been compiled had no free variables in it. Although this annotation costs ~nothing & occupies no extra space in memory, it allows us to elide delimiters in a lot of situations. Below is a comprehensive list of situations where delimiters can be safely elided:
+ - **Closednesse annotations.** As described in the port layout paragraph, there is a closednesse
+   marker in every principal port. When set, this marker means that the term from which the subnet
+   rooted at this node has been compiled had no free variables in it. Although this annotation costs
+   ~nothing & occupies no extra space in memory, it allows us to elide delimiters in a lot of
+   situations. Below is a comprehensive list of situations where delimiters can be safely elided:
    - When an applicator meets a lambda node marked closed, just rewire the ports.
    - When delimiter `d` interacts with a lambda node marked closed, elide `d`.
    - When delimiter `d` connects to an output port of an operator node marked closed, elide `d`.
    - When delimiter `d` interacts with a _segment_ node, elide `d`.
 
- - **Segmentation.** Segmentation is a concept tightly coupled with closednesse annotations. Initially, all lambda nodes compiled from closed lambda abstractions are marked closed; however, there are situations when a lambda node may _become_ closed. More concretely, consider the following situation: lambda `f` of `x` conteyns lambda `g` of `y`, which uses `x`; `f` is applied to node `n` marked closed; the result is node `g`. But observe that after opening `f`, `g` can now be marked closed, because we could have built `g` directly from some closed lambda term by swapping the usage of `x` with `n`! We realize this intuition as follows: when an applicator meets a lambda node marked closed _and_ the argument port points to a node marked closed, we remove the lambda node and instantiate a _segment operator_ marked closed. When this operator meets an open lambda node `f`, it markes `f` closed and disappears, which allows for more delimiter-lesse Beta interactions with `f`, according to the previous paragraph.
+ - **Segmentation.** Segmentation is a concept tightly coupled with closednesse annotations.
+   Initially, all lambda nodes compiled from closed lambda abstractions are marked closed; however,
+   there are situations when a lambda node may _become_ closed. More concretely, consider the
+   following situation: lambda `f` of `x` conteyns lambda `g` of `y`, which uses `x`; `f` is applied
+   to node `n` marked closed; the result is node `g`. But observe that after opening `f`, `g` can
+   now be marked closed, because we could have built `g` directly from some closed lambda term by
+   swapping the usage of `x` with `n`! We realize this intuition as follows: when an applicator
+   meets a lambda node marked closed _and_ the argument port points to a node marked closed, we
+   remove the lambda node and instantiate a _segment operator_ marked closed. When this operator
+   meets an open lambda node `f`, it markes `f` closed and disappears, which allows for more
+   delimiter-lesse Beta interactions with `f`, according to the previous paragraph.
 
- - **References.** A _reference_ is a special atomic node that holds (an identifier of) a C function pointer taking zero parameters & returning a lambda term. When the value of the reference is needed, the function is called, & the obteyned term is expanded to a corresponding net in a single interaction. Instead of adopting references, we could have a fixed-point operator as in YALE [^yale], but references tend to be farre more efficient in practice, inasmuch as they avoid the overhead of continuouse duplication. In addition to improved efficiency, references support mutual recursion in a natural way.
+ - **References.** A _reference_ is a special atomic node that holds (an identifier of) a C function
+   pointer taking zero parameters & returning a lambda term. When the value of the reference is
+   needed, the function is called, & the obteyned term is expanded to a corresponding net in a
+   single interaction. Instead of adopting references, we could have a fixed-point operator as in
+   YALE [^yale], but references tend to be farre more efficient in practice, inasmuch as they avoid
+   the overhead of continuouse duplication. In addition to improved efficiency, references support
+   mutual recursion in a natural way.
 
- - **Translation through bytecode.** With references, it is now crucial to be able to build nets efficiently, for this happens each time a reference is forced to expand. We therefore adopt _translation through bytecode_: when a reference is about to expand, we translate its expansion to a compact bytecode representation that describes how to build a net corresponding to the lambda term; then we execute this bytecode & store it in a special cache for future usages. (This cache we conventionally call a _book_: it associates each user function to its bytecode, providing constant-time access to each entry.) This scheme allows us to avoid repeated traversal the same lambda term, keeping all decisions related to structure inspection at translation time.
+ - **Translation through bytecode.** With references, it is now crucial to be able to build nets
+   efficiently, for this happens each time a reference is forced to expand. We therefore adopt
+   _translation through bytecode_: when a reference is about to expand, we translate its expansion
+   to a compact bytecode representation that describes how to build a net corresponding to the
+   lambda term; then we execute this bytecode & store it in a special cache for future usages. (This
+   cache we conventionally call a _book_: it associates each user function to its bytecode,
+   providing constant-time access to each entry.) This scheme allows us to avoid repeated traversal
+   the same lambda term, keeping all decisions related to structure inspection at translation time.
 
- - **Graphviz intergration.** Debugging interaction nets is a particularly painfull exercise. Isolated interactions make very little sense, yet, the cumulative effect is somehow analogouse to conventional reduction. To simplifie the challenge a bit, we have integrated [Graphviz] (in debug mode onely) to display the whole graph between consecutive interaction steps, if requested at compile-time in `optiscope.h`. Alongside each node, our visualization also displays an ASCII table of port addresses, which has proven to be extremely helpfull in debugging variouse memory management issues in the past.
+ - **Graphviz intergration.** Debugging interaction nets is a particularly painfull exercise.
+   Isolated interactions make very little sense, yet, the cumulative effect is somehow analogouse to
+   conventional reduction. To simplifie the challenge a bit, we have integrated [Graphviz] (in debug
+   mode onely) to display the whole graph between consecutive interaction steps, if requested at
+   compile-time in `optiscope.h`. Alongside each node, our visualization also displays an ASCII
+   table of port addresses, which has proven to be extremely helpfull in debugging variouse memory
+   management issues in the past.
 
- - **Full reduction.** Full reduction of pure lambda calculus terms is implemented as a normalization-by-evaluation procedure realized by a set of dedicated agents. When Optiscope is instructed to performe full reduction, the input term is translated as follows: lambda abstractions become wrapped in `SYMBOL_QLAMBDA`, applications become `SYMBOL_MAPPLICATOR`, variables remaine the same. Finally, the whole quoted term is wrapped in `SYMBOL_READBACK` annotated with de Bruijn level zero. Weak reduction then drives the resulting net until a `PRINTOUT` agent reaches the root. The main benefit of this scheme is that the machine's reduction strategy need not be changed in any way: the readback node will manage reductions under lambda abstractions itself, as we will shorly see. The main drawback of this approach is that it induces strictly more graph rewrites than a hypothetical full reduction machine, but due to the difficulties associated with implementing full reduction directly, the precise extent of this overhead remaines unclear to us. However, let us now proceed with describing the detailed semantics of the new set of operators:
-   - When `SYMBOL_MAPPLICATOR` meets `SYMBOL_QLAMBDA`, it creates a `SYMBOL_APPLICATOR` node, connecting its operator port to the lambda abstraction & its operand port to the operand. The effect is a Beta interaction.
-   - When `SYMBOL_MAPPLICATOR` meets either `SYMBOL_QAPPLICATOR` or `SYMBOL_QVARIABLE`, it creates a new `SYMBOL_QAPPLICATOR` node, connecting its ports in the same way. The effect is an application blocked on a neutral variable.
-   - When `SYMBOL_READBACK` meets `SYMBOL_QLAMBDA`, it creates (1) a fresh `SYMBOL_QVARIABLE` node with the current de Bruijn level, (2) a `SYMBOL_APPLICATOR` node applying this variable to the lambda abstraction, (3) a recursive `SYMBOL_READBACK` node with an updated level to process the body, and (4) a `SYMBOL_QLAMBDA_PRINTER` node waiting for the result.
-   - When `SYMBOL_READBACK` meets `SYMBOL_QAPPLICATOR`, it creates two readback agents with the same level: one for the operator, one for the operand, piping both to a new `SYMBOL_QAPPLICATOR_PRINTER` agent.
-   - When `SYMBOL_READBACK` meets `SYMBOL_QVARIABLE`, it converts the current de Bruijn level _lvl_  & the variable's de Bruijn level _var_ to a corresponding de Bruijn index _idx_ by the formula _idx = lvl - var - 1_, & emits a `SYMBOL_PRINTOUT` agent holding this computed index as a string.
-   - `SYMBOL_QLAMBDA_PRINTER` waits for a `SYMBOL_PRINTOUT` node representing _body_, then wraps it as `"(λ <body>)"` in a new `SYMBOL_PRINTOUT` node.
-   - `SYMBOL_QAPPLICATOR_PRINTER` waits for a `SYMBOL_PRINTOUT` node representing the operator's normal form, then emits a `SYMBOL_QAPPLICATOR_PRINTER_AUX` node with the operator string to wait for the operand's normal form.
-   - `SYMBOL_QAPPLICATOR_PRINTER_AUX` with annotated _rator_ waits for a `SYMBOL_PRINTOUT` node representing _rand_, then emits a new `SYMBOL_PRINTOUT` node holding `"(<rator> <rand>)"`.
+ - **Full reduction.** Full reduction of pure lambda calculus terms is implemented as a
+   normalization-by-evaluation procedure realized by a set of dedicated agents. When Optiscope is
+   instructed to performe full reduction, the input term is translated as follows: lambda
+   abstractions become wrapped in `SYMBOL_QLAMBDA`, applications become `SYMBOL_MAPPLICATOR`,
+   variables remaine the same. Finally, the whole quoted term is wrapped in `SYMBOL_READBACK`
+   annotated with de Bruijn level zero. Weak reduction then drives the resulting net until a
+   `PRINTOUT` agent reaches the root. The main benefit of this scheme is that the machine's
+   reduction strategy need not be changed in any way: the readback node will manage reductions under
+   lambda abstractions itself, as we will shorly see. The main drawback of this approach is that it
+   induces strictly more graph rewrites than a hypothetical full reduction machine, but due to the
+   difficulties associated with implementing full reduction directly, the precise extent of this
+   overhead remaines unclear to us. However, let us now proceed with describing the detailed
+   semantics of the new set of operators:
+   - When `SYMBOL_MAPPLICATOR` meets `SYMBOL_QLAMBDA`, it creates a `SYMBOL_APPLICATOR` node,
+     connecting its operator port to the lambda abstraction & its operand port to the operand. The
+     effect is a Beta interaction.
+   - When `SYMBOL_MAPPLICATOR` meets either `SYMBOL_QAPPLICATOR` or `SYMBOL_QVARIABLE`, it creates a
+     new `SYMBOL_QAPPLICATOR` node, connecting its ports in the same way. The effect is an
+     application blocked on a neutral variable.
+   - When `SYMBOL_READBACK` meets `SYMBOL_QLAMBDA`, it creates (1) a fresh `SYMBOL_QVARIABLE` node
+     with the current de Bruijn level, (2) a `SYMBOL_APPLICATOR` node applying this variable to the
+     lambda abstraction, (3) a recursive `SYMBOL_READBACK` node with an updated level to process the
+     body, and (4) a `SYMBOL_QLAMBDA_PRINTER` node waiting for the result.
+   - When `SYMBOL_READBACK` meets `SYMBOL_QAPPLICATOR`, it creates two readback agents with the same
+     level: one for the operator, one for the operand, piping both to a new
+     `SYMBOL_QAPPLICATOR_PRINTER` agent.
+   - When `SYMBOL_READBACK` meets `SYMBOL_QVARIABLE`, it converts the current de Bruijn level _lvl_
+     & the variable's de Bruijn level _var_ to a corresponding de Bruijn index _idx_ by the formula
+     _idx = lvl - var - 1_, & emits a `SYMBOL_PRINTOUT` agent holding this computed index as a
+     string.
+   - `SYMBOL_QLAMBDA_PRINTER` waits for a `SYMBOL_PRINTOUT` node representing _body_, then wraps it
+     as `"(λ <body>)"` in a new `SYMBOL_PRINTOUT` node.
+   - `SYMBOL_QAPPLICATOR_PRINTER` waits for a `SYMBOL_PRINTOUT` node representing the operator's
+     normal form, then emits a `SYMBOL_QAPPLICATOR_PRINTER_AUX` node with the operator string to
+     wait for the operand's normal form.
+   - `SYMBOL_QAPPLICATOR_PRINTER_AUX` with annotated _rator_ waits for a `SYMBOL_PRINTOUT` node
+     representing _rand_, then emits a new `SYMBOL_PRINTOUT` node holding `"(<rator> <rand>)"`.
 
 [pool allocator]: https://en.wikipedia.org/wiki/Memory_pool
 [controlling definition unfoldings]: https://andraskovacs.github.io/pdfs/wits24prez.pdf
@@ -302,15 +499,25 @@ What conclusions should we draw from this? Have Haskell & OCaml so advanced in e
 
 ## Limitations
 
- - Despite that interaction nets allow for a _huge_ amount of parallelisme, Optiscope is an unpretentiousely sequential reducer. We doe not plan to make it parallel, because it is unclear how to preserve Lévy-optimality in this case.
- - We doe not guarantee what will happen with ill-formed terms, such as when an if-then-else expression receives a lambda as a condition. In such cases, Optiscope's behaviour is considered undefined.
- - Optiscope cannot detect when two syntactically identical configurations occur at run-time; that is, the avoidance of redex duplication is relative to the initial term, not to the computational pattern exhibited by the term.
- - On conventional problems, Optiscope is many times slower compared to traditional implementations, wherefore it is more of an interesting experiment rather than a production technology.
- - Finally, side effects are not supported. Executing side effects from within `unary_call`/`binary_call` functions will not provide a desirable outcome.
+ - Despite that interaction nets allow for a _huge_ amount of parallelisme, Optiscope is an
+   unpretentiousely sequential reducer. We doe not plan to make it parallel, because it is unclear
+   how to preserve Lévy-optimality in this case.
+ - We doe not guarantee what will happen with ill-formed terms, such as when an if-then-else
+   expression receives a lambda as a condition. In such cases, Optiscope's behaviour is considered
+   undefined.
+ - Optiscope cannot detect when two syntactically identical configurations occur at run-time; that
+   is, the avoidance of redex duplication is relative to the initial term, not to the computational
+   pattern exhibited by the term.
+ - On average, Optiscope is expected to be significantly slower compared to traditional
+   implementations of functional programming languages; the well-known exceptions (e.g., Church
+   towers) compensate the bookkeeping with asymptotic improvements.
+ - Finally, side effects are not supported. Executing side effects from within
+   `unary_call`/`binary_call` functions will not provide a desirable outcome.
 
 ## Acknowledgements
 
-Thanks to Marvin Borner, Marc Thatcher, & Vincent van Oostrom for interesting discussions about the lambda calculus, optimality, & interaction nets.
+Thanks to Marvin Borner, Marc Thatcher, & Vincent van Oostrom for interesting discussions about the
+lambda calculus, optimality, & interaction nets.
 
 ## References
 

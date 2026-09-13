@@ -24,7 +24,76 @@ gcc-16 (Homebrew GCC 16.2.0) 16.2.0
 
 </details>
 
-To observe the performance characteristics of optimal reduction à la Lambdascope, we present a number of benchmarks that expose different computational patterns.
+To observe the performance characteristics of optimal reduction à la Lambdascope, we present a
+number of benchmarks that expose different computational patterns.
+
+## Comparison With BOHM1.1
+
+The following table compares Optiscope & [BOHM1.1] on matching inputs. The sorting benchmarks
+operate on descending Scott-encoded lists of machine integers, summing up the elements after
+sorting in order to reach WHNF:
+
+| Input | Optiscope rewrites | BOHM rewrites | Optiscope peak nodes | BOHM peak nodes |
+| --- | ---: | ---: | ---: | ---: |
+| _ackermann(3, 5)_ | 1,487,688 | 2,402,589 | 2,942 | 1,801,908 |
+| _ackermann(3, 6)_ | 6,033,049 | 9,713,641 | 5,886 | 7,288,429 |
+| _ackermann(3, 7)_ | 24,298,730 | 39,064,691 | 11,774 | 29,321,217 |
+| _ackermann(3, 8)_ | 97,530,171 | - | 23,550 | >100,000,000 |
+| _takeuchi(24, 7, 3)_ | 5,081,109 | 4,484,118 | 1,407 | 3,347,769 |
+| _takeuchi(24, 8, 3)_ | 24,451,833 | 22,055,999 | 1,461 | 16,675,714 |
+| _takeuchi(24, 9, 3)_ | 101,280,294 | 93,328,122 | 1,515 | 71,410,066 |
+| _takeuchi(24, 10, 3)_ | 370,916,108 | - | 1,569 | >100,000,000 |
+| _bsort(25)_ | 187,417 | 286,806 | 3,133 | 99,580 |
+| _bsort(50)_ | 1,216,067 | 2,096,756 | 8,083 | 736,205 |
+| _bsort(150)_ | 27,805,667 | 53,317,806 | 68,237 | 18,970,205 |
+| _bsort(300)_ | 212,458,817 | - | 271,337 | >100,000,000 |
+| _isort(50)_ | 143,576 | 1,460,019 | 3,785 | 216,223 |
+| _isort(100)_ | 564,601 | 10,994,969 | 7,435 | 1,692,023 |
+| _isort(500)_ | 13,922,801 | - | 36,635 | >100,000,000 |
+| _isort(1000)_ | 55,595,551 | - | 73,135 | >100,000,000 |
+| _msort(50)_ | 143,874 | 2,044,194 | 4,032 | 1,150,810 |
+| _msort(100)_ | 435,255 | 13,490,459 | 10,892 | 9,202,565 |
+| _msort(500)_ | 7,346,531 | - | 185,315 | >100,000,000 |
+| _msort(1000)_ | 27,135,694 | - | 703,375 | >100,000,000 |
+| _qsort(50)_ | 362,143 | 3,216,791 | 11,929 | 470,476 |
+| _qsort(100)_ | 1,436,668 | 24,096,191 | 39,340 | 3,368,151 |
+| _qsort(500)_ | 35,682,868 | - | 909,968 | >100,000,000 |
+| _qsort(1000)_ | 142,615,618 | - | 3,605,397 | >100,000,000 |
+| _nqueens(5)_ | 142,397 | 577,712 | 703 | 483,248 |
+| _nqueens(6)_ | 642,117 | 3,558,354 | 790 | 3,155,771 |
+| _nqueens(7)_ | 2,910,329 | 22,250,541 | 997 | 20,746,272 |
+| _nqueens(8)_ | 14,151,747 | - | 1,238 | >100,000,000 |
+| _nqueens(9)_ | 71,832,021 | - | 1,956 | >100,000,000 |
+| _nqueens(10)_ | 377,505,855 | - | 3,004 | >100,000,000 |
+| _nqueens(11)_ | 2,133,946,241 | - | 7,571 | >100,000,000 |
+
+Among the problem instances completed by both reducers, Optiscope reduces total graph rewrites by
+factors of approximately 1.6 for Ackermann, 1.5-1.9 for bubble sort, 10-19 for insertion sort, 14-31
+for merge sort, 9-17 for quicksort, & 4-8 for N-queens. For Takeuchi, Optiscope requires
+approximately 9-13% more rewrites than BOHM. Optiscope's peak node counts are lower in every
+completed comparison, by factors ranging from approximately 32 for _bsort(25)_ to 47,000 for
+_takeuchi(24, 9, 3)_. Optiscope successfully completes all 31 problem instances; BOHM exceeds the
+100,000,000-node limit on the remaining 13.
+
+Notes:
+
+ - Both totals count all local, constant-time graph rewrites performed during reduction, including
+   garbage collection & optimizing rewrites. BOHM's counters were extended to include rewrites
+   omitted from its original interaction count.
+ - Peak node counts show the maximum number of nodes present in the graph during reduction.
+ - Using rewrite totals & peak node counts allows us to compare computational work & space usage
+   independently of compiler optimizations & machine speed.
+ - BOHM implements recursion through a fixed-point operator, whereas Optiscope uses reference
+   expansion. We conjecture that BOHM's fixed-point operator contributes to its higher peak node
+   counts, but the comparison does not separate this contribution from differences in garbage
+   collection & scope management.
+ - `-` in the BOHM rewrites column indicates that BOHM exceeded the limit of 100,000,000
+   simultaneously live nodes.
+ - All the Optiscope runs completed successfully.
+
+[BOHM1.1]: https://github.com/asperti/BOHM1.1/tree/52d826aedbb00f0bd513d8bcbf2fc3fae1b758d2
+
+## Optiscope Timings
 
 On GNU/Linux, you need to reserve huge pages as follows: `sudo sysctl vm.nr_hugepages=6000`.
 
@@ -86,7 +155,8 @@ Max duplicator index: 2017
 
 ### [Scott list bubble sort](scott-bubble-sort.c)
 
-Description: Performes a bubble sort on a Scott-encoded list of 300 cells, then sums all the cells up.
+Description: Performes a bubble sort on a Scott-encoded list of 300 cells, then sums all the cells
+up.
 
 ```
 Benchmark 1: ./scott-bubble-sort
@@ -114,7 +184,8 @@ Max duplicator index: 5672
 
 ### [Scott list insertion sort](scott-insertion-sort.c)
 
-Description: Performes an insertion sort on a Scott-encoded list of 1000 cells, then sums all the cells up.
+Description: Performes an insertion sort on a Scott-encoded list of 1000 cells, then sums all the
+cells up.
 
 ```
 Benchmark 1: ./scott-insertion-sort
@@ -142,7 +213,8 @@ Max duplicator index: 0
 
 ### [Scott list merge sort](scott-merge-sort.c)
 
-Description: Performes a merge sort on a Scott-encoded list of 1000 cells, then sums all the cells up.
+Description: Performes a merge sort on a Scott-encoded list of 1000 cells, then sums all the cells
+up.
 
 ```
 Benchmark 1: ./scott-merge-sort
@@ -170,7 +242,8 @@ Max duplicator index: 11676
 
 ### [Scott list quicksort](scott-quicksort.c)
 
-Description: Performes a quicksort on a Scott-encoded list of 1000 cells, then sums all the cells up.
+Description: Performes a quicksort on a Scott-encoded list of 1000 cells, then sums all the cells
+up.
 
 ```
 Benchmark 1: ./scott-quicksort
