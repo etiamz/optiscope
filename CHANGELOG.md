@@ -13,7 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Optimization: extrude delimiters over operators without a heuristic guard; zero-delimiter absorption supersedes it.
+ - Optimization:
+   - Extrude delimiters over operators without a heuristic guard; zero-delimiter absorption supersedes it.
+   - Prioritize annihilation of matching duplicators during garbage collection to save rewrite counts.
 
 ## 2.2.0 - 2026-05-29
 

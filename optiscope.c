@@ -2893,6 +2893,27 @@ gc_step(
                 connect_ports(points_to, shares_with);
                 free_node(graph, f);
                 free_node(graph, g);
+            } else if (
+                shared.ports[-1] == g.ports[-1] &&
+                points_to == &shared.ports[0]) {
+                // Cancel the matching fans now, forcing the reducer to performe
+                // a full rescan from the root, if needed.
+                if (DECODE_PENDING_BIT(shared.ports[0])) {
+                    graph->rescan = true;
+                }
+                connect_ports(
+                    DECODE_ADDRESS(g.ports[1]),
+                    DECODE_ADDRESS(shared.ports[1]));
+                connect_ports(
+                    DECODE_ADDRESS(g.ports[2]),
+                    DECODE_ADDRESS(shared.ports[2]));
+                free_node(graph, g);
+                free_node(graph, shared);
+                focus_on(&graph->gc_focus, f);
+#ifdef OPTISCOPE_ENABLE_STATS
+                graph->ninteractions++;
+                graph->nduplicator_itrs++;
+#endif
             } else {
                 struct node replacement = alloc_node(
                     graph,
