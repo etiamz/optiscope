@@ -51,8 +51,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //   Use 2 MB huge pages for the memory pools (improves performance; requires
 //   Linux).
 // - `OPTISCOPE_DISABLE_DELIMITER_COMPRESSION`
-//   Disable static & dynamic run-length encoding of chained delimiters;
+//   Disable static & dynamic run-length encoding of same-index delimiters;
 //   requires `OPTISCOPE_DISABLE_DELIMITER_SCHEDULING`.
+// - `OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION`
+//   Disable absorbing a positive-indexed delimiter into an adjacent
+//   zero-indexed delimiter when the positive index does not exceed the zero
+//   delimiter's multiplicity.
 // - `OPTISCOPE_DISABLE_DELIMITER_SCHEDULING`
 //   Disable barrier nodes that prioritize delimiter compression.
 // - `OPTISCOPE_DISABLE_DELIMITER_EXTRUSION`

@@ -25,15 +25,17 @@ for b in "" "-DOPTISCOPE_DISABLE_DELIMITER_SCHEDULING"; do
 for c in "" "-DOPTISCOPE_DISABLE_DELIMITER_EXTRUSION"; do
 for d in "" "-DOPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS"; do
 for e in "" "-DOPTISCOPE_DISABLE_SEGMENTATION"; do
+for f in "" "-DOPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION"; do
     if [ -n "$d" ] && [ -z "$e" ]; then continue; fi
     if [ -n "$a" ] && [ -z "$b" ]; then continue; fi
     if [ "$first" -eq 0 ]; then echo ""; fi
     first=0
-    extra=$(echo $a $b $c $d $e)
+    extra=$(echo $a $b $c $d $e $f)
     if [ -z "$extra" ]; then echo "<empty>"; else echo "$extra"; fi
     $CC tests.c optiscope.c -o tests $options $extra
     ./tests
     rm tests
+done
 done
 done
 done

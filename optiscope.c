@@ -3914,7 +3914,8 @@ barrier_condition(const struct node f, const struct node g) {
 
 #endif // OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
 
-#ifndef OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
+#if !defined(OPTISCOPE_DISABLE_DELIMITER_COMPRESSION) ||                       \
+    !defined(OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION)
 
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
@@ -3927,7 +3928,6 @@ merge_delimiter(
     XASSERT(g.ports);
     XASSERT(IS_DELIMITER(f.ports[-1]));
     XASSERT(IS_DELIMITER(g.ports[-1]));
-    XASSERT(f.ports[-1] == g.ports[-1]);
     XASSERT(DECODE_ADDRESS(f.ports[0]) == &g.ports[1]);
 
     g.ports[2] = bump_multiplicity(g.ports[2], f.ports[2]);
@@ -3935,7 +3935,7 @@ merge_delimiter(
     free_node(graph, f);
 }
 
-#endif // OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
+#endif
 
 #ifndef OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
 
@@ -3953,16 +3953,6 @@ try_extrude(
     uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
 
     if (1 != DECODE_OFFSET_METADATA(*points_to)) { return false; }
-
-    // A heuristic: blocke extrusion of a zero-indexed delimiter when another
-    // delimiter points to its auxiliary port.
-    if (SYMBOL_DELIMITER(UINT64_C(0)) == f.ports[-1]) {
-        const struct node aux = follow_port(f, 1);
-        if (IS_DELIMITER(aux.ports[-1]) &&
-            DECODE_ADDRESS(aux.ports[0]) == &f.ports[1]) {
-            return false;
-        }
-    }
 
     switch (g.ports[-1]) {
     case SYMBOL_UNARY_CALL:
@@ -4171,8 +4161,20 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
 
     const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
+#if !defined(OPTISCOPE_DISABLE_DELIMITER_COMPRESSION) ||                       \
+    !defined(OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION)
+    if (false
 #ifndef OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
-    if (fsym == gsym && DECODE_ADDRESS(f.ports[0]) == &g.ports[1]) {
+        || (fsym == gsym && //
+            DECODE_ADDRESS(f.ports[0]) == &g.ports[1])
+#endif
+#ifndef OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION
+        || (gsym == SYMBOL_DELIMITER(UINT64_C(0)) && //
+            SYMBOL_DELIMITER(UINT64_C(0)) < fsym &&  //
+            SYMBOL_INDEX(fsym) <= g.ports[2] &&      //
+            DECODE_ADDRESS(f.ports[0]) == &g.ports[1])
+#endif
+    ) {
         REWRITE(graph, f, g, nmergings, { merge_delimiter(graph, f, g); });
         return REDUCE_POP;
     }
@@ -4181,10 +4183,13 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
     if (!DECODE_CLOSEDNESS_BIT(g.ports[0])) {
     } else if (points_to(g, f)) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
+        INTERACTION(graph, f, g, REDUCE_POP, { //
+            absorb_delimiter(graph, f, g);
+        });
     } else if (is_operator_symbol(gsym)) {
-        REWRITE(graph, f, g, nextrusions, { remove_delimiter(graph, f, g); });
+        REWRITE(graph, f, g, nextrusions, { //
+            remove_delimiter(graph, f, g);
+        });
         return REDUCE_POP;
     }
 #endif
