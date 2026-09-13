@@ -1613,6 +1613,8 @@ struct context {
     uint64_t ninteractions, nbetas;
     // The numbers of all interactions involving duplicators/delimiters.
     uint64_t nduplicator_itrs, ndelimiter_itrs;
+    // The number of uncategorized interactions (not reported).
+    uint64_t nthrowaway;
     // The numbers of all non-interaction graph rewrites.
     uint64_t nmergings, nextrusions, ngc;
     // The additional bookkeeping statistics.
@@ -3685,129 +3687,6 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
 
 #endif // OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
 
-// Specialized Annihilation Helpers
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-#define annihilate_dup_gc_dup(graph, f, g, keep, discard)                      \
-    do {                                                                       \
-        connect_ports(                                                         \
-            DECODE_ADDRESS(f.ports[(keep)]), DECODE_ADDRESS(g.ports[1]));      \
-        gc(graph, DECODE_ADDRESS(f.ports[(discard)]));                         \
-        free_node(graph, f);                                                   \
-        free_node(graph, g);                                                   \
-    } while (0)
-
-#define annihilate_gc_dup_dup(graph, f, g, keep, discard)                      \
-    do {                                                                       \
-        connect_ports(                                                         \
-            DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[(keep)]));      \
-        gc(graph, DECODE_ADDRESS(g.ports[(discard)]));                         \
-        free_node(graph, f);                                                   \
-        free_node(graph, g);                                                   \
-    } while (0)
-
-#define gc_both_directions(graph, f, g)                                        \
-    do {                                                                       \
-        gc(graph, DECODE_ADDRESS(f.ports[1]));                                 \
-        gc(graph, DECODE_ADDRESS(g.ports[1]));                                 \
-        free_node(graph, f);                                                   \
-        free_node(graph, g);                                                   \
-    } while (0)
-
-#define annihilate_delimiter(graph, survivor, deceased)                        \
-    do {                                                                       \
-        survivor.ports[2] -= deceased.ports[2];                                \
-        connect_ports(&survivor.ports[0], DECODE_ADDRESS(deceased.ports[1]));  \
-        free_node(graph, deceased);                                            \
-    } while (0)
-
-#define absorb_delimiter(graph, f, g)                                          \
-    do {                                                                       \
-        connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));                \
-        free_node(graph, f);                                                   \
-    } while (0)
-
-#define remove_delimiter(graph, f, g)                                          \
-    do {                                                                       \
-        connect_ports(&g.ports[1], DECODE_ADDRESS(f.ports[1]));                \
-        free_node(graph, f);                                                   \
-    } while (0)
-
-// Specialized Commutation Helpers
-// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-#define commute_gc_dup_lam(graph, f, g)                                        \
-    do {                                                                       \
-        f.ports[2] = bump_raw_index(f.ports[2], 1);                            \
-        new_duplicator_index(graph, f.ports[2]);                               \
-        commute_2_3_helper(graph, f, g);                                       \
-    } while (0)
-
-#define commute_gc_dup_gc_lam(graph, f, g)                                     \
-    do {                                                                       \
-        f.ports[2] = bump_raw_index(f.ports[2], 1);                            \
-        new_duplicator_index(graph, f.ports[2]);                               \
-        commute_2_2_helper(graph, f, g);                                       \
-    } while (0)
-
-#define commute_gc_dup_del(graph, f, g)                                        \
-    do {                                                                       \
-        if (f.ports[2] >= SYMBOL_INDEX(g.ports[-1])) {                         \
-            f.ports[2] = bump_raw_index(f.ports[2], g.ports[2]);               \
-            new_duplicator_index(graph, f.ports[2]);                           \
-        }                                                                      \
-        commute_2_2_helper(graph, f, g);                                       \
-    } while (0)
-
-#define commute_dup_lam(graph, f, g)                                           \
-    do {                                                                       \
-        f.ports[-1] = bump_index(f.ports[-1], 1);                              \
-        new_duplicator_index(graph, SYMBOL_INDEX(f.ports[-1]));                \
-        commute_3_3_helper(graph, f, g);                                       \
-    } while (0)
-
-#define commute_dup_gc_lam(graph, f, g)                                        \
-    do {                                                                       \
-        f.ports[-1] = bump_index(f.ports[-1], 1);                              \
-        new_duplicator_index(graph, SYMBOL_INDEX(f.ports[-1]));                \
-        commute_3_2_helper(graph, f, g);                                       \
-    } while (0)
-
-#define commute_dup_del(graph, f, g)                                           \
-    do {                                                                       \
-        if (SYMBOL_INDEX(f.ports[-1]) >= SYMBOL_INDEX(g.ports[-1])) {          \
-            f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);                 \
-            new_duplicator_index(graph, SYMBOL_INDEX(f.ports[-1]));            \
-        }                                                                      \
-        commute_3_2_helper(graph, f, g);                                       \
-    } while (0)
-
-#define commute_del_lam(graph, f, g)                                           \
-    do {                                                                       \
-        f.ports[-1] = bump_index(f.ports[-1], 1);                              \
-        new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));                 \
-        commute_2_3_helper(graph, f, g);                                       \
-    } while (0)
-
-#define commute_del_gc_lam(graph, f, g)                                        \
-    do {                                                                       \
-        f.ports[-1] = bump_index(f.ports[-1], 1);                              \
-        new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));                 \
-        commute_2_2_helper(graph, f, g);                                       \
-    } while (0)
-
-#define commute_del_del(graph, f, g)                                           \
-    do {                                                                       \
-        if (f.ports[-1] > g.ports[-1]) {                                       \
-            f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);                 \
-            new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));             \
-        } else {                                                               \
-            g.ports[-1] = bump_index(g.ports[-1], f.ports[2]);                 \
-            new_delimiter_index(graph, SYMBOL_INDEX(g.ports[-1]));             \
-        }                                                                      \
-        commute_2_2_helper(graph, f, g);                                       \
-    } while (0)
-
 // Interaction Rules per Operator Type
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -3878,10 +3757,11 @@ enum reduce_action {
 #define NREWRITES_PLUS_PLUS(graph, r)  ((void)0)
 #endif
 
-#define INTERACTION(graph, f, g, action, ...)                                  \
+#define INTERACTION(graph, f, g, r, action, ...)                               \
     do {                                                                       \
         debug_rewrite(__func__, (graph), (f), (g));                            \
         do __VA_ARGS__ while (false);                                          \
+        NREWRITES_PLUS_PLUS(graph, r);                                         \
         NINTERACTIONS_PLUS_PLUS(graph);                                        \
         return (action);                                                       \
     } while (false)
@@ -3913,6 +3793,18 @@ barrier_condition(const struct node f, const struct node g) {
 }
 
 #endif // OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+
+COMPILER_NONNULL(1) COMPILER_HOT //
+static void
+remove_delimiter(struct context *const restrict graph, const struct node f) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(IS_DELIMITER(f.ports[-1]));
+
+    uint64_t *const target = DECODE_ADDRESS(f.ports[0]);
+    connect_ports(target, DECODE_ADDRESS(f.ports[1]));
+    free_node(graph, f);
+}
 
 #if !defined(OPTISCOPE_DISABLE_DELIMITER_COMPRESSION) ||                       \
     !defined(OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION)
@@ -3977,284 +3869,30 @@ try_extrude(
 
 #endif // OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
 
-CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
+CONTROL_FUNCTION(interact_with_root, graph, f, g) {
     assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    XASSERT(IS_GC_DUPLICATOR(f.ports[-1]));
+    XASSERT(SYMBOL_ROOT == f.ports[-1]);
 
-    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
+    const uint64_t gsym = g.ports[-1];
 
     if (!points_to(g, f)) { return REDUCE_PUSH; }
 
     switch (gsym) {
     case SYMBOL_LAMBDA:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_gc_dup_lam(graph, f, g); });
-        break;
+    case SYMBOL_IDENTITY_LAMBDA:
     case SYMBOL_GC_LAMBDA:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_gc_dup_gc_lam(graph, f, g); });
-        break;
-    case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
-        break;
-    case SYMBOL_GC_DUPLICATOR_LEFT:
-    case SYMBOL_GC_DUPLICATOR_RIGHT:
-        if (f.ports[2] != g.ports[2]) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
-        } else if (fsym == gsym) {
-            INTERACTION(graph, f, g, REDUCE_POP, {
-                annihilate_2_2_helper(graph, f, g);
-            });
-        } else {
-            INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
-                gc_both_directions(graph, f, g);
-            });
-        }
-        break;
-#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+    case SYMBOL_CELL:
+    case SYMBOL_PRINTOUT:
+        XASSERT(IS_INTERFACE_SYMBOL(gsym));
+        return REDUCE_STOP;
     case SYMBOL_DELIMITER(UINT64_C(0)):
-        if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
-            break;
-        }
-        goto delimiter;
-#endif
-    case SYMBOL_QLAMBDA:
-    case SYMBOL_READBACK:
-    case SYMBOL_QLAMBDA_PRINTER:
-    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
-        break;
-    case SYMBOL_QAPPLICATOR:
-    case SYMBOL_MAPPLICATOR:
-    case SYMBOL_QAPPLICATOR_PRINTER:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
-        break;
-    case SYMBOL_CELL:
-    case SYMBOL_IDENTITY_LAMBDA:
-    case SYMBOL_QVARIABLE:
-    case SYMBOL_PRINTOUT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_1_helper(graph, f, g); });
-        break;
-    default:
-        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
-    duplicator:
-        if (f.ports[2] != SYMBOL_INDEX(gsym)) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
-        } else if (fsym == SYMBOL_GC_DUPLICATOR_LEFT) {
-            INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
-                annihilate_gc_dup_dup(graph, f, g, 2, 1);
-            });
-        } else {
-            INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
-                annihilate_gc_dup_dup(graph, f, g, 1, 2);
-            });
-        }
-        break;
-    delimiter:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, f, g); });
-        break;
-    }
-
-    return REDUCE_POP;
-}
-
-CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
-    assert(graph);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-    XASSERT(IS_DUPLICATOR(f.ports[-1]));
-
-    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
-
-    if (!points_to(g, f)) { return REDUCE_PUSH; }
-
-    switch (gsym) {
-    case SYMBOL_LAMBDA:
-        INTERACTION(graph, f, g, REDUCE_POP, { commute_dup_lam(graph, f, g); });
-        break;
-    case SYMBOL_GC_LAMBDA:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_dup_gc_lam(graph, f, g); });
-        break;
-    case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
-        break;
-    case SYMBOL_GC_DUPLICATOR_LEFT:
-    case SYMBOL_GC_DUPLICATOR_RIGHT:
-        if (SYMBOL_INDEX(fsym) != g.ports[2]) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
-        } else if (SYMBOL_GC_DUPLICATOR_LEFT == gsym) {
-            INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
-                annihilate_dup_gc_dup(graph, f, g, 2, 1);
-            });
-        } else {
-            INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
-                annihilate_dup_gc_dup(graph, f, g, 1, 2);
-            });
-        }
-        break;
-#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
-    case SYMBOL_DELIMITER(UINT64_C(0)):
-        if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
-            break;
-        }
-        goto delimiter;
-#endif
-    case SYMBOL_QLAMBDA:
-    case SYMBOL_READBACK:
-    case SYMBOL_QLAMBDA_PRINTER:
-    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
-        break;
-    case SYMBOL_QAPPLICATOR:
-    case SYMBOL_MAPPLICATOR:
-    case SYMBOL_QAPPLICATOR_PRINTER:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
-        break;
-    case SYMBOL_CELL:
-    case SYMBOL_IDENTITY_LAMBDA:
-    case SYMBOL_QVARIABLE:
-    case SYMBOL_PRINTOUT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_1_helper(graph, f, g); });
-        break;
-    default:
-        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
-    duplicator:
-        if (fsym == gsym) {
-            INTERACTION(graph, f, g, REDUCE_POP, {
-                annihilate_3_3_helper(graph, f, g);
-            });
-        } else {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
-        }
-        break;
-    delimiter:
-        INTERACTION(graph, f, g, REDUCE_POP, { commute_dup_del(graph, f, g); });
-        break;
-    }
-
-    return REDUCE_POP;
-}
-
-CONTROL_FUNCTION(interact_with_del, graph, f, g) {
-    assert(graph);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-    XASSERT(IS_DELIMITER(f.ports[-1]));
-
-    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
-
-#if !defined(OPTISCOPE_DISABLE_DELIMITER_COMPRESSION) ||                       \
-    !defined(OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION)
-    if (false
-#ifndef OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
-        || (fsym == gsym && //
-            DECODE_ADDRESS(f.ports[0]) == &g.ports[1])
-#endif
-#ifndef OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION
-        || (gsym == SYMBOL_DELIMITER(UINT64_C(0)) && //
-            SYMBOL_DELIMITER(UINT64_C(0)) < fsym &&  //
-            SYMBOL_INDEX(fsym) <= g.ports[2] &&      //
-            DECODE_ADDRESS(f.ports[0]) == &g.ports[1])
-#endif
-    ) {
-        REWRITE(graph, f, g, nmergings, { merge_delimiter(graph, f, g); });
-        return REDUCE_POP;
-    }
-#endif
-
-#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
-    if (!DECODE_CLOSEDNESS_BIT(g.ports[0])) {
-    } else if (points_to(g, f)) {
-        INTERACTION(graph, f, g, REDUCE_POP, { //
-            absorb_delimiter(graph, f, g);
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            commute_1_2_helper(graph, f, g);
         });
-    } else if (is_operator_symbol(gsym)) {
-        REWRITE(graph, f, g, nextrusions, { //
-            remove_delimiter(graph, f, g);
-        });
-        return REDUCE_POP;
+    default: COMPILER_UNREACHABLE();
     }
-#endif
-
-#ifndef OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
-    if (try_extrude(graph, f, g)) { return REDUCE_POP; }
-#endif
-
-    if (!points_to(g, f)) { return REDUCE_PUSH; }
-
-    switch (gsym) {
-    case SYMBOL_CELL:
-    case SYMBOL_IDENTITY_LAMBDA:
-    case SYMBOL_REFERENCE:
-    case SYMBOL_QVARIABLE:
-    case SYMBOL_PRINTOUT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { absorb_delimiter(graph, f, g); });
-        break;
-    case SYMBOL_LAMBDA:
-        INTERACTION(graph, f, g, REDUCE_POP, { commute_del_lam(graph, f, g); });
-        break;
-    case SYMBOL_GC_LAMBDA:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_del_gc_lam(graph, f, g); });
-        break;
-    case SYMBOL_QLAMBDA:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
-        break;
-    case SYMBOL_QAPPLICATOR:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
-        break;
-    case SYMBOL_GC_DUPLICATOR_LEFT:
-    case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_gc_dup_del(graph, g, f); });
-        break;
-    default:
-        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
-    duplicator:
-        INTERACTION(graph, f, g, REDUCE_POP, { commute_dup_del(graph, g, f); });
-        break;
-    delimiter:
-        if (fsym != gsym) {
-            INTERACTION(
-                graph, f, g, REDUCE_POP, { commute_del_del(graph, f, g); });
-        } else if (f.ports[2] == g.ports[2]) {
-            INTERACTION(graph, f, g, REDUCE_POP, {
-                annihilate_2_2_helper(graph, f, g);
-            });
-        } else if (f.ports[2] > g.ports[2]) {
-            INTERACTION(graph, f, g, REDUCE_POP, {
-                annihilate_delimiter(graph, f, g);
-            });
-        } else {
-            INTERACTION(graph, f, g, REDUCE_POP, {
-                annihilate_delimiter(graph, g, f);
-            });
-        }
-        break;
-    }
-
-    return REDUCE_POP;
 }
 
 CONTROL_FUNCTION(interact_with_app, graph, f, g) {
@@ -4277,56 +3915,64 @@ CONTROL_FUNCTION(interact_with_app, graph, f, g) {
         if (DECODE_CLOSEDNESS_BIT(g.ports[0])) {
 #ifndef OPTISCOPE_DISABLE_SEGMENTATION
             if (DECODE_CLOSEDNESS_BIT(h.ports[0])) {
-                INTERACTION(graph, f, g, REDUCE_POP, { beta_cx(graph, f, g); });
+                INTERACTION(
+                    graph, f, g, nbetas, REDUCE_POP, { beta_cx(graph, f, g); });
             } else
 #endif
             {
-                INTERACTION(graph, f, g, REDUCE_POP, { beta_c(graph, f, g); });
+                INTERACTION(
+                    graph, f, g, nbetas, REDUCE_POP, { beta_c(graph, f, g); });
             }
         } else
 #endif
         {
-            INTERACTION(graph, f, g, REDUCE_POP, { beta(graph, f, g); });
+            INTERACTION(
+                graph, f, g, nbetas, REDUCE_POP, { beta(graph, f, g); });
         }
         break;
     case SYMBOL_IDENTITY_LAMBDA:
-        INTERACTION(graph, f, g, REDUCE_POP, { identity_beta(graph, f, g); });
+        INTERACTION(
+            graph, f, g, nbetas, REDUCE_POP, { identity_beta(graph, f, g); });
         break;
     case SYMBOL_GC_LAMBDA:
 #ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
         if (DECODE_CLOSEDNESS_BIT(g.ports[0])) {
 #ifndef OPTISCOPE_DISABLE_SEGMENTATION
             if (DECODE_CLOSEDNESS_BIT(h.ports[0])) {
-                INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+                INTERACTION(graph, f, g, nbetas, REDUCE_POP_WITH_CHECK, {
                     gc_beta_cx(graph, f, g);
                 });
             } else
 #endif
             {
-                INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+                INTERACTION(graph, f, g, nbetas, REDUCE_POP_WITH_CHECK, {
                     gc_beta_c(graph, f, g);
                 });
             }
         } else
 #endif
         {
-            INTERACTION(
-                graph, f, g, REDUCE_POP_WITH_CHECK, { gc_beta(graph, f, g); });
+            INTERACTION(graph, f, g, nbetas, REDUCE_POP_WITH_CHECK, {
+                gc_beta(graph, f, g);
+            });
         }
         break;
     case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+        INTERACTION(
+            graph, f, g, nthrowaway, REDUCE_LOOP, { do_expand(graph, g, f); });
         break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_3_2_helper(graph, f, g);
+        });
         break;
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
             break;
         }
         goto delimiter;
@@ -4334,12 +3980,14 @@ CONTROL_FUNCTION(interact_with_app, graph, f, g) {
     default:
         GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_3_3_helper(graph, f, g);
+        });
         break;
     delimiter:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_3_2_helper(graph, f, g);
+        });
         break;
     }
 
@@ -4358,21 +4006,26 @@ CONTROL_FUNCTION(interact_with_ucall, graph, f, g) {
 
     switch (gsym) {
     case SYMBOL_CELL:
-        INTERACTION(graph, f, g, REDUCE_POP, { do_unary_call(graph, f, g); });
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+            do_unary_call(graph, f, g);
+        });
         break;
     case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+        INTERACTION(
+            graph, f, g, nthrowaway, REDUCE_LOOP, { do_expand(graph, g, f); });
         break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
         break;
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
             break;
         }
         goto delimiter;
@@ -4380,12 +4033,14 @@ CONTROL_FUNCTION(interact_with_ucall, graph, f, g) {
     default:
         GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_3_helper(graph, f, g);
+        });
         break;
     delimiter:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
         break;
     }
 
@@ -4404,21 +4059,26 @@ CONTROL_FUNCTION(interact_with_bcall, graph, f, g) {
 
     switch (gsym) {
     case SYMBOL_CELL:
-        INTERACTION(graph, f, g, REDUCE_POP, { do_binary_call(graph, f, g); });
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+            do_binary_call(graph, f, g);
+        });
         break;
     case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+        INTERACTION(
+            graph, f, g, nthrowaway, REDUCE_LOOP, { do_expand(graph, g, f); });
         break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_3_2_helper(graph, f, g);
+        });
         break;
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
             break;
         }
         goto delimiter;
@@ -4426,12 +4086,14 @@ CONTROL_FUNCTION(interact_with_bcall, graph, f, g) {
     default:
         GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_3_3_helper(graph, f, g);
+        });
         break;
     delimiter:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_3_2_helper(graph, f, g);
+        });
         break;
     }
 
@@ -4450,22 +4112,26 @@ CONTROL_FUNCTION(interact_with_bcall_aux, graph, f, g) {
 
     switch (gsym) {
     case SYMBOL_CELL:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { do_binary_call_aux(graph, f, g); });
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+            do_binary_call_aux(graph, f, g);
+        });
         break;
     case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+        INTERACTION(
+            graph, f, g, nthrowaway, REDUCE_LOOP, { do_expand(graph, g, f); });
         break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
         break;
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
             break;
         }
         goto delimiter;
@@ -4473,12 +4139,14 @@ CONTROL_FUNCTION(interact_with_bcall_aux, graph, f, g) {
     default:
         GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_3_helper(graph, f, g);
+        });
         break;
     delimiter:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
         break;
     }
 
@@ -4497,23 +4165,26 @@ CONTROL_FUNCTION(interact_with_ite, graph, f, g) {
 
     switch (gsym) {
     case SYMBOL_CELL:
-        INTERACTION(graph, f, g, REDUCE_POP_WITH_CHECK, {
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP_WITH_CHECK, {
             do_if_then_else(graph, f, g);
         });
         break;
     case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+        INTERACTION(
+            graph, f, g, nthrowaway, REDUCE_LOOP, { do_expand(graph, g, f); });
         break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_4_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_4_2_helper(graph, f, g);
+        });
         break;
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
             break;
         }
         goto delimiter;
@@ -4521,12 +4192,14 @@ CONTROL_FUNCTION(interact_with_ite, graph, f, g) {
     default:
         GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_4_3_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_4_3_helper(graph, f, g);
+        });
         break;
     delimiter:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_4_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_4_2_helper(graph, f, g);
+        });
         break;
     }
 
@@ -4543,63 +4216,156 @@ CONTROL_FUNCTION(interact_with_barr, graph, f, g) {
 
     const uint64_t gsym = g.ports[-1];
 
-    if (!points_to(g, f)) {
-        return REDUCE_PUSH;
-    } else if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) {
-        INTERACTION(graph, f, g, REDUCE_LOOP, { barrier(graph, f, g); });
-    } else {
-        INTERACTION(graph, f, g, REDUCE_POP, { unbarrier(graph, f, g); });
+    if (!points_to(g, f)) { return REDUCE_PUSH; }
+
+    switch (gsym) {
+    case SYMBOL_DELIMITER(UINT64_C(0)):
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            barrier(graph, f, g);
+        });
+        break;
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT: goto duplicator;
+    default:
+        if (IS_DUPLICATOR((gsym))) {
+            goto duplicator;
+        } else if (IS_DELIMITER(gsym)) {
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+                unbarrier(graph, f, g);
+            });
+            break;
+        } else {
+            INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+                unbarrier(graph, f, g);
+            });
+            break;
+        }
+    duplicator:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            unbarrier(graph, f, g);
+        });
+        break;
     }
+
+    return REDUCE_POP;
 }
 
 #endif // OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
 
-#ifndef OPTISCOPE_DISABLE_SEGMENTATION
-
-CONTROL_FUNCTION(interact_with_seg, graph, f, g) {
+CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
     assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    XASSERT(SYMBOL_SEGMENT == f.ports[-1]);
+    XASSERT(IS_GC_DUPLICATOR(f.ports[-1]));
 
-    const uint64_t gsym = g.ports[-1];
+    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
 
-    if (!points_to(g, f)) {
-        return REDUCE_PUSH;
-    } else if (IS_GC_DUPLICATOR(gsym)) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
-    } else if (IS_DUPLICATOR(gsym)) {
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
-    } else if (IS_DELIMITER(gsym)) {
-        INTERACTION(
-            graph, f, g, REDUCE_LOOP, { absorb_delimiter(graph, g, f); });
-    } else {
-        INTERACTION(graph, f, g, REDUCE_POP, { enclose(graph, f, g); });
+    if (!points_to(g, f)) { return REDUCE_PUSH; }
+
+    switch (gsym) {
+    case SYMBOL_LAMBDA:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            f.ports[2] = bump_raw_index(f.ports[2], 1);
+            new_duplicator_index(graph, f.ports[2]);
+            commute_2_3_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_GC_LAMBDA:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            f.ports[2] = bump_raw_index(f.ports[2], 1);
+            new_duplicator_index(graph, f.ports[2]);
+            commute_2_2_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_REFERENCE:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_LOOP, {
+            do_expand(graph, g, f);
+        });
+        break;
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
+        if (f.ports[2] != g.ports[2]) {
+            INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+                commute_2_2_helper(graph, f, g);
+            });
+        } else if (fsym == gsym) {
+            INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+                annihilate_2_2_helper(graph, f, g);
+            });
+        } else {
+            INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP_WITH_CHECK, {
+                gc(graph, DECODE_ADDRESS(f.ports[1]));
+                gc(graph, DECODE_ADDRESS(g.ports[1]));
+                free_node(graph, f);
+                free_node(graph, g);
+            });
+        }
+        break;
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+    case SYMBOL_DELIMITER(UINT64_C(0)):
+        if (barrier_condition(f, g)) {
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
+            break;
+        }
+        goto delimiter;
+#endif
+    case SYMBOL_QLAMBDA:
+    case SYMBOL_READBACK:
+    case SYMBOL_QLAMBDA_PRINTER:
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_QAPPLICATOR:
+    case SYMBOL_MAPPLICATOR:
+    case SYMBOL_QAPPLICATOR_PRINTER:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_3_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_CELL:
+    case SYMBOL_IDENTITY_LAMBDA:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_PRINTOUT:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_1_helper(graph, f, g);
+        });
+        break;
+    default:
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
+    duplicator:
+        if (f.ports[2] != SYMBOL_INDEX(gsym)) {
+            INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+                commute_2_3_helper(graph, f, g);
+            });
+        } else {
+            int keep, discard;
+            if (SYMBOL_GC_DUPLICATOR_LEFT == fsym) keep = 2, discard = 1;
+            else keep = 1, discard = 2;
+            INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP_WITH_CHECK, {
+                connect_ports(
+                    DECODE_ADDRESS(f.ports[1]), DECODE_ADDRESS(g.ports[keep]));
+                gc(graph, DECODE_ADDRESS(g.ports[discard]));
+                free_node(graph, f);
+                free_node(graph, g);
+            });
+        }
+        break;
+    delimiter:
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            if (f.ports[2] >= SYMBOL_INDEX(g.ports[-1])) {
+                f.ports[2] = bump_raw_index(f.ports[2], g.ports[2]);
+                new_duplicator_index(graph, f.ports[2]);
+            }
+            commute_2_2_helper(graph, f, g);
+        });
+        break;
     }
-}
 
-#endif // OPTISCOPE_DISABLE_SEGMENTATION
-
-CONTROL_FUNCTION(interact_with_root, graph, f, g) {
-    assert(graph);
-    XASSERT(f.ports);
-    XASSERT(g.ports);
-    XASSERT(SYMBOL_ROOT == f.ports[-1]);
-
-    const uint64_t gsym = g.ports[-1];
-
-    if (!points_to(g, f)) {
-        return REDUCE_PUSH;
-    } else if (IS_INTERFACE_SYMBOL(gsym)) {
-        return REDUCE_STOP;
-    } else if (IS_DELIMITER(gsym)) {
-        INTERACTION(
-            graph, f, g, REDUCE_LOOP, { commute_1_2_helper(graph, f, g); });
-    } else {
-        COMPILER_UNREACHABLE();
-    }
+    return REDUCE_POP;
 }
 
 CONTROL_FUNCTION(interact_with_mapp, graph, f, g) {
@@ -4614,25 +4380,32 @@ CONTROL_FUNCTION(interact_with_mapp, graph, f, g) {
 
     switch (gsym) {
     case SYMBOL_QLAMBDA:
-        INTERACTION(graph, f, g, REDUCE_POP, { do_meta_beta(graph, f, g); });
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+            do_meta_beta(graph, f, g);
+        });
         break;
     case SYMBOL_QAPPLICATOR:
     case SYMBOL_QVARIABLE:
-        INTERACTION(graph, f, g, REDUCE_POP, { do_meta_quote(graph, f, g); });
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+            do_meta_quote(graph, f, g);
+        });
         break;
     case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+        INTERACTION(
+            graph, f, g, nthrowaway, REDUCE_LOOP, { do_expand(graph, g, f); });
         break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_3_2_helper(graph, f, g);
+        });
         break;
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
             break;
         }
         goto delimiter;
@@ -4640,12 +4413,14 @@ CONTROL_FUNCTION(interact_with_mapp, graph, f, g) {
     default:
         GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_3_3_helper(graph, f, g);
+        });
         break;
     delimiter:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_3_2_helper(graph, f, g);
+        });
         break;
     }
 
@@ -4664,27 +4439,36 @@ CONTROL_FUNCTION(interact_with_rb, graph, f, g) {
 
     switch (gsym) {
     case SYMBOL_QLAMBDA:
-        INTERACTION(graph, f, g, REDUCE_POP, { do_readback_lam(graph, f, g); });
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+            do_readback_lam(graph, f, g);
+        });
         break;
     case SYMBOL_QAPPLICATOR:
-        INTERACTION(graph, f, g, REDUCE_POP, { do_readback_app(graph, f, g); });
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+            do_readback_app(graph, f, g);
+        });
         break;
     case SYMBOL_QVARIABLE:
-        INTERACTION(graph, f, g, REDUCE_POP, { do_readback_var(graph, f, g); });
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+            do_readback_var(graph, f, g);
+        });
         break;
     case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+        INTERACTION(
+            graph, f, g, nthrowaway, REDUCE_LOOP, { do_expand(graph, g, f); });
         break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
         break;
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
             break;
         }
         goto delimiter;
@@ -4692,12 +4476,14 @@ CONTROL_FUNCTION(interact_with_rb, graph, f, g) {
     default:
         GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_3_helper(graph, f, g);
+        });
         break;
     delimiter:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
         break;
     }
 
@@ -4716,21 +4502,26 @@ CONTROL_FUNCTION(interact_with_qlam_printer, graph, f, g) {
 
     switch (gsym) {
     case SYMBOL_PRINTOUT:
-        INTERACTION(graph, f, g, REDUCE_POP, { do_print_lam(graph, f, g); });
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+            do_print_lam(graph, f, g);
+        });
         break;
     case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+        INTERACTION(
+            graph, f, g, nthrowaway, REDUCE_LOOP, { do_expand(graph, g, f); });
         break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
         break;
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
             break;
         }
         goto delimiter;
@@ -4738,12 +4529,14 @@ CONTROL_FUNCTION(interact_with_qlam_printer, graph, f, g) {
     default:
         GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_3_helper(graph, f, g);
+        });
         break;
     delimiter:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
         break;
     }
 
@@ -4762,21 +4555,26 @@ CONTROL_FUNCTION(interact_with_qapp_printer, graph, f, g) {
 
     switch (gsym) {
     case SYMBOL_PRINTOUT:
-        INTERACTION(graph, f, g, REDUCE_POP, { do_print_app(graph, f, g); });
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+            do_print_app(graph, f, g);
+        });
         break;
     case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+        INTERACTION(
+            graph, f, g, nthrowaway, REDUCE_LOOP, { do_expand(graph, g, f); });
         break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_3_2_helper(graph, f, g);
+        });
         break;
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
             break;
         }
         goto delimiter;
@@ -4784,12 +4582,14 @@ CONTROL_FUNCTION(interact_with_qapp_printer, graph, f, g) {
     default:
         GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_3_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_3_3_helper(graph, f, g);
+        });
         break;
     delimiter:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_3_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_3_2_helper(graph, f, g);
+        });
         break;
     }
 
@@ -4808,22 +4608,26 @@ CONTROL_FUNCTION(interact_with_qapp_printer_aux, graph, f, g) {
 
     switch (gsym) {
     case SYMBOL_PRINTOUT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { do_print_app_aux(graph, f, g); });
+        INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
+            do_print_app_aux(graph, f, g);
+        });
         break;
     case SYMBOL_REFERENCE:
-        INTERACTION(graph, f, g, REDUCE_LOOP, { do_expand(graph, g, f); });
+        INTERACTION(
+            graph, f, g, nthrowaway, REDUCE_LOOP, { do_expand(graph, g, f); });
         break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
         break;
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(
-                graph, f, g, REDUCE_LOOP, { new_barrier(graph, f, g); });
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
             break;
         }
         goto delimiter;
@@ -4831,12 +4635,291 @@ CONTROL_FUNCTION(interact_with_qapp_printer_aux, graph, f, g) {
     default:
         GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
-        INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_3_helper(graph, f, g); });
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_3_helper(graph, f, g);
+        });
         break;
     delimiter:
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
+        break;
+    }
+
+    return REDUCE_POP;
+}
+
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
+
+CONTROL_FUNCTION(interact_with_seg, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(SYMBOL_SEGMENT == f.ports[-1]);
+
+    const uint64_t gsym = g.ports[-1];
+
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (IS_GC_DUPLICATOR(gsym)) {
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
+    } else if (IS_DUPLICATOR(gsym)) {
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_2_3_helper(graph, f, g);
+        });
+    } else if (IS_DELIMITER(gsym)) {
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            remove_delimiter(graph, g);
+        });
+    } else {
         INTERACTION(
-            graph, f, g, REDUCE_POP, { commute_2_2_helper(graph, f, g); });
+            graph, f, g, nthrowaway, REDUCE_POP, { enclose(graph, f, g); });
+    }
+}
+
+#endif // OPTISCOPE_DISABLE_SEGMENTATION
+
+CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(IS_DUPLICATOR(f.ports[-1]));
+
+    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
+
+    if (!points_to(g, f)) { return REDUCE_PUSH; }
+
+    switch (gsym) {
+    case SYMBOL_LAMBDA:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            f.ports[-1] = bump_index(f.ports[-1], 1);
+            new_duplicator_index(graph, SYMBOL_INDEX(f.ports[-1]));
+            commute_3_3_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_GC_LAMBDA:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            f.ports[-1] = bump_index(f.ports[-1], 1);
+            new_duplicator_index(graph, SYMBOL_INDEX(f.ports[-1]));
+            commute_3_2_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_REFERENCE:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_LOOP, {
+            do_expand(graph, g, f);
+        });
+        break;
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
+        if (SYMBOL_INDEX(fsym) != g.ports[2]) {
+            INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+                commute_3_2_helper(graph, f, g);
+            });
+        } else {
+            int keep, discard;
+            if (SYMBOL_GC_DUPLICATOR_LEFT == gsym) keep = 2, discard = 1;
+            else keep = 1, discard = 2;
+            INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP_WITH_CHECK, {
+                connect_ports(
+                    DECODE_ADDRESS(f.ports[keep]), DECODE_ADDRESS(g.ports[1]));
+                gc(graph, DECODE_ADDRESS(f.ports[discard]));
+                free_node(graph, f);
+                free_node(graph, g);
+            });
+        }
+        break;
+#ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+    case SYMBOL_DELIMITER(UINT64_C(0)):
+        if (barrier_condition(f, g)) {
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+                new_barrier(graph, f, g);
+            });
+            break;
+        }
+        goto delimiter;
+#endif
+    case SYMBOL_QLAMBDA:
+    case SYMBOL_READBACK:
+    case SYMBOL_QLAMBDA_PRINTER:
+    case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_3_2_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_QAPPLICATOR:
+    case SYMBOL_MAPPLICATOR:
+    case SYMBOL_QAPPLICATOR_PRINTER:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_3_3_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_CELL:
+    case SYMBOL_IDENTITY_LAMBDA:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_PRINTOUT:
+        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+            commute_3_1_helper(graph, f, g);
+        });
+        break;
+    default:
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
+    duplicator:
+        if (fsym == gsym) {
+            INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+                annihilate_3_3_helper(graph, f, g);
+            });
+        } else {
+            INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+                commute_3_3_helper(graph, f, g);
+            });
+        }
+        break;
+    delimiter:
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            if (SYMBOL_INDEX(f.ports[-1]) >= SYMBOL_INDEX(g.ports[-1])) {
+                f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
+                new_duplicator_index(graph, SYMBOL_INDEX(f.ports[-1]));
+            }
+            commute_3_2_helper(graph, f, g);
+        });
+        break;
+    }
+
+    return REDUCE_POP;
+}
+
+CONTROL_FUNCTION(interact_with_del, graph, f, g) {
+    assert(graph);
+    XASSERT(f.ports);
+    XASSERT(g.ports);
+    XASSERT(IS_DELIMITER(f.ports[-1]));
+
+    const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
+
+#if !defined(OPTISCOPE_DISABLE_DELIMITER_COMPRESSION) ||                       \
+    !defined(OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION)
+    if (false
+#ifndef OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
+        || (fsym == gsym && DECODE_ADDRESS(f.ports[0]) == &g.ports[1])
+#endif
+#ifndef OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION
+        || (SYMBOL_DELIMITER(UINT64_C(0)) == gsym && //
+            SYMBOL_DELIMITER(UINT64_C(0)) < fsym &&  //
+            SYMBOL_INDEX(fsym) <= g.ports[2] &&      //
+            DECODE_ADDRESS(f.ports[0]) == &g.ports[1])
+#endif
+    ) {
+        REWRITE(graph, f, g, nmergings, { merge_delimiter(graph, f, g); });
+        return REDUCE_POP;
+    }
+#endif
+
+#ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
+    if (!DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+    } else if (points_to(g, f)) {
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, { //
+            remove_delimiter(graph, f);
+        });
+    } else if (is_operator_symbol(gsym)) {
+        REWRITE(graph, f, g, nextrusions, { //
+            remove_delimiter(graph, f);
+        });
+        return REDUCE_POP;
+    }
+#endif
+
+#ifndef OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
+    if (try_extrude(graph, f, g)) { return REDUCE_POP; }
+#endif
+
+    if (!points_to(g, f)) { return REDUCE_PUSH; }
+
+    switch (gsym) {
+    case SYMBOL_CELL:
+    case SYMBOL_IDENTITY_LAMBDA:
+    case SYMBOL_REFERENCE:
+    case SYMBOL_QVARIABLE:
+    case SYMBOL_PRINTOUT:
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            remove_delimiter(graph, f);
+        });
+        break;
+    case SYMBOL_LAMBDA:
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            f.ports[-1] = bump_index(f.ports[-1], 1);
+            new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));
+            commute_2_3_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_GC_LAMBDA:
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            f.ports[-1] = bump_index(f.ports[-1], 1);
+            new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));
+            commute_2_2_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_QLAMBDA:
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_2_2_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_QAPPLICATOR:
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            commute_2_3_helper(graph, f, g);
+        });
+        break;
+    case SYMBOL_GC_DUPLICATOR_LEFT:
+    case SYMBOL_GC_DUPLICATOR_RIGHT:
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            if (g.ports[2] >= SYMBOL_INDEX(f.ports[-1])) {
+                g.ports[2] = bump_raw_index(g.ports[2], f.ports[2]);
+                new_duplicator_index(graph, g.ports[2]);
+            }
+            commute_2_2_helper(graph, g, f);
+        });
+        break;
+    default:
+        GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
+    duplicator:
+        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            if (SYMBOL_INDEX(g.ports[-1]) >= SYMBOL_INDEX(f.ports[-1])) {
+                g.ports[-1] = bump_index(g.ports[-1], f.ports[2]);
+                new_duplicator_index(graph, SYMBOL_INDEX(g.ports[-1]));
+            }
+            commute_3_2_helper(graph, g, f);
+        });
+        break;
+    delimiter:
+        if (fsym != gsym) {
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+                if (f.ports[-1] > g.ports[-1]) {
+                    f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
+                    new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));
+                } else {
+                    g.ports[-1] = bump_index(g.ports[-1], f.ports[2]);
+                    new_delimiter_index(graph, SYMBOL_INDEX(g.ports[-1]));
+                }
+                commute_2_2_helper(graph, f, g);
+            });
+        } else if (f.ports[2] == g.ports[2]) {
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+                annihilate_2_2_helper(graph, f, g);
+            });
+        } else if (f.ports[2] > g.ports[2]) {
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+                f.ports[2] -= g.ports[2];
+                connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
+                free_node(graph, g);
+            });
+        } else {
+            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+                g.ports[2] -= f.ports[2];
+                connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
+                free_node(graph, f);
+            });
+        }
         break;
     }
 
@@ -4870,31 +4953,14 @@ rescan:
             g = follow_port(f, 0);
             XASSERT(g.ports);
 
-            const uint64_t fsym = f.ports[-1], gsym = g.ports[-1];
-
-            (void)gsym; // `gsym` is onely needed for `OPTISCOPE_ENABLE_STATS`
-
-            // TODO: increment these counters _after_ an interaction takes
-            // place, not before.
-#ifdef OPTISCOPE_ENABLE_STATS
-            if (is_interaction(f, g)) {
-                const bool has_delimiter =
-                    IS_DELIMITER(fsym) || IS_DELIMITER(gsym);
-
-                if (has_delimiter) {
-                    graph->ndelimiter_itrs++;
-                } else if (IS_ANY_DUPLICATOR(fsym) || IS_ANY_DUPLICATOR(gsym)) {
-                    graph->nduplicator_itrs++;
-                } else if (SYMBOL_APPLICATOR == fsym && IS_ANY_LAMBDA(gsym)) {
-                    graph->nbetas++;
-                }
-            }
-#endif
+            const uint64_t fsym = f.ports[-1];
 
             enum reduce_action action = REDUCE_POP;
 
             switch (fsym) {
-            case SYMBOL_ROOT: action = interact_with_root(graph, f, g); break;
+            case SYMBOL_ROOT:
+                action = interact_with_root(graph, f, g); //
+                break;
             case SYMBOL_APPLICATOR:
                 action = interact_with_app(graph, f, g);
                 break;
@@ -4916,12 +4982,16 @@ rescan:
                 break;
 #endif
 #ifndef OPTISCOPE_DISABLE_SEGMENTATION
-            case SYMBOL_SEGMENT: action = interact_with_seg(graph, f, g); break;
+            case SYMBOL_SEGMENT:
+                action = interact_with_seg(graph, f, g); //
+                break;
 #endif
             case SYMBOL_MAPPLICATOR:
                 action = interact_with_mapp(graph, f, g);
                 break;
-            case SYMBOL_READBACK: action = interact_with_rb(graph, f, g); break;
+            case SYMBOL_READBACK:
+                action = interact_with_rb(graph, f, g); //
+                break;
             case SYMBOL_QLAMBDA_PRINTER:
                 action = interact_with_qlam_printer(graph, f, g);
                 break;
