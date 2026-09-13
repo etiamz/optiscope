@@ -1705,16 +1705,23 @@ print_stats(const struct context *const restrict graph) {
     const double compression_work =
         ((double)graph->nmergings / (double)ntotal_rewrites) * 100.0;
 
-    printf("      Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
-    printf("  Total interactions: %" PRIu64 "\n", graph->ninteractions);
-    printf("   Family reductions: %" PRIu64 "\n", graph->nbetas);
-    printf("        Sharing work: %.2f%%\n", sharing_work);
-    printf("    Bookkeeping work: %.2f%%\n", bookkeeping_work);
-    printf("             GC work: %.2f%%\n", gc_work);
-    printf("    Compression work: %.2f%%\n", compression_work);
-    printf("Max duplicator index: %" PRIu64 "\n", graph->nmax_duplicator_index);
-    printf(" Max delimiter index: %" PRIu64 "\n", graph->nmax_delimiter_index);
-    printf("     Peak node count: %" PRIu64 "\n", graph->nmax_total);
+    fprintf(stderr, "      Total rewrites: %" PRIu64 "\n", ntotal_rewrites);
+    fprintf(
+        stderr, "  Total interactions: %" PRIu64 "\n", graph->ninteractions);
+    fprintf(stderr, "   Family reductions: %" PRIu64 "\n", graph->nbetas);
+    fprintf(stderr, "        Sharing work: %.2f%%\n", sharing_work);
+    fprintf(stderr, "    Bookkeeping work: %.2f%%\n", bookkeeping_work);
+    fprintf(stderr, "             GC work: %.2f%%\n", gc_work);
+    fprintf(stderr, "    Compression work: %.2f%%\n", compression_work);
+    fprintf(
+        stderr,
+        "Max duplicator index: %" PRIu64 "\n",
+        graph->nmax_duplicator_index);
+    fprintf(
+        stderr,
+        " Max delimiter index: %" PRIu64 "\n",
+        graph->nmax_delimiter_index);
+    fprintf(stderr, "     Peak node count: %" PRIu64 "\n", graph->nmax_total);
 }
 
 #else
@@ -2859,13 +2866,10 @@ gc_step(
             if (DECODE_CLOSEDNESS_BIT(g.ports[0])) {
                 replacement.ports[0] |= REVEAL_CLOSEDNESS_BIT;
             }
-
             connect_ports(&replacement.ports[0], DECODE_ADDRESS(g.ports[0]));
             connect_ports(&replacement.ports[1], DECODE_ADDRESS(g.ports[2]));
-
             free_node(graph, f);
             free_node(graph, g);
-
             break;
         } else {
             goto commute_1_3;
@@ -2915,15 +2919,37 @@ gc_step(
                 graph->nduplicator_itrs++;
 #endif
             } else {
+                // Check if there are two annihilating delimiters on our way; if
+                // so, annihilate them & resume the erasure.
+                const struct node neighbour = follow_port(shared, 0);
+                if (IS_DELIMITER(shared.ports[-1]) &&                         //
+                    DECODE_ADDRESS(neighbour.ports[0]) == &shared.ports[0] && //
+                    shared.ports[-1] == neighbour.ports[-1] &&                //
+                    shared.ports[2] == neighbour.ports[2]) {
+                    if (DECODE_PENDING_BIT(shared.ports[0]) ||
+                        DECODE_PENDING_BIT(neighbour.ports[0])) {
+                        graph->rescan = true;
+                    }
+                    connect_ports(
+                        &g.ports[0], DECODE_ADDRESS(neighbour.ports[1]));
+                    free_node(graph, shared);
+                    free_node(graph, neighbour);
+#ifdef OPTISCOPE_ENABLE_STATS
+                    graph->ninteractions++;
+                    graph->ndelimiter_itrs++;
+#endif
+                    goto duplicator;
+                }
+
+                // Otherwise, replace this stuck configuration with an explicit
+                // GC duplicator.
                 struct node replacement = alloc_node(
                     graph,
                     1 == i ? SYMBOL_GC_DUPLICATOR_LEFT
                            : SYMBOL_GC_DUPLICATOR_RIGHT);
-
                 replacement.ports[2] = SYMBOL_INDEX(g.ports[-1]);
                 connect_ports(&replacement.ports[0], points_to);
                 connect_ports(&replacement.ports[1], shares_with);
-
                 free_node(graph, f);
                 free_node(graph, g);
             }

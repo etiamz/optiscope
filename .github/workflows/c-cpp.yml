@@ -28,6 +28,16 @@ jobs:
       - name: Run the tests
         run: ./command/test.sh
 
+      - name: Set up Python
+        if: runner.os != 'Windows'
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Run the GC regression test
+        if: runner.os != 'Windows'
+        run: ./command/test_gc.py
+
       - name: Run the examples
         if: runner.os != 'Windows'
         run: |
