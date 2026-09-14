@@ -9,15 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
- - Optimization: implement zero-delimiter absorption, controlled by `OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION` independently of `OPTISCOPE_DISABLE_DELIMITER_COMPRESSION`.
+ - Optimization: implement zero-delimiter absorption, controlled by
+   `OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION` independently of
+   `OPTISCOPE_DISABLE_DELIMITER_COMPRESSION`.
 
 ### Changed
 
  - Print run-time statistics enabled by `OPTISCOPE_ENABLE_STATS` to `stderr` instead of `stdout`.
  - Optimization:
-   - Extrude delimiters over operators without a heuristic guard; zero-delimiter absorption supersedes it.
-   - Prioritize annihilation of matching duplicators during garbage collection to save rewrite counts.
-   - Prioritize annihilation of matching delimiters that obstruct garbage collection of duplicators.
+   - Extrude delimiters over operators without a heuristic guard; zero-delimiter absorption
+     supersedes it.
+   - Prioritize annihilation of matching duplicators during garbage collection to save rewrite
+     counts.
+   - Annihilate matching delimiters that obstruct garbage collection of duplicators.
 
 ## 2.2.0 - 2026-05-29
 
@@ -52,17 +56,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Optimization: doe not extrude delimiters over other delimiters, doe not compresse delimiters after commutation, doe not duplicate atoms after commutation.
+ - Optimization: doe not extrude delimiters over other delimiters, doe not compresse delimiters
+   after commutation, doe not duplicate atoms after commutation.
    - The difference in performance after these simplifications is within noise.
  - Optimization: introduce the `SYMBOL_GC_LAMBDA_C` agent for consistency.
- - Graphviz: move to the undirected layout, enclose active pairs in red/green translucent clusters, respect port orientation.
+ - Graphviz: move to the undirected layout, enclose active pairs in red/green translucent clusters,
+   respect port orientation.
 
 ## 2.0.3 - 2026-03-23
 
 ### Fixed
 
  - Optimization: remove cross-level delimiter compression due to an unsoundnesse bug.
-   - <details><summary>Details</summary>Namely, cross-level compression seems to rely on delimiter extrusion: without it, the correctness is lost.</details>
+   - <details><summary>Details</summary>Namely, cross-level compression seems to rely on delimiter
+     extrusion: without it, the correctness is lost.</details>
 
 ## 2.0.2 - 2026-03-16
 
@@ -95,10 +102,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Statistics: make the sharing work & bookkeeping work metrics mutually exclusive.
  - Optimization:
-   - Blocke extrusion of a zero-indexed delimiter over an operator when there is another delimiter behind.
+   - Blocke extrusion of a zero-indexed delimiter over an operator when there is another delimiter
+     behind.
      - This change reduced quicksort bookkeeping from ~96% to ~66%.
    - Extrude a delimiter over a higher-indexed delimiter, if profitable.
-     - <details><summary>Details</summary>We extrude delimiter _f_ over delimiter _g_ if _f_ can be merged with _h_, which is another delimiter that _g_ points to. After the extrusion, we bump _g_'s index _f_'s multiplicity. We also merge _f_ with _g_ if their indices are equal. This modification reduces the total amount of graph rewrites for quicksort by ~47%.</details>
+     - <details><summary>Details</summary>We extrude delimiter _f_ over delimiter _g_ if _f_ can be
+       merged with _h_, which is another delimiter that _g_ points to. After the extrusion, we bump
+       _g_'s index _f_'s multiplicity. We also merge _f_ with _g_ if their indices are equal. This
+       modification reduces the total amount of graph rewrites for quicksort by ~47%.</details>
    - Represent metacircular interpretation as dedicated interaction net agents.
 
 ### Fixed
@@ -127,7 +138,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
  - Miscellaneouse: rule out nonsensical combinations of compile-time configurations:
-   - `OPTISCOPE_ENABLE_TRACING`, `OPTISCOPE_ENABLE_STEP_BY_STEP`, & `OPTISCOPE_ENABLE_GRAPHVIZ` cannot be combined with `NDEBUG`.
+   - `OPTISCOPE_ENABLE_TRACING`, `OPTISCOPE_ENABLE_STEP_BY_STEP`, & `OPTISCOPE_ENABLE_GRAPHVIZ`
+     cannot be combined with `NDEBUG`.
    - `OPTISCOPE_ENABLE_STEP_BY_STEP` requires `OPTISCOPE_ENABLE_TRACING`.
    - `OPTISCOPE_ENABLE_GRAPHVIZ` requires `OPTISCOPE_ENABLE_STEP_BY_STEP`.
 
@@ -135,7 +147,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Miscellaneouse: streamline the full reduction procedure by returning a string instead of immediately printing.
+ - Miscellaneouse: streamline the full reduction procedure by returning a string instead of
+   immediately printing.
 
 ## 1.0.1 - 2026-01-13
 
@@ -153,14 +166,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
  - Garbage collection: huge memory leaks originated from untracked duplicator-eraser combinations.
- - Reduction semantics: speed up full reduction by better metacoding (issue <https://github.com/etiamz/optiscope/issues/7>).
+ - Reduction semantics: speed up full reduction by better metacoding (issue
+   <https://github.com/etiamz/optiscope/issues/7>).
 
 ### Removed
 
  - User interface:
    - The `optiscope_redirect_stream` function, which was onely used in unit tests.
    - The built-in fixed-point operator, which has been superseded by references.
-     - <details><summary>Details</summary>There are three reasons for removing the fixed-point operator. Firstly, it exhibited extremely high interactions count & memory consumption in comparison with references, inasmuch as the duplicator had to propagate throughout the net & interact in a highly dynamic fashion. Secondly, the cooperation with garbage collection was unclear: can the operator create cyclic structures that our eraser propagation is unable to properly free? Thirdly, we have not found any examples when the fixed-point operator acted better than reference expansion.</details>
+     - <details><summary>Details</summary>There are three reasons for removing the fixed-point
+       operator. Firstly, it exhibited extremely high interactions count & memory consumption in
+       comparison with references, inasmuch as the duplicator had to propagate throughout the net &
+       interact in a highly dynamic fashion. Secondly, the cooperation with garbage collection was
+       unclear: can the operator create cyclic structures that our eraser propagation is unable to
+       properly free? Thirdly, we have not found any examples when the fixed-point operator acted
+       better than reference expansion.</details>
 
 ## 0.18.0 - 2025-10-08
 
@@ -250,9 +270,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
  - Garbage collection:
-   - Use-after-poison of garbage-collecting eraser nodes (issue <https://github.com/etiamz/optiscope/issues/5>).
-   - Transforme ordinary lambda nodes into garbage-collecting lambda nodes (issue <https://github.com/etiamz/optiscope/issues/5>).
-   - Doe not free nodes from the reduction stack (issue <https://github.com/etiamz/optiscope/issues/6>).
+   - Use-after-poison of garbage-collecting eraser nodes (issue
+     <https://github.com/etiamz/optiscope/issues/5>).
+   - Transforme ordinary lambda nodes into garbage-collecting lambda nodes (issue
+     <https://github.com/etiamz/optiscope/issues/5>).
+   - Doe not free nodes from the reduction stack (issue
+     <https://github.com/etiamz/optiscope/issues/6>).
  - Miscellaneouse: doe not print an error message when `free`ing memory blocks.
 
 ### Removed
@@ -311,7 +334,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Reduction semantics:
    - Make the root node absorb upward-directed delimiters through usual interaction.
-   - Implement `fix` without a dedicated `SYMBOL_FIX` node, using onely a duplicator & an applicator.
+   - Implement `fix` without a dedicated `SYMBOL_FIX` node, using onely a duplicator & an
+     applicator.
  - Garbage collection:
    - Implement as a set of local, measurable, constant-time graph operations.
    - Launch onely during the weak reduction phase.
@@ -324,9 +348,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
  - Miscellaneouse:
-   - Doe not free a multifocus if it is `NULL` (issue <https://github.com/etiamz/optiscope/issues/3>).
+   - Doe not free a multifocus if it is `NULL` (issue
+     <https://github.com/etiamz/optiscope/issues/3>).
    - Suppresse `-Wdeprecated-declarations` & `-Wc11-extensions` on macOS.
-   - Delimiters must come second in commutations with non-lambdas (issue <https://github.com/etiamz/optiscope/issues/3>).
+   - Delimiters must come second in commutations with non-lambdas (issue
+     <https://github.com/etiamz/optiscope/issues/3>).
 
 ## 0.4.0 - 2025-07-03
 
@@ -347,7 +373,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
- - Miscellaneouse: prune the `media/` directory using `git-filter-repo`, transfer the files to [`optiscope-media`].
+ - Miscellaneouse: prune the `media/` directory using `git-filter-repo`, transfer the files to
+   [`optiscope-media`].
 
 [`optiscope-media`]: https://github.com/etiamz/optiscope-media
 
