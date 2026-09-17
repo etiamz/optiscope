@@ -119,7 +119,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define COMPILER_MALLOC(deallocator, ptr_index)                                \
     __attribute__((malloc(deallocator, ptr_index)))
 
-#endif // __clang__
+#endif
 
 #define COMPILER_FORMAT(archetype, string_index, first_to_check)               \
     __attribute__((format(archetype, string_index, first_to_check)))
@@ -138,9 +138,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define COMPILER_CONST         /* may invoke side-effecting `assert` */
 #define COMPILER_PURE          /* may invoke side-effecting `assert` */
 
-#endif // NDEBUG
+#endif
 
-#endif // __GNUC__
+#endif
 
 #ifdef COMPILER_ASAN_AVAILABLE
 #define COMPILER_POISON_MEMORY       ASAN_POISON_MEMORY_REGION
@@ -661,7 +661,7 @@ free_lambda_term(struct lambda_term *const restrict term) {
 #define DECODE_ADDRESS(address)                                                \
     ((uint64_t *)(SIGN_EXTEND((address) & ADDRESS_MASK)))
 
-#endif // __linux__
+#endif
 
 #define DECODE_ADDRESS_METADATA(address) (((address) & ~ADDRESS_MASK))
 
@@ -1300,7 +1300,7 @@ print_node(const struct node node) {
     return result;
 }
 
-#endif // OPTISCOPE_ENABLE_TRACING
+#endif
 
 // Bytecode Definitions
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -1481,7 +1481,7 @@ is_focused_on(const struct multifocus focus, const struct node node) {
     return false;
 }
 
-#endif // OPTISCOPE_ENABLE_GRAPHVIZ
+#endif
 
 COMPILER_NONNULL(1) COMPILER_HOT COMPILER_ALWAYS_INLINE //
 inline static struct node
@@ -1731,7 +1731,7 @@ print_stats(const struct context *const restrict graph) {
 
 #define print_stats(graph) ((void)0)
 
-#endif // OPTISCOPE_ENABLE_STATS
+#endif
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
 static struct node
@@ -2355,7 +2355,7 @@ graphviz(
 
 #define graphviz(graph, filename, f, g) ((void)0)
 
-#endif // OPTISCOPE_ENABLE_GRAPHVIZ
+#endif
 
 #if !defined(NDEBUG) && defined(OPTISCOPE_ENABLE_STEP_BY_STEP)
 
@@ -2389,7 +2389,7 @@ wait_for_user(
 
 #define wait_for_user(graph, f, g) ((void)0)
 
-#endif // !defined(NDEBUG) && defined(OPTISCOPE_ENABLE_STEP_BY_STEP)
+#endif
 
 // Bytecode Emission
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -2698,7 +2698,7 @@ build_delimiter_chain(
     connect_ports(&del.ports[1], goes_from);
 }
 
-#endif // OPTISCOPE_DISABLE_DELIMITER_COMPRESSION
+#endif
 
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
@@ -3052,7 +3052,7 @@ COMPUTATION_RULE(beta_c, graph, f, g) {
     free_node(graph, g);
 }
 
-#endif // OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
+#endif
 
 #ifndef OPTISCOPE_DISABLE_SEGMENTATION
 
@@ -3076,7 +3076,7 @@ COMPUTATION_RULE(beta_cx, graph, f, g) { // when the argument is closed
     free_node(graph, g);
 }
 
-#endif // OPTISCOPE_DISABLE_SEGMENTATION
+#endif
 
 COMPUTATION_RULE(identity_beta, graph, f, g) {
     assert(graph);
@@ -3129,7 +3129,7 @@ COMPUTATION_RULE(gc_beta_c, graph, f, g) {
     free_node(graph, g);
 }
 
-#endif // OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
+#endif
 
 #ifndef OPTISCOPE_DISABLE_SEGMENTATION
 
@@ -3153,7 +3153,7 @@ COMPUTATION_RULE(gc_beta_cx, graph, f, g) { // when the argument is closed
     free_node(graph, g);
 }
 
-#endif // OPTISCOPE_DISABLE_SEGMENTATION
+#endif
 
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
 
@@ -3203,7 +3203,7 @@ COMPUTATION_RULE(unbarrier, graph, f, g) {
     free_node(graph, f);
 }
 
-#endif // OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+#endif
 
 #ifndef OPTISCOPE_DISABLE_SEGMENTATION
 
@@ -3221,7 +3221,7 @@ COMPUTATION_RULE(enclose, graph, f, g) {
     free_node(graph, f);
 }
 
-#endif // OPTISCOPE_DISABLE_SEGMENTATION
+#endif
 
 COMPUTATION_RULE(do_expand, graph, f, g) {
     assert(graph);
@@ -3791,7 +3791,7 @@ debug_rewrite(
 
 #define debug_rewrite(caller, graph, f, g) ((void)0)
 
-#endif // OPTISCOPE_ENABLE_TRACING
+#endif
 
 enum reduce_action {
     // Pop a node from the reduction stack, continue with the popped node.
@@ -3856,7 +3856,7 @@ barrier_condition(const struct node f, const struct node g) {
     return DECODE_ADDRESS(h.ports[0]) != &g.ports[1];
 }
 
-#endif // OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+#endif
 
 COMPILER_NONNULL(1) COMPILER_HOT //
 static void
@@ -4324,7 +4324,7 @@ CONTROL_FUNCTION(interact_with_barr, graph, f, g) {
     return REDUCE_POP;
 }
 
-#endif // OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
+#endif
 
 CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
     assert(graph);
@@ -4755,7 +4755,7 @@ CONTROL_FUNCTION(interact_with_seg, graph, f, g) {
     }
 }
 
-#endif // OPTISCOPE_DISABLE_SEGMENTATION
+#endif
 
 CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
     assert(graph);
