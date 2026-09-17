@@ -3747,6 +3747,7 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
 }
 
 #undef EXTRUSION_PROLOGUE
+#undef MARK_OPERATOR
 #undef EXTRUSION_RULE
 
 #endif
