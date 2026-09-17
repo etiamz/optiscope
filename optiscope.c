@@ -3672,7 +3672,8 @@ COMMUTATION_HELPER(commute_3_4_helper, graph, f, g) {
 // Generic Extrusion Rules
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-#ifndef OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
+#if !defined(OPTISCOPE_DISABLE_DELIMITER_EXTRUSION) ||                         \
+    !defined(OPTISCOPE_DISABLE_SEGMENTATION)
 
 // clang-format off
 #define EXTRUSION_RULE(name, graph, f, g) \
@@ -3681,14 +3682,30 @@ COMMUTATION_HELPER(commute_3_4_helper, graph, f, g) {
     name(struct context *const restrict graph, const struct node f, const struct node g)
 // clang-format on
 
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
+#define MARK_OPERATOR(f, g)                                                    \
+    do {                                                                       \
+        if (SYMBOL_SEGMENT == (f).ports[-1]) {                                 \
+            (g).ports[0] |= REVEAL_CLOSEDNESS_BIT;                             \
+        } else {                                                               \
+            XASSERT(IS_DELIMITER((f).ports[-1]));                              \
+        }                                                                      \
+    } while (false)
+#else
+// clang-format off
+#define MARK_OPERATOR(f, g) \
+    XASSERT(IS_DELIMITER((f).ports[-1]))
+// clang-format on
+#endif
+
 #define EXTRUSION_PROLOGUE(graph, f, g)                                        \
     do {                                                                       \
         assert(graph);                                                         \
         (void)graph; /* in case `graph` is unused */                           \
         XASSERT(f.ports);                                                      \
         XASSERT(g.ports);                                                      \
-        XASSERT(IS_DELIMITER(f.ports[-1]));                                    \
         XASSERT(DECODE_ADDRESS(f.ports[0]) == &g.ports[1]);                    \
+        MARK_OPERATOR(f, g);                                                   \
     } while (false)
 
 EXTRUSION_RULE(extrude_2_2, graph, f, g) {
@@ -3732,7 +3749,7 @@ EXTRUSION_RULE(extrude_2_4, graph, f, g) {
 #undef EXTRUSION_PROLOGUE
 #undef EXTRUSION_RULE
 
-#endif // OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
+#endif
 
 // Interaction Rules per Operator Type
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -3876,7 +3893,8 @@ merge_delimiter(
 
 #endif
 
-#ifndef OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
+#if !defined(OPTISCOPE_DISABLE_DELIMITER_EXTRUSION) ||                         \
+    !defined(OPTISCOPE_DISABLE_SEGMENTATION)
 
 COMPILER_WARN_UNUSED_RESULT COMPILER_NONNULL(1) COMPILER_HOT //
 static bool
@@ -3887,7 +3905,6 @@ try_extrude(
     assert(graph);
     XASSERT(f.ports);
     XASSERT(g.ports);
-    XASSERT(IS_DELIMITER(f.ports[-1]));
 
     uint64_t *const points_to = DECODE_ADDRESS(f.ports[0]);
 
@@ -3910,11 +3927,21 @@ try_extrude(
     case SYMBOL_IF_THEN_ELSE:
         REWRITE(graph, f, g, nextrusions, { extrude_2_4(graph, f, g); });
         return true;
+#ifndef OPTISCOPE_DISABLE_SEGMENTATION
+    // When `g` is a segment & `f` is either a delimiter or another segment, we
+    // simply remove `f` in both cases.
+    case SYMBOL_SEGMENT:
+        REWRITE(graph, f, g, nextrusions, {
+            connect_ports(DECODE_ADDRESS(f.ports[1]), &g.ports[1]);
+            free_node(graph, f);
+        });
+        return true;
+#endif
     default: return false;
     }
 }
 
-#endif // OPTISCOPE_DISABLE_DELIMITER_EXTRUSION
+#endif
 
 CONTROL_FUNCTION(interact_with_root, graph, f, g) {
     assert(graph);
@@ -4705,6 +4732,8 @@ CONTROL_FUNCTION(interact_with_seg, graph, f, g) {
     XASSERT(SYMBOL_SEGMENT == f.ports[-1]);
 
     const uint64_t gsym = g.ports[-1];
+
+    if (try_extrude(graph, f, g)) { return REDUCE_POP; }
 
     if (!points_to(g, f)) {
         return REDUCE_PUSH;

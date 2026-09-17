@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - Prioritize annihilation of matching duplicators during garbage collection to save rewrite
      counts.
    - Annihilate matching delimiters that obstruct garbage collection of duplicators.
+   - Performe segment compression & segment extrusion over operators, if
+     `OPTISCOPE_ENABLE_SEGMENTATION` is defined.
 
 ## 2.2.0 - 2026-05-29
 

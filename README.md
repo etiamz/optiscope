@@ -146,7 +146,7 @@ Full reduction onely works for pure lambda calculus terms: lambdas, applications
 
 _Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, yet,
 [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than
-[unoptimized Haskell] & [unoptimized OCaml]; for instance, whereas Optiscope approaches 1 minute to
+[unoptimized Haskell] & [unoptimized OCaml]; for instance, whereas Optiscope takes 50 seconds to
 execute an insertion sort on a Scott-encoded list of 10,000 elements (in decreasing order), the
 Haskell implementation handles the same amount of elements in just half a second! (Optiscope's
 abstract algorithm needs ~25 seconds, which is still very slow compared to Haskell.)
@@ -429,6 +429,10 @@ to be the state of the art of lazy evaluation.
    remove the lambda node and instantiate a _segment operator_ marked closed. When this operator
    meets an open lambda node `f`, it markes `f` closed and disappears, which allows for more
    delimiter-lesse Beta interactions with `f`, according to the previous paragraph.
+   - Segmentation becomes especially beneficial when we (1) extrude segments over operators & (2)
+     merge chains of segments into a single node. Both rewrite rules correspond to delimiter
+     extrusion & delimiter compression exactly. Note that (2) intentionally compresses chains of
+     segments introduced by (1), so the graph stays compact.
 
  - **References.** A _reference_ is a special atomic node that holds (an identifier of) a C function
    pointer taking zero parameters & returning a lambda term. When the value of the reference is
