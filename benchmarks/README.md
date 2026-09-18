@@ -33,6 +33,8 @@ The following table compares Optiscope & [BOHM1.1] on matching inputs. The sorti
 operate on descending Scott-encoded lists of machine integers, summing up the elements after
 sorting in order to reach WHNF:
 
+[BOHM1.1]: https://github.com/asperti/BOHM1.1/tree/52d826aedbb00f0bd513d8bcbf2fc3fae1b758d2
+
 | Input | Optiscope rewrites | BOHM rewrites | Optiscope peak nodes | BOHM peak nodes |
 | --- | ---: | ---: | ---: | ---: |
 | _ackermann(3, 5)_ | 1,803,983 | 2,402,589 | 3,194 | 1,801,908 |
@@ -91,7 +93,9 @@ Notes:
    simultaneously live nodes.
  - All the Optiscope runs completed successfully.
 
-[BOHM1.1]: https://github.com/asperti/BOHM1.1/tree/52d826aedbb00f0bd513d8bcbf2fc3fae1b758d2
+The BOHM benchmarks used for the comparison live in [`../benchmarks-bohm/`].
+
+[`../benchmarks-bohm/`]: ../benchmarks-bohm/
 
 ## Optiscope Timings
 
