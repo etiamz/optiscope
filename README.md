@@ -146,10 +146,11 @@ Full reduction onely works for pure lambda calculus terms: lambdas, applications
 
 _Optimal XOR efficient?_ I made a [fairly non-trivial effort] at optimizing the implementation, yet,
 [our benchmarks] revealed that optimal reduction à la Lambdascope performes many times worse than
-[unoptimized Haskell] & [unoptimized OCaml]; for instance, whereas Optiscope takes 50 seconds to
+[unoptimized Haskell] & [unoptimized OCaml]; for instance, whereas Optiscope takes ~45 seconds to
 execute an insertion sort on a Scott-encoded list of 10,000 elements (in decreasing order), the
-Haskell implementation handles the same amount of elements in just half a second! (Optiscope's
-abstract algorithm needs ~25 seconds, which is still very slow compared to Haskell.)
+Haskell implementation handles the same amount of elements in just half a second! (Insertion sort
+does not require bookkeeping, but even without it, the projected time would be ~35 seconds, which is
+still about 70 times as long as Haskell's run.)
 
 [fairly non-trivial effort]: #implementation-details
 [our benchmarks]: benchmarks/

@@ -1,5 +1,8 @@
 #define OPTISCOPE_TESTS_NO_MAIN
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 #include "../tests.c"
+#pragma GCC diagnostic pop
 
 static struct lambda_term *
 generate_list_go(void) {
