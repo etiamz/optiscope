@@ -45,36 +45,36 @@ sorting in order to reach WHNF:
 | _takeuchi(24, 8, 3)_ | 21,865,709 | 22,055,999 | 1,399 | 16,675,714 |
 | _takeuchi(24, 9, 3)_ | 90,615,854 | 93,328,122 | 1,450 | 71,410,066 |
 | _takeuchi(24, 10, 3)_ | 332,010,611 | - | 1,501 | >100,000,000 |
-| _bsort(25)_ | 138,599 | 286,806 | 2,887 | 99,580 |
-| _bsort(50)_ | 922,149 | 2,096,756 | 7,587 | 736,205 |
-| _bsort(150)_ | 21,756,349 | 53,317,806 | 67,338 | 18,970,205 |
-| _bsort(300)_ | 167,982,649 | - | 269,538 | >100,000,000 |
-| _isort(50)_ | 122,818 | 1,460,019 | 3,936 | 216,223 |
-| _isort(100)_ | 478,043 | 10,994,969 | 7,736 | 1,692,023 |
-| _isort(500)_ | 11,689,843 | - | 38,136 | >100,000,000 |
-| _isort(1000)_ | 46,629,593 | - | 76,136 | >100,000,000 |
-| _msort(50)_ | 81,311 | 2,044,194 | 1,811 | 1,150,810 |
-| _msort(100)_ | 217,817 | 13,490,459 | 3,104 | 9,202,565 |
-| _msort(500)_ | 2,793,241 | - | 13,199 | >100,000,000 |
-| _msort(1000)_ | 9,513,027 | - | 25,706 | >100,000,000 |
-| _qsort(50)_ | 245,319 | 3,216,791 | 10,657 | 470,476 |
-| _qsort(100)_ | 960,519 | 24,096,191 | 33,632 | 3,368,151 |
-| _qsort(500)_ | 23,602,119 | - | 698,821 | >100,000,000 |
-| _qsort(1000)_ | 94,204,119 | - | 2,758,460 | >100,000,000 |
-| _nqueens(5)_ | 126,943 | 577,712 | 671 | 483,248 |
-| _nqueens(6)_ | 561,123 | 3,558,354 | 769 | 3,155,771 |
-| _nqueens(7)_ | 2,497,195 | 22,250,541 | 903 | 20,746,272 |
-| _nqueens(8)_ | 11,937,901 | - | 1,087 | >100,000,000 |
-| _nqueens(9)_ | 59,626,035 | - | 1,488 | >100,000,000 |
-| _nqueens(10)_ | 308,598,243 | - | 2,067 | >100,000,000 |
-| _nqueens(11)_ | 1,718,454,579 | - | 4,399 | >100,000,000 |
+| _bsort(25)_ | 145,093 | 286,858 | 3,003 | 99,633 |
+| _bsort(50)_ | 946,993 | 2,096,858 | 7,803 | 736,283 |
+| _bsort(150)_ | 21,973,343 | 53,318,108 | 67,361 | 18,970,383 |
+| _bsort(300)_ | 168,844,118 | - | 269,561 | >100,000,000 |
+| _isort(50)_ | 136,588 | 1,460,023 | 4,107 | 216,297 |
+| _isort(100)_ | 530,563 | 10,994,973 | 8,057 | 1,692,147 |
+| _isort(500)_ | 12,952,363 | - | 39,657 | >100,000,000 |
+| _isort(1000)_ | 51,654,613 | - | 79,157 | >100,000,000 |
+| _msort(50)_ | 95,409 | 2,044,302 | 1,905 | 1,150,888 |
+| _msort(100)_ | 256,038 | 13,490,667 | 3,217 | 9,202,693 |
+| _msort(500)_ | 3,313,882 | - | 13,338 | >100,000,000 |
+| _msort(1000)_ | 11,329,334 | - | 26,712 | >100,000,000 |
+| _qsort(50)_ | 283,814 | 3,216,795 | 10,982 | 470,550 |
+| _qsort(100)_ | 1,109,989 | 24,096,195 | 34,257 | 3,368,275 |
+| _qsort(500)_ | 27,249,389 | - | 700,028 | >100,000,000 |
+| _qsort(1000)_ | 108,748,639 | - | 2,760,834 | >100,000,000 |
+| _nqueens(5)_ | 137,152 | 577,712 | 703 | 483,258 |
+| _nqueens(6)_ | 603,451 | 3,558,354 | 804 | 3,155,775 |
+| _nqueens(7)_ | 2,692,572 | 22,250,481 | 941 | 20,746,267 |
+| _nqueens(8)_ | 12,872,629 | - | 1,128 | >100,000,000 |
+| _nqueens(9)_ | 64,329,574 | - | 1,532 | >100,000,000 |
+| _nqueens(10)_ | 332,952,805 | - | 2,114 | >100,000,000 |
+| _nqueens(11)_ | 1,854,676,010 | - | 4,448 | >100,000,000 |
 
 Among the problem instances completed by both reducers, Optiscope reduces total graph rewrites by
-factors of approximately 1.3 for Ackermann, 2.1-2.5 for bubble sort, 12-23 for insertion sort, 25-62
-for merge sort, 13-25 for quicksort, & 4.6-8.9 for N-queens. On _takeuchi(24, 7, 3)_, Optiscope
+factors of approximately 1.3 for Ackermann, 2.0-2.4 for bubble sort, 11-21 for insertion sort, 21-53
+for merge sort, 11-22 for quicksort, & 4.2-8.3 for N-queens. On _takeuchi(24, 7, 3)_, Optiscope
 requires approximately 1.3% more rewrites than BOHM, but 0.9% & 2.9% fewer on _takeuchi(24, 8, 3)_ &
 _takeuchi(24, 9, 3)_, respectively. Optiscope's peak node counts are lower in every completed
-comparison, by factors ranging from approximately 34 for _bsort(25)_ to 49,000 for _takeuchi(24, 9,
+comparison, by factors ranging from approximately 33 for _bsort(25)_ to 49,000 for _takeuchi(24, 9,
 3)_. Optiscope successfully completes all 31 problem instances; BOHM exceeds the 100,000,000-node
 limit on the remaining 13.
 
@@ -107,8 +107,8 @@ Description: Computes the Ackermann function with initial values _(3, 8)_.
 
 ```
 Benchmark 1: ./ackermann
-  Time (mean ± σ):     876.1 ms ±   1.4 ms    [User: 869.6 ms, System: 4.8 ms]
-  Range (min … max):   873.7 ms … 877.3 ms    5 runs
+  Time (mean ± σ):     870.9 ms ±   9.1 ms    [User: 863.5 ms, System: 5.7 ms]
+  Range (min … max):   855.7 ms … 878.9 ms    5 runs
 ```
 
 <details>
@@ -135,8 +135,8 @@ Description: Computes the Takeuchi function with initial values _(24, 9, 3)_.
 
 ```
 Benchmark 1: ./tak
-  Time (mean ± σ):     639.4 ms ±   6.9 ms    [User: 634.1 ms, System: 3.7 ms]
-  Range (min … max):   632.9 ms … 650.8 ms    5 runs
+  Time (mean ± σ):     637.6 ms ±   1.3 ms    [User: 632.6 ms, System: 3.5 ms]
+  Range (min … max):   636.1 ms … 639.1 ms    5 runs
 ```
 
 <details>
@@ -164,24 +164,24 @@ up.
 
 ```
 Benchmark 1: ./scott-bubble-sort
-  Time (mean ± σ):      1.320 s ±  0.005 s    [User: 1.313 s, System: 0.006 s]
-  Range (min … max):    1.315 s …  1.326 s    5 runs
+  Time (mean ± σ):      1.346 s ±  0.008 s    [User: 1.339 s, System: 0.006 s]
+  Range (min … max):    1.336 s …  1.356 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 167982649
-  Total interactions: 164895643
-   Family reductions: 633613
-        Sharing work: 96.65%
-    Bookkeeping work: 0.94%
-             GC work: 1.14%
+      Total rewrites: 168844118
+  Total interactions: 165301706
+   Family reductions: 814219
+        Sharing work: 96.16%
+    Bookkeeping work: 1.13%
+             GC work: 1.24%
     Compression work: 0.00%
 Max duplicator index: 602
  Max delimiter index: 0
-     Peak node count: 269538
+     Peak node count: 269561
 ```
 
 </details>
@@ -193,24 +193,24 @@ cells up.
 
 ```
 Benchmark 1: ./scott-insertion-sort
-  Time (mean ± σ):     402.7 ms ±   2.2 ms    [User: 399.9 ms, System: 1.9 ms]
-  Range (min … max):   399.4 ms … 405.0 ms    5 runs
+  Time (mean ± σ):     446.4 ms ±   4.3 ms    [User: 443.5 ms, System: 1.9 ms]
+  Range (min … max):   442.9 ms … 453.5 ms    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 46629593
-  Total interactions: 16051036
-   Family reductions: 4018010
-        Sharing work: 4.29%
-    Bookkeeping work: 22.62%
-             GC work: 47.26%
+      Total rewrites: 51654613
+  Total interactions: 18061044
+   Family reductions: 5023014
+        Sharing work: 3.87%
+    Bookkeeping work: 24.31%
+             GC work: 44.60%
     Compression work: 0.00%
 Max duplicator index: 0
  Max delimiter index: 0
-     Peak node count: 76136
+     Peak node count: 79157
 ```
 
 </details>
@@ -222,24 +222,24 @@ up.
 
 ```
 Benchmark 1: ./scott-merge-sort
-  Time (mean ± σ):      78.2 ms ±   0.8 ms    [User: 76.7 ms, System: 0.9 ms]
-  Range (min … max):    77.3 ms …  79.5 ms    5 runs
+  Time (mean ± σ):      94.9 ms ±   0.9 ms    [User: 93.4 ms, System: 0.9 ms]
+  Range (min … max):    93.3 ms …  95.6 ms    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 9513027
-  Total interactions: 8404394
-   Family reductions: 226408
-        Sharing work: 81.14%
-    Bookkeeping work: 5.30%
-             GC work: 7.17%
+      Total rewrites: 11329334
+  Total interactions: 10031750
+   Family reductions: 296262
+        Sharing work: 81.12%
+    Bookkeeping work: 5.62%
+             GC work: 6.66%
     Compression work: 0.00%
 Max duplicator index: 2002
  Max delimiter index: 0
-     Peak node count: 25706
+     Peak node count: 26712
 ```
 
 </details>
@@ -251,24 +251,24 @@ up.
 
 ```
 Benchmark 1: ./scott-quicksort
-  Time (mean ± σ):     915.6 ms ±   2.6 ms    [User: 905.3 ms, System: 7.7 ms]
-  Range (min … max):   911.5 ms … 918.0 ms    5 runs
+  Time (mean ± σ):      1.054 s ±  0.006 s    [User: 1.044 s, System: 0.008 s]
+  Range (min … max):    1.047 s …  1.062 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 94204119
-  Total interactions: 49050035
-   Family reductions: 12020010
-        Sharing work: 12.73%
-    Bookkeeping work: 30.30%
-             GC work: 21.35%
+      Total rewrites: 108748639
+  Total interactions: 55068043
+   Family reductions: 15029014
+        Sharing work: 11.03%
+    Bookkeeping work: 31.33%
+             GC work: 21.26%
     Compression work: 0.00%
 Max duplicator index: 2000
  Max delimiter index: 0
-     Peak node count: 2758460
+     Peak node count: 2760834
 ```
 
 </details>
@@ -279,24 +279,24 @@ Description: Solves the 10-queens problem using Scott-encoded lists.
 
 ```
 Benchmark 1: ./nqueens
-  Time (mean ± σ):      2.377 s ±  0.013 s    [User: 2.362 s, System: 0.012 s]
-  Range (min … max):    2.365 s …  2.397 s    5 runs
+  Time (mean ± σ):      2.554 s ±  0.016 s    [User: 2.542 s, System: 0.009 s]
+  Range (min … max):    2.539 s …  2.581 s    5 runs
 ```
 
 <details>
 <summary>Statistics profile</summary>
 
 ```
-      Total rewrites: 308598243
-  Total interactions: 159905900
-   Family reductions: 16117939
-        Sharing work: 30.16%
-    Bookkeeping work: 14.29%
-             GC work: 36.87%
+      Total rewrites: 332952805
+  Total interactions: 169205278
+   Family reductions: 21150593
+        Sharing work: 27.95%
+    Bookkeeping work: 16.32%
+             GC work: 35.62%
     Compression work: 0.00%
 Max duplicator index: 20
  Max delimiter index: 0
-     Peak node count: 2067
+     Peak node count: 2114
 ```
 
 </details>

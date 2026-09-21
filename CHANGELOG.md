@@ -9,13 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
- - Optimization: implement zero-delimiter absorption, controlled by
-   `OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION` independently of
-   `OPTISCOPE_DISABLE_DELIMITER_COMPRESSION`.
+ - User interface: define new macro `let_in(x, e, body)` as `apply(lambda(x, body), e)`.
+ - Optimization: implement zero-delimiter absorption controlled by
+   `OPTISCOPE_DISABLE_ZERO_DELIMITER_ABSORPTION`.
 
 ### Changed
 
- - Print run-time statistics enabled by `OPTISCOPE_ENABLE_STATS` to `stderr` instead of `stdout`.
  - Optimization:
    - Extrude delimiters over operators without a heuristic guard; zero-delimiter absorption
      supersedes it.
@@ -24,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - Annihilate matching delimiters that obstruct garbage collection of duplicators.
    - Performe segment compression & segment extrusion over operators, if
      `OPTISCOPE_ENABLE_SEGMENTATION` is defined.
+ - Statistics: print the run-time statistics to `stderr` instead of `stdout`.
 
 ## 2.2.0 - 2026-05-29
 

@@ -996,20 +996,24 @@ scott_singleton(void) {
 
 static struct lambda_term *
 scott_sum_list(void) {
-    struct lambda_term *list, *x, *xs;
+    struct lambda_term *list, *x, *xs, *on_nil, *on_cons;
 
     return lambda(
         list,
-        apply(
-            apply(var(list), cell(0)),
-            lambda(
-                x,
+        let_in(
+            on_nil,
+            cell(0),
+            let_in(
+                on_cons,
                 lambda(
-                    xs,
-                    binary_call(
-                        add,
-                        var(x),
-                        apply(expand(scott_sum_list), var(xs)))))));
+                    x,
+                    lambda(
+                        xs,
+                        binary_call(
+                            add,
+                            var(x),
+                            apply(expand(scott_sum_list), var(xs))))),
+                apply(apply(var(list), var(on_nil)), var(on_cons)))));
 }
 
 static struct lambda_term *
@@ -1035,45 +1039,54 @@ scott_sum_list_test(void) {
 
 static struct lambda_term *
 scott_insert(void) {
-    struct lambda_term *y, *list, *z, *zs;
+    struct lambda_term *y, *list, *z, *zs, *on_nil, *on_cons;
 
     return lambda(
         y,
         lambda(
             list,
-            apply(
-                apply(var(list), apply(scott_singleton(), var(y))),
-                lambda(
-                    z,
+            let_in(
+                on_nil,
+                apply(scott_singleton(), var(y)),
+                let_in(
+                    on_cons,
                     lambda(
-                        zs,
-                        if_then_else(
-                            binary_call(less_than_or_equal, var(y), var(z)),
-                            apply(
-                                apply(scott_cons(), var(y)),
-                                apply(apply(scott_cons(), var(z)), var(zs))),
-                            apply(
-                                apply(scott_cons(), var(z)),
+                        z,
+                        lambda(
+                            zs,
+                            if_then_else(
+                                binary_call(less_than_or_equal, var(y), var(z)),
                                 apply(
-                                    apply(expand(scott_insert), var(y)),
-                                    var(zs)))))))));
+                                    apply(scott_cons(), var(y)),
+                                    apply(
+                                        apply(scott_cons(), var(z)), var(zs))),
+                                apply(
+                                    apply(scott_cons(), var(z)),
+                                    apply(
+                                        apply(expand(scott_insert), var(y)),
+                                        var(zs)))))),
+                    apply(apply(var(list), var(on_nil)), var(on_cons))))));
 }
 
 static struct lambda_term *
 scott_insertion_sort(void) {
-    struct lambda_term *list, *x, *xs;
+    struct lambda_term *list, *x, *xs, *on_nil, *on_cons;
 
     return lambda(
         list,
-        apply(
-            apply(var(list), scott_nil()),
-            lambda(
-                x,
+        let_in(
+            on_nil,
+            scott_nil(),
+            let_in(
+                on_cons,
                 lambda(
-                    xs,
-                    apply(
-                        apply(expand(scott_insert), var(x)),
-                        apply(expand(scott_insertion_sort), var(xs)))))));
+                    x,
+                    lambda(
+                        xs,
+                        apply(
+                            apply(expand(scott_insert), var(x)),
+                            apply(expand(scott_insertion_sort), var(xs))))),
+                apply(apply(var(list), var(on_nil)), var(on_cons)))));
 }
 
 static struct lambda_term *
@@ -1125,72 +1138,104 @@ scott_insertion_sort_test(void) {
 
 static struct lambda_term *
 scott_filter(void) {
-    struct lambda_term *f, *list, *x, *xs;
+    struct lambda_term *f, *list, *x, *xs, *on_nil, *on_cons;
 
     return lambda(
         f,
         lambda(
             list,
-            apply(
-                apply(var(list), scott_nil()),
-                lambda(
-                    x,
+            let_in(
+                on_nil,
+                scott_nil(),
+                let_in(
+                    on_cons,
                     lambda(
-                        xs,
-                        if_then_else(
-                            apply(var(f), var(x)),
-                            apply(
-                                apply(scott_cons(), var(x)),
+                        x,
+                        lambda(
+                            xs,
+                            if_then_else(
+                                apply(var(f), var(x)),
+                                apply(
+                                    apply(scott_cons(), var(x)),
+                                    apply(
+                                        apply(expand(scott_filter), var(f)),
+                                        var(xs))),
                                 apply(
                                     apply(expand(scott_filter), var(f)),
-                                    var(xs))),
-                            apply(
-                                apply(expand(scott_filter), var(f)),
-                                var(xs))))))));
+                                    var(xs))))),
+                    apply(apply(var(list), var(on_nil)), var(on_cons))))));
 }
 
 static struct lambda_term *
 scott_append(void) {
-    struct lambda_term *xs, *ys, *x, *xss;
+    struct lambda_term *xs, *ys, *x, *xss, *on_nil, *on_cons;
 
     return lambda(
         xs,
         lambda(
             ys,
-            apply(
-                apply(var(xs), var(ys)),
-                lambda(
-                    x,
+            let_in(
+                on_nil,
+                var(ys),
+                let_in(
+                    on_cons,
                     lambda(
-                        xss,
-                        apply(
-                            apply(scott_cons(), var(x)),
+                        x,
+                        lambda(
+                            xss,
                             apply(
-                                apply(expand(scott_append), var(xss)),
-                                var(ys))))))));
+                                apply(scott_cons(), var(x)),
+                                apply(
+                                    apply(expand(scott_append), var(xss)),
+                                    var(ys))))),
+                    apply(apply(var(xs), var(on_nil)), var(on_cons))))));
 }
 
 static struct lambda_term *
 scott_quicksort(void) {
-    struct lambda_term *list, *x, *xs, *y, *z;
+    struct lambda_term *list, *x, *xs, *y, *z, *on_nil, *on_cons;
 
-    // clang-format off
-    return lambda(list,
-        apply(apply(var(list), scott_nil()),
-            lambda(x, lambda(xs, apply(apply(expand(scott_append),
-                apply(expand(scott_quicksort),
-                    apply(
-                        apply(expand(scott_filter),
-                            lambda(y, binary_call(less_than, var(y), var(x)))),
-                        var(xs)))),
-                apply(apply(scott_cons(), var(x)),
-                    apply(expand(scott_quicksort),
+    return lambda(
+        list,
+        let_in(
+            on_nil,
+            scott_nil(),
+            let_in(
+                on_cons,
+                lambda(
+                    x,
+                    lambda(
+                        xs,
                         apply(
-                            apply(expand(scott_filter),
-                                lambda(z, binary_call(greater_than_or_equal,
-                                    var(z), var(x)))),
-                            var(xs)))))))));
-    // clang-format on
+                            apply(
+                                expand(scott_append),
+                                apply(
+                                    expand(scott_quicksort),
+                                    apply(
+                                        apply(
+                                            expand(scott_filter),
+                                            lambda(
+                                                y,
+                                                binary_call(
+                                                    less_than,
+                                                    var(y),
+                                                    var(x)))),
+                                        var(xs)))),
+                            apply(
+                                apply(scott_cons(), var(x)),
+                                apply(
+                                    expand(scott_quicksort),
+                                    apply(
+                                        apply(
+                                            expand(scott_filter),
+                                            lambda(
+                                                z,
+                                                binary_call(
+                                                    greater_than_or_equal,
+                                                    var(z),
+                                                    var(x)))),
+                                        var(xs))))))),
+                apply(apply(var(list), var(on_nil)), var(on_cons)))));
 }
 
 static struct lambda_term *
@@ -1206,69 +1251,158 @@ scott_quicksort_test(void) {
 static struct lambda_term *
 scott_split(void) {
     struct lambda_term *list, *k, *x, *xs, *y, *ys, *left, *right;
+    struct lambda_term *on_nil, *on_cons, *on_nil_xs, *on_cons_xs;
 
-    // clang-format off
-    return lambda(list, lambda(k, apply(
-        apply(var(list), apply(apply(var(k), scott_nil()), scott_nil())),
-        lambda(x, lambda(xs, apply(
-            apply(
-                var(xs),
-                apply(
-                    apply(var(k), apply(scott_singleton(), var(x))),
-                    scott_nil())),
-            lambda(y, lambda(ys, apply(
-                apply(expand(scott_split), var(ys)),
-                lambda(left, lambda(right, apply(
-                    apply(
-                        var(k),
-                        apply(apply(scott_cons(), var(x)), var(left))),
-                    apply(
-                        apply(scott_cons(), var(y)),
-                        var(right))))))))))))));
-    // clang-format on
+    return lambda(
+        list,
+        lambda(
+            k,
+            let_in(
+                on_nil,
+                apply(apply(var(k), scott_nil()), scott_nil()),
+                let_in(
+                    on_cons,
+                    lambda(
+                        x,
+                        lambda(
+                            xs,
+                            let_in(
+                                on_nil_xs,
+                                apply(
+                                    apply(
+                                        var(k),
+                                        apply(scott_singleton(), var(x))),
+                                    scott_nil()),
+                                let_in(
+                                    on_cons_xs,
+                                    lambda(
+                                        y,
+                                        lambda(
+                                            ys,
+                                            apply(
+                                                apply(
+                                                    expand(scott_split),
+                                                    var(ys)),
+                                                lambda(
+                                                    left,
+                                                    lambda(
+                                                        right,
+                                                        apply(
+                                                            apply(
+                                                                var(k),
+                                                                apply(
+                                                                    apply(
+                                                                        scott_cons(),
+                                                                        var(x)),
+                                                                    var(left))),
+                                                            apply(
+                                                                apply(
+                                                                    scott_cons(),
+                                                                    var(y)),
+                                                                var(right)))))))),
+                                    apply(
+                                        apply(var(xs), var(on_nil_xs)),
+                                        var(on_cons_xs)))))),
+                    apply(apply(var(list), var(on_nil)), var(on_cons))))));
 }
 
 static struct lambda_term *
 scott_merge(void) {
     struct lambda_term *xs, *ys, *x, *xss, *y, *yss;
+    struct lambda_term *on_nil_ys, *on_cons_ys, *on_nil_xs, *on_cons_xs;
 
-    // clang-format off
-    return lambda(xs, lambda(ys, apply(
-        apply(var(ys), var(xs)),
-        lambda(y, lambda(yss, apply(
-            apply(var(xs), var(ys)),
-            lambda(x, lambda(xss, if_then_else(
-                binary_call(less_than, var(x), var(y)),
-                apply(
-                    apply(scott_cons(), var(x)),
-                    apply(apply(expand(scott_merge), var(xss)), var(ys))),
-                apply(
-                    apply(scott_cons(), var(y)),
-                    apply(
-                        apply(expand(scott_merge), var(xs)),
-                        var(yss))))))))))));
-    // clang-format on
+    return lambda(
+        xs,
+        lambda(
+            ys,
+            let_in(
+                on_nil_ys,
+                var(xs),
+                let_in(
+                    on_cons_ys,
+                    lambda(
+                        y,
+                        lambda(
+                            yss,
+                            let_in(
+                                on_nil_xs,
+                                var(ys),
+                                let_in(
+                                    on_cons_xs,
+                                    lambda(
+                                        x,
+                                        lambda(
+                                            xss,
+                                            if_then_else(
+                                                binary_call(
+                                                    less_than, var(x), var(y)),
+                                                apply(
+                                                    apply(scott_cons(), var(x)),
+                                                    apply(
+                                                        apply(
+                                                            expand(scott_merge),
+                                                            var(xss)),
+                                                        var(ys))),
+                                                apply(
+                                                    apply(scott_cons(), var(y)),
+                                                    apply(
+                                                        apply(
+                                                            expand(scott_merge),
+                                                            var(xs)),
+                                                        var(yss)))))),
+                                    apply(
+                                        apply(var(xs), var(on_nil_xs)),
+                                        var(on_cons_xs)))))),
+                    apply(apply(var(ys), var(on_nil_ys)), var(on_cons_ys))))));
 }
 
 static struct lambda_term *
 scott_merge_sort(void) {
     struct lambda_term *list, *x, *xs, *left, *right, *dummy, *dummyx;
+    struct lambda_term *on_nil, *on_cons, *on_nil_xs, *on_cons_xs;
 
-    // clang-format off
-    return lambda(list, apply(
-        apply(var(list), scott_nil()),
-        lambda(x, lambda(xs, apply(
-            apply(var(xs), apply(scott_singleton(), var(x))),
-            lambda(dummy, lambda(dummyx, apply(
-                apply(expand(scott_split), var(list)),
-                lambda(left, lambda(right, apply(
-                    apply(
-                        expand(scott_merge),
-                        apply(expand(scott_merge_sort), var(left))),
-                    apply(
-                        expand(scott_merge_sort),
-                        var(right)))))))))))));
-    // clang-format on
+    return lambda(
+        list,
+        let_in(
+            on_nil,
+            scott_nil(),
+            let_in(
+                on_cons,
+                lambda(
+                    x,
+                    lambda(
+                        xs,
+                        let_in(
+                            on_nil_xs,
+                            apply(scott_singleton(), var(x)),
+                            let_in(
+                                on_cons_xs,
+                                lambda(
+                                    dummy,
+                                    lambda(
+                                        dummyx,
+                                        apply(
+                                            apply(
+                                                expand(scott_split), var(list)),
+                                            lambda(
+                                                left,
+                                                lambda(
+                                                    right,
+                                                    apply(
+                                                        apply(
+                                                            expand(scott_merge),
+                                                            apply(
+                                                                expand(
+                                                                    scott_merge_sort),
+                                                                var(left))),
+                                                        apply(
+                                                            expand(
+                                                                scott_merge_sort),
+                                                            var(right)))))))),
+                                apply(
+                                    apply(var(xs), var(on_nil_xs)),
+                                    var(on_cons_xs)))))),
+                apply(apply(var(list), var(on_nil)), var(on_cons)))));
 }
 
 static struct lambda_term *
@@ -1284,27 +1418,70 @@ scott_merge_sort_test(void) {
 static struct lambda_term *
 scott_bubble_swap(void) {
     struct lambda_term *list, *n, *x, *xs, *y, *ys;
+    struct lambda_term *on_nil, *on_cons, *on_nil_xs, *on_cons_xs;
 
-    // clang-format off
-    return lambda(list, lambda(n, if_then_else(
-        unary_call(is_zero, var(n)),
-        var(list),
-        apply(apply(var(list), var(list)), lambda(x, lambda(xs,
-            apply(apply(var(xs), var(list)), lambda(y, lambda(ys, if_then_else(
-                binary_call(less_than, var(x), var(y)),
-                apply(
-                    apply(scott_cons(), var(x)),
-                    apply(
-                        apply(expand(scott_bubble_swap), var(xs)),
-                        unary_call(minus_one, var(n)))),
-                apply(
-                    apply(scott_cons(), var(y)),
-                    apply(
-                        apply(
-                            expand(scott_bubble_swap),
-                            apply(apply(scott_cons(), var(x)), var(ys))),
-                    unary_call(minus_one, var(n))))))))))))));
-    // clang-format on
+    return lambda(
+        list,
+        lambda(
+            n,
+            if_then_else(
+                unary_call(is_zero, var(n)),
+                var(list),
+                let_in(
+                    on_nil,
+                    var(list),
+                    let_in(
+                        on_cons,
+                        lambda(
+                            x,
+                            lambda(
+                                xs,
+                                let_in(
+                                    on_nil_xs,
+                                    var(list),
+                                    let_in(
+                                        on_cons_xs,
+                                        lambda(
+                                            y,
+                                            lambda(
+                                                ys,
+                                                if_then_else(
+                                                    binary_call(
+                                                        less_than,
+                                                        var(x),
+                                                        var(y)),
+                                                    apply(
+                                                        apply(
+                                                            scott_cons(),
+                                                            var(x)),
+                                                        apply(
+                                                            apply(
+                                                                expand(
+                                                                    scott_bubble_swap),
+                                                                var(xs)),
+                                                            unary_call(
+                                                                minus_one,
+                                                                var(n)))),
+                                                    apply(
+                                                        apply(
+                                                            scott_cons(),
+                                                            var(y)),
+                                                        apply(
+                                                            apply(
+                                                                expand(
+                                                                    scott_bubble_swap),
+                                                                apply(
+                                                                    apply(
+                                                                        scott_cons(),
+                                                                        var(x)),
+                                                                    var(ys))),
+                                                            unary_call(
+                                                                minus_one,
+                                                                var(n))))))),
+                                        apply(
+                                            apply(var(xs), var(on_nil_xs)),
+                                            var(on_cons_xs)))))),
+                        apply(apply(var(list), var(on_nil)), var(on_cons)))))));
 }
 
 static struct lambda_term *
@@ -1329,38 +1506,46 @@ scott_bubble_go(void) {
 
 static struct lambda_term *
 scott_list_length(void) {
-    struct lambda_term *list, *x, *xs;
+    struct lambda_term *list, *x, *xs, *on_nil, *on_cons;
 
     return lambda(
         list,
-        apply(
-            apply(var(list), cell(0)),
-            lambda(
-                x,
+        let_in(
+            on_nil,
+            cell(0),
+            let_in(
+                on_cons,
                 lambda(
-                    xs,
-                    unary_call(
-                        plus_one,
-                        apply(expand(scott_list_length), var(xs)))))));
+                    x,
+                    lambda(
+                        xs,
+                        unary_call(
+                            plus_one,
+                            apply(expand(scott_list_length), var(xs))))),
+                apply(apply(var(list), var(on_nil)), var(on_cons)))));
 }
 
 static struct lambda_term *
 scott_bubble_sort(void) {
-    struct lambda_term *list, *x, *xs;
+    struct lambda_term *list, *x, *xs, *on_nil, *on_cons;
 
     return lambda(
         list,
-        apply(
-            apply(var(list), scott_nil()),
-            lambda(
-                x,
+        let_in(
+            on_nil,
+            scott_nil(),
+            let_in(
+                on_cons,
                 lambda(
-                    xs,
-                    apply(
-                        apply(expand(scott_bubble_go), var(list)),
-                        unary_call(
-                            minus_one,
-                            apply(expand(scott_list_length), var(list))))))));
+                    x,
+                    lambda(
+                        xs,
+                        apply(
+                            apply(expand(scott_bubble_go), var(list)),
+                            unary_call(
+                                minus_one,
+                                apply(expand(scott_list_length), var(list)))))),
+                apply(apply(var(list), var(on_nil)), var(on_cons)))));
 }
 
 static struct lambda_term *
@@ -1375,29 +1560,33 @@ scott_bubble_sort_test(void) {
 
 static struct lambda_term *
 scott_member(void) {
-    struct lambda_term *x, *list, *y, *ys;
+    struct lambda_term *x, *list, *y, *ys, *on_nil, *on_cons;
 
     return lambda(
         x,
         lambda(
             list,
-            apply(
-                apply(var(list), cell(0)),
-                lambda(
-                    y,
+            let_in(
+                on_nil,
+                cell(0),
+                let_in(
+                    on_cons,
                     lambda(
-                        ys,
-                        if_then_else(
-                            binary_call(equals, var(x), var(y)),
-                            cell(1),
-                            apply(
-                                apply(expand(scott_member), var(x)),
-                                var(ys))))))));
+                        y,
+                        lambda(
+                            ys,
+                            if_then_else(
+                                binary_call(equals, var(x), var(y)),
+                                cell(1),
+                                apply(
+                                    apply(expand(scott_member), var(x)),
+                                    var(ys))))),
+                    apply(apply(var(list), var(on_nil)), var(on_cons))))));
 }
 
 static struct lambda_term *
 scott_threat(void) {
-    struct lambda_term *k, *m, *list, *x, *xs;
+    struct lambda_term *k, *m, *list, *x, *xs, *on_nil, *on_cons;
 
     return lambda(
         k,
@@ -1405,31 +1594,37 @@ scott_threat(void) {
             m,
             lambda(
                 list,
-                apply(
-                    apply(var(list), cell(0)),
-                    lambda(
-                        x,
+                let_in(
+                    on_nil,
+                    cell(0),
+                    let_in(
+                        on_cons,
                         lambda(
-                            xs,
-                            if_then_else(
-                                binary_call(
-                                    equals,
-                                    var(k),
-                                    binary_call(subtract, var(x), var(m))),
-                                cell(1),
+                            x,
+                            lambda(
+                                xs,
                                 if_then_else(
                                     binary_call(
                                         equals,
                                         var(k),
-                                        binary_call(subtract, var(m), var(x))),
+                                        binary_call(subtract, var(x), var(m))),
                                     cell(1),
-                                    apply(
+                                    if_then_else(
+                                        binary_call(
+                                            equals,
+                                            var(k),
+                                            binary_call(
+                                                subtract, var(m), var(x))),
+                                        cell(1),
                                         apply(
                                             apply(
-                                                expand(scott_threat),
-                                                unary_call(plus_one, var(k))),
-                                            var(m)),
-                                        var(xs))))))))));
+                                                apply(
+                                                    expand(scott_threat),
+                                                    unary_call(
+                                                        plus_one, var(k))),
+                                                var(m)),
+                                            var(xs)))))),
+                        apply(apply(var(list), var(on_nil)), var(on_cons)))))));
 }
 
 static struct lambda_term *
@@ -1443,42 +1638,54 @@ scott_queen_aux(void) {
             var(b)),                                                           \
         var(n))
 
-    // clang-format off
-    return lambda(m, lambda(b, lambda(n, if_then_else(
-        binary_call(equals, var(m), cell(0)),
-        scott_nil(),
-        if_then_else(
-            apply(apply(expand(scott_member), var(m)), var(b)),
-            QUEEN_AUX_CALL,
-            if_then_else(
-                apply(apply(apply(expand(scott_threat), cell(1)), var(m)), var(b)),
-                QUEEN_AUX_CALL,
+    return lambda(
+        m,
+        lambda(
+            b,
+            lambda(
+                n,
                 if_then_else(
-                    binary_call(
-                        equals,
-                        apply(expand(scott_list_length), var(b)),
-                        unary_call(minus_one, var(n))),
-                    apply(
-                        apply(
-                            expand(scott_append),
+                    unary_call(is_zero, var(m)),
+                    scott_nil(),
+                    if_then_else(
+                        apply(apply(expand(scott_member), var(m)), var(b)),
+                        QUEEN_AUX_CALL,
+                        if_then_else(
                             apply(
                                 apply(
-                                    scott_cons(),
-                                    apply(apply(scott_cons(), var(m)), var(b))),
-                                scott_nil())),
-                        QUEEN_AUX_CALL),
-                    apply(
-                        apply(
-                            expand(scott_append),
-                            apply(
+                                    apply(expand(scott_threat), cell(1)),
+                                    var(m)),
+                                var(b)),
+                            QUEEN_AUX_CALL,
+                            if_then_else(
+                                binary_call(
+                                    equals,
+                                    apply(expand(scott_list_length), var(b)),
+                                    unary_call(minus_one, var(n))),
                                 apply(
-                                    apply(expand(scott_queen_aux), var(n)),
                                     apply(
-                                        apply(scott_cons(), var(m)),
-                                        var(b))),
-                                var(n))),
-                        QUEEN_AUX_CALL))))))));
-    // clang-format on
+                                        expand(scott_append),
+                                        apply(
+                                            apply(
+                                                scott_cons(),
+                                                apply(
+                                                    apply(scott_cons(), var(m)),
+                                                    var(b))),
+                                            scott_nil())),
+                                    QUEEN_AUX_CALL),
+                                apply(
+                                    apply(
+                                        expand(scott_append),
+                                        apply(
+                                            apply(
+                                                apply(
+                                                    expand(scott_queen_aux),
+                                                    var(n)),
+                                                apply(
+                                                    apply(scott_cons(), var(m)),
+                                                    var(b))),
+                                            var(n))),
+                                    QUEEN_AUX_CALL))))))));
 
 #undef QUEEN_AUX_CALL
 }
@@ -1544,20 +1751,27 @@ static struct lambda_term *
 scott_tree_map(void) {
     struct lambda_term *f, *tree, *v, *lhs, *rhs;
 
-    // clang-format off
-    return lambda(f, lambda(tree,
-        apply(
+    return lambda(
+        f,
+        lambda(
+            tree,
             apply(
-                var(tree),
-                lambda(v, apply(scott_leaf(), apply(var(f), var(v))))),
-            lambda(lhs, lambda(rhs,
                 apply(
-                    apply(
-                        scott_node(),
-                        apply(apply(expand(scott_tree_map), var(f)), var(lhs))),
-                    apply(
-                        apply(expand(scott_tree_map), var(f)), var(rhs))))))));
-    // clang-format on
+                    var(tree),
+                    lambda(v, apply(scott_leaf(), apply(var(f), var(v))))),
+                lambda(
+                    lhs,
+                    lambda(
+                        rhs,
+                        apply(
+                            apply(
+                                scott_node(),
+                                apply(
+                                    apply(expand(scott_tree_map), var(f)),
+                                    var(lhs))),
+                            apply(
+                                apply(expand(scott_tree_map), var(f)),
+                                var(rhs))))))));
 }
 
 static struct lambda_term *
@@ -1598,22 +1812,27 @@ static struct lambda_term *
 ackermann_term(void) {
     struct lambda_term *m, *n;
 
-    // clang-format off
-    return lambda(m, lambda(n, if_then_else(
-        unary_call(is_zero, var(m)),
-        unary_call(plus_one, var(n)),
-        if_then_else(
-            unary_call(is_zero, var(n)),
-            apply(
-                apply(expand(ackermann_term), unary_call(minus_one, var(m))),
-                cell(1)),
-            apply(
-                apply(
-                    expand(ackermann_term), unary_call(minus_one, var(m))),
-                apply(
-                    apply(expand(ackermann_term), var(m)),
-                    unary_call(minus_one, var(n))))))));
-    // clang-format on
+    return lambda(
+        m,
+        lambda(
+            n,
+            if_then_else(
+                unary_call(is_zero, var(m)),
+                unary_call(plus_one, var(n)),
+                if_then_else(
+                    unary_call(is_zero, var(n)),
+                    apply(
+                        apply(
+                            expand(ackermann_term),
+                            unary_call(minus_one, var(m))),
+                        cell(1)),
+                    apply(
+                        apply(
+                            expand(ackermann_term),
+                            unary_call(minus_one, var(m))),
+                        apply(
+                            apply(expand(ackermann_term), var(m)),
+                            unary_call(minus_one, var(n))))))));
 }
 
 static struct lambda_term *
@@ -1628,31 +1847,40 @@ static struct lambda_term *
 tak_term(void) {
     struct lambda_term *x, *y, *z;
 
-    // clang-format off
-    return lambda(x, lambda(y, lambda(z,
-        if_then_else(
-            binary_call(greater_than_or_equal, var(y), var(x)),
-            var(z),
-            apply(
-                apply(
+    return lambda(
+        x,
+        lambda(
+            y,
+            lambda(
+                z,
+                if_then_else(
+                    binary_call(greater_than_or_equal, var(y), var(x)),
+                    var(z),
                     apply(
-                        expand(tak_term),
                         apply(
                             apply(
-                                apply(expand(tak_term), unary_call(minus_one, var(x))),
-                                var(y)),
-                            var(z))),
-                    apply(
+                                expand(tak_term),
+                                apply(
+                                    apply(
+                                        apply(
+                                            expand(tak_term),
+                                            unary_call(minus_one, var(x))),
+                                        var(y)),
+                                    var(z))),
+                            apply(
+                                apply(
+                                    apply(
+                                        expand(tak_term),
+                                        unary_call(minus_one, var(y))),
+                                    var(z)),
+                                var(x))),
                         apply(
-                            apply(expand(tak_term), unary_call(minus_one, var(y))),
-                            var(z)),
-                        var(x))),
-                apply(
-                    apply(
-                        apply(expand(tak_term), unary_call(minus_one, var(z))),
-                        var(x)),
-                    var(y)))))));
-    // clang-format on
+                            apply(
+                                apply(
+                                    expand(tak_term),
+                                    unary_call(minus_one, var(z))),
+                                var(x)),
+                            var(y)))))));
 }
 
 static struct lambda_term *

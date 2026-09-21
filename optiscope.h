@@ -138,7 +138,10 @@ extern LambdaTerm
 link_lambda_body(restrict LambdaTerm binder, restrict LambdaTerm body);
 
 /// Construct a lambda abstraction from the binder name `x` & the `body`.
-#define lambda(x, body) ((x) = prelambda(), link_lambda_body(x, body))
+#define lambda(x, body) ((x) = prelambda(), link_lambda_body((x), (body)))
+
+/// Construct a let-in expression, desugared as `apply(lambda(x, body), e)`.
+#define let_in(x, e, body) apply(lambda((x), (body)), (e))
 
 /// Construct a lambda term variable from the corresponding binder.
 extern LambdaTerm

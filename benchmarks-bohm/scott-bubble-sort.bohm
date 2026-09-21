@@ -1,6 +1,6 @@
-def scottNil = \f.\g.g;;
+def scottNil = \f.\g.f;;
 
-def scottCons = \a.\b.\f.\g.(f a b);;
+def scottCons = \a.\b.\f.\g.(g a b);;
 
 def scottBubbleSwap = rec scottBubbleSwap = \list.\n.
   if n == 0
@@ -13,8 +13,8 @@ def scottBubbleSwap = rec scottBubbleSwap = \list.\n.
           if x < y
             then (scottCons x (scottBubbleSwap xs (n - 1)))
             else (scottCons y (scottBubbleSwap (scottCons x ys) (n - 1))) in
-        (xs onConsXs onNilXs) in
-      (list onCons onNil);;
+        (xs onNilXs onConsXs) in
+      (list onNil onCons);;
 
 def scottBubbleGo = rec scottBubbleGo = \list.\n.
   if n == 0
@@ -24,25 +24,25 @@ def scottBubbleGo = rec scottBubbleGo = \list.\n.
 def scottListLength = rec scottListLength = \list.
   let onNil = 0 in
   let onCons = \x.\xs.1 + (scottListLength xs) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
 def scottBubbleSort = \list.
   let onNil = scottNil in
   let onCons = \x.\xs.
     (scottBubbleGo list ((scottListLength list) - 1)) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
 def scottSumList = rec scottSumList = \list.
   let onNil = 0 in
   let onCons = \h.\t.h + (scottSumList t) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
-def generateList = \n.
-  let go = rec go = \i.\acc.
-    if i < n
-      then (go (i + 1) (scottCons i acc))
-      else acc in
-  (go 0 scottNil);;
+def generateListGo = rec generateListGo = \n.\i.\acc.
+  if i < n
+    then (generateListGo n (i + 1) (scottCons i acc))
+    else acc;;
+
+def generateList = \n.(generateListGo n 0 scottNil);;
 
 def benchmarkTerm =
   (scottSumList (scottBubbleSort (generateList 150)));;

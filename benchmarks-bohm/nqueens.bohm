@@ -1,6 +1,6 @@
-def scottNil = \f.\g.g;;
+def scottNil = \f.\g.f;;
 
-def scottCons = \a.\b.\f.\g.(f a b);;
+def scottCons = \a.\b.\f.\g.(g a b);;
 
 def scottMember = rec scottMember = \x.\list.
   let onNil = 0 in
@@ -8,17 +8,17 @@ def scottMember = rec scottMember = \x.\list.
     if x == y
       then 1
       else (scottMember x ys) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
 def scottLength = rec scottLength = \list.
   let onNil = 0 in
   let onCons = \x.\xs.1 + (scottLength xs) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
 def scottAppend = rec scottAppend = \xs.\ys.
   let onNil = ys in
   let onCons = \x.\xss.(scottCons x (scottAppend xss ys)) in
-  (xs onCons onNil);;
+  (xs onNil onCons);;
 
 def scottThreat = rec scottThreat = \k.\m.\list.
   let onNil = 0 in
@@ -28,7 +28,7 @@ def scottThreat = rec scottThreat = \k.\m.\list.
       else if k == m - x
         then 1
         else (scottThreat (k + 1) m xs) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
 def scottQueenAux = rec scottQueenAux = \m.\b.\n.
   if m == 0

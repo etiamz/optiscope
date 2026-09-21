@@ -180,9 +180,9 @@ I downloaded [BOHM1.1] & wrote the following Scott insertion sort benchmark for 
 <summary>Show</summary>
 
 ```
-def scottNil = \f.\g.g;;
+def scottNil = \f.\g.f;;
 
-def scottCons = \a.\b.\f.\g.(f a b);;
+def scottCons = \a.\b.\f.\g.(g a b);;
 
 def scottSingleton = \x.(scottCons x scottNil);;
 
@@ -194,24 +194,24 @@ def scottInsert = rec scottInsert = \elem.\list.
     if (lessEqual elem h) == 1
       then (scottCons elem (scottCons h t)) 
       else (scottCons h (scottInsert elem t)) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
 def scottInsertionSort = rec scottInsertionSort = \list.
   let onNil = scottNil in
   let onCons = \h.\t.(scottInsert h (scottInsertionSort t)) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
 def scottSumList = rec scottSumList = \list.
   let onNil = 0 in
   let onCons = \h.\t.h + (scottSumList t) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
-def generateList = \n.
-  let go = rec go = \i.\acc.
-    if i < n
-      then (go (i + 1) (scottCons i acc))
-      else acc in
-  (go 0 scottNil);;
+def generateListGo = rec generateListGo = \n.\i.\acc.
+  if i < n
+    then (generateListGo n (i + 1) (scottCons i acc))
+    else acc;;
+
+def generateList = \n.(generateListGo n 0 scottNil);;
 
 def benchmarkTerm =
   (scottSumList (scottInsertionSort (generateList 100)));;

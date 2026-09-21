@@ -1,6 +1,6 @@
-def scottNil = \f.\g.g;;
+def scottNil = \f.\g.f;;
 
-def scottCons = \a.\b.\f.\g.(f a b);;
+def scottCons = \a.\b.\f.\g.(g a b);;
 
 def scottFilter = rec scottFilter = \f.\list.
   let onNil = scottNil in
@@ -8,12 +8,12 @@ def scottFilter = rec scottFilter = \f.\list.
     if (f x) == 1
       then (scottCons x (scottFilter f xs))
       else (scottFilter f xs) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
 def scottAppend = rec scottAppend = \xs.\ys.
   let onNil = ys in
   let onCons = \x.\xss.(scottCons x (scottAppend xss ys)) in
-  (xs onCons onNil);;
+  (xs onNil onCons);;
 
 def scottQuicksort = rec scottQuicksort = \list.
   let onNil = scottNil in
@@ -21,19 +21,19 @@ def scottQuicksort = rec scottQuicksort = \list.
     (scottAppend
       (scottQuicksort (scottFilter (\y.if y < x then 1 else 0) xs))
       (scottCons x (scottQuicksort (scottFilter (\z.if z >= x then 1 else 0) xs)))) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
 def scottSumList = rec scottSumList = \list.
   let onNil = 0 in
   let onCons = \h.\t.h + (scottSumList t) in
-  (list onCons onNil);;
+  (list onNil onCons);;
 
-def generateList = \n.
-  let go = rec go = \i.\acc.
-    if i < n
-      then (go (i + 1) (scottCons i acc))
-      else acc in
-  (go 0 scottNil);;
+def generateListGo = rec generateListGo = \n.\i.\acc.
+  if i < n
+    then (generateListGo n (i + 1) (scottCons i acc))
+    else acc;;
+
+def generateList = \n.(generateListGo n 0 scottNil);;
 
 def benchmarkTerm =
   (scottSumList (scottQuicksort (generateList 100)));;
