@@ -1611,8 +1611,11 @@ struct context {
 #ifdef OPTISCOPE_ENABLE_STATS
     // The number of all proper interactions.
     uint64_t ninteractions, nbetas;
-    // The numbers of all interactions involving duplicators/delimiters.
-    uint64_t nduplicator_itrs, ndelimiter_itrs;
+    // The number of all interactions involving duplicators.
+    uint64_t nduplicator_itrs;
+    // The number of all bookkeeping interactions, i.e., those involving
+    // delimiters, barriers, or segments.
+    uint64_t nbookkeeping_itrs;
     // The number of uncategorized interactions (not reported).
     uint64_t nthrowaway;
     // The numbers of all non-interaction graph rewrites.
@@ -1691,7 +1694,7 @@ print_stats(const struct context *const restrict graph) {
                                      graph->nextrusions + graph->ngc;
 
     const uint64_t nbookkeeping_rewrites =
-        graph->ndelimiter_itrs + graph->nmergings + graph->nextrusions;
+        graph->nbookkeeping_itrs + graph->nmergings + graph->nextrusions;
 
     const double sharing_work =
         ((double)graph->nduplicator_itrs / (double)ntotal_rewrites) * 100.0;
@@ -2936,7 +2939,7 @@ gc_step(
                     free_node(graph, neighbour);
 #ifdef OPTISCOPE_ENABLE_STATS
                     graph->ninteractions++;
-                    graph->ndelimiter_itrs++;
+                    graph->nbookkeeping_itrs++;
 #endif
                     goto duplicator;
                 }
@@ -3963,7 +3966,7 @@ CONTROL_FUNCTION(interact_with_root, graph, f, g) {
         XASSERT(IS_INTERFACE_SYMBOL(gsym));
         return REDUCE_STOP;
     case SYMBOL_DELIMITER(UINT64_C(0)):
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
             commute_1_2_helper(graph, f, g);
         });
     default: COMPILER_UNREACHABLE();
@@ -4045,7 +4048,7 @@ CONTROL_FUNCTION(interact_with_app, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4060,7 +4063,7 @@ CONTROL_FUNCTION(interact_with_app, graph, f, g) {
         });
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_3_2_helper(graph, f, g);
         });
         break;
@@ -4098,7 +4101,7 @@ CONTROL_FUNCTION(interact_with_ucall, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4113,7 +4116,7 @@ CONTROL_FUNCTION(interact_with_ucall, graph, f, g) {
         });
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_2_2_helper(graph, f, g);
         });
         break;
@@ -4151,7 +4154,7 @@ CONTROL_FUNCTION(interact_with_bcall, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4166,7 +4169,7 @@ CONTROL_FUNCTION(interact_with_bcall, graph, f, g) {
         });
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_3_2_helper(graph, f, g);
         });
         break;
@@ -4204,7 +4207,7 @@ CONTROL_FUNCTION(interact_with_bcall_aux, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4219,7 +4222,7 @@ CONTROL_FUNCTION(interact_with_bcall_aux, graph, f, g) {
         });
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_2_2_helper(graph, f, g);
         });
         break;
@@ -4257,7 +4260,7 @@ CONTROL_FUNCTION(interact_with_ite, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4272,7 +4275,7 @@ CONTROL_FUNCTION(interact_with_ite, graph, f, g) {
         });
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_4_2_helper(graph, f, g);
         });
         break;
@@ -4291,38 +4294,17 @@ CONTROL_FUNCTION(interact_with_barr, graph, f, g) {
 
     const uint64_t gsym = g.ports[-1];
 
-    if (!points_to(g, f)) { return REDUCE_PUSH; }
-
-    switch (gsym) {
-    case SYMBOL_DELIMITER(UINT64_C(0)):
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+    if (!points_to(g, f)) {
+        return REDUCE_PUSH;
+    } else if (SYMBOL_DELIMITER(UINT64_C(0)) == gsym) {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
             barrier(graph, f, g);
         });
-        break;
-    case SYMBOL_GC_DUPLICATOR_LEFT:
-    case SYMBOL_GC_DUPLICATOR_RIGHT: goto duplicator;
-    default:
-        if (IS_DUPLICATOR((gsym))) {
-            goto duplicator;
-        } else if (IS_DELIMITER(gsym)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
-                unbarrier(graph, f, g);
-            });
-            break;
-        } else {
-            INTERACTION(graph, f, g, nthrowaway, REDUCE_POP, {
-                unbarrier(graph, f, g);
-            });
-            break;
-        }
-    duplicator:
-        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+    } else {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             unbarrier(graph, f, g);
         });
-        break;
     }
-
-    return REDUCE_POP;
 }
 
 #endif
@@ -4379,7 +4361,7 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4430,7 +4412,7 @@ CONTROL_FUNCTION(interact_with_gc_dup, graph, f, g) {
         }
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             if (f.ports[2] >= SYMBOL_INDEX(g.ports[-1])) {
                 f.ports[2] = bump_raw_index(f.ports[2], g.ports[2]);
                 new_duplicator_index(graph, f.ports[2]);
@@ -4478,7 +4460,7 @@ CONTROL_FUNCTION(interact_with_mapp, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4493,7 +4475,7 @@ CONTROL_FUNCTION(interact_with_mapp, graph, f, g) {
         });
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_3_2_helper(graph, f, g);
         });
         break;
@@ -4541,7 +4523,7 @@ CONTROL_FUNCTION(interact_with_rb, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4556,7 +4538,7 @@ CONTROL_FUNCTION(interact_with_rb, graph, f, g) {
         });
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_2_2_helper(graph, f, g);
         });
         break;
@@ -4594,7 +4576,7 @@ CONTROL_FUNCTION(interact_with_qlam_printer, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4609,7 +4591,7 @@ CONTROL_FUNCTION(interact_with_qlam_printer, graph, f, g) {
         });
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_2_2_helper(graph, f, g);
         });
         break;
@@ -4647,7 +4629,7 @@ CONTROL_FUNCTION(interact_with_qapp_printer, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4662,7 +4644,7 @@ CONTROL_FUNCTION(interact_with_qapp_printer, graph, f, g) {
         });
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_3_2_helper(graph, f, g);
         });
         break;
@@ -4700,7 +4682,7 @@ CONTROL_FUNCTION(interact_with_qapp_printer_aux, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4715,7 +4697,7 @@ CONTROL_FUNCTION(interact_with_qapp_printer_aux, graph, f, g) {
         });
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_2_2_helper(graph, f, g);
         });
         break;
@@ -4739,20 +4721,21 @@ CONTROL_FUNCTION(interact_with_seg, graph, f, g) {
     if (!points_to(g, f)) {
         return REDUCE_PUSH;
     } else if (IS_GC_DUPLICATOR(gsym)) {
-        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_2_2_helper(graph, f, g);
         });
     } else if (IS_DUPLICATOR(gsym)) {
-        INTERACTION(graph, f, g, nduplicator_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_2_3_helper(graph, f, g);
         });
     } else if (IS_DELIMITER(gsym)) {
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
             remove_delimiter(graph, g);
         });
     } else {
-        INTERACTION(
-            graph, f, g, nthrowaway, REDUCE_POP, { enclose(graph, f, g); });
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
+            enclose(graph, f, g);
+        });
     }
 }
 
@@ -4810,7 +4793,7 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_DELIMITER_SCHEDULING
     case SYMBOL_DELIMITER(UINT64_C(0)):
         if (barrier_condition(f, g)) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_LOOP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_LOOP, {
                 new_barrier(graph, f, g);
             });
             break;
@@ -4854,7 +4837,7 @@ CONTROL_FUNCTION(interact_with_dup, graph, f, g) {
         }
         break;
     delimiter:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             if (SYMBOL_INDEX(f.ports[-1]) >= SYMBOL_INDEX(g.ports[-1])) {
                 f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
                 new_duplicator_index(graph, SYMBOL_INDEX(f.ports[-1]));
@@ -4896,7 +4879,7 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
 #ifndef OPTISCOPE_DISABLE_CLOSEDNESS_ANNOTATIONS
     if (!DECODE_CLOSEDNESS_BIT(g.ports[0])) {
     } else if (points_to(g, f)) {
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, { //
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, { //
             remove_delimiter(graph, f);
         });
     } else if (is_operator_symbol(gsym)) {
@@ -4919,37 +4902,37 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
     case SYMBOL_REFERENCE:
     case SYMBOL_QVARIABLE:
     case SYMBOL_PRINTOUT:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             remove_delimiter(graph, f);
         });
         break;
     case SYMBOL_LAMBDA:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             f.ports[-1] = bump_index(f.ports[-1], 1);
             new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));
             commute_2_3_helper(graph, f, g);
         });
         break;
     case SYMBOL_GC_LAMBDA:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             f.ports[-1] = bump_index(f.ports[-1], 1);
             new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));
             commute_2_2_helper(graph, f, g);
         });
         break;
     case SYMBOL_QLAMBDA:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_2_2_helper(graph, f, g);
         });
         break;
     case SYMBOL_QAPPLICATOR:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             commute_2_3_helper(graph, f, g);
         });
         break;
     case SYMBOL_GC_DUPLICATOR_LEFT:
     case SYMBOL_GC_DUPLICATOR_RIGHT:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             if (g.ports[2] >= SYMBOL_INDEX(f.ports[-1])) {
                 g.ports[2] = bump_raw_index(g.ports[2], f.ports[2]);
                 new_duplicator_index(graph, g.ports[2]);
@@ -4960,7 +4943,7 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
     default:
         GOTO_INDEXED_SYMBOL(gsym, duplicator, delimiter);
     duplicator:
-        INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+        INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
             if (SYMBOL_INDEX(g.ports[-1]) >= SYMBOL_INDEX(f.ports[-1])) {
                 g.ports[-1] = bump_index(g.ports[-1], f.ports[2]);
                 new_duplicator_index(graph, SYMBOL_INDEX(g.ports[-1]));
@@ -4970,7 +4953,7 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
         break;
     delimiter:
         if (fsym != gsym) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
                 if (f.ports[-1] > g.ports[-1]) {
                     f.ports[-1] = bump_index(f.ports[-1], g.ports[2]);
                     new_delimiter_index(graph, SYMBOL_INDEX(f.ports[-1]));
@@ -4981,17 +4964,17 @@ CONTROL_FUNCTION(interact_with_del, graph, f, g) {
                 commute_2_2_helper(graph, f, g);
             });
         } else if (f.ports[2] == g.ports[2]) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
                 annihilate_2_2_helper(graph, f, g);
             });
         } else if (f.ports[2] > g.ports[2]) {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
                 f.ports[2] -= g.ports[2];
                 connect_ports(&f.ports[0], DECODE_ADDRESS(g.ports[1]));
                 free_node(graph, g);
             });
         } else {
-            INTERACTION(graph, f, g, ndelimiter_itrs, REDUCE_POP, {
+            INTERACTION(graph, f, g, nbookkeeping_itrs, REDUCE_POP, {
                 g.ports[2] -= f.ports[2];
                 connect_ports(&g.ports[0], DECODE_ADDRESS(f.ports[1]));
                 free_node(graph, f);

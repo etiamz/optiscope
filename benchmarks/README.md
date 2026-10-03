@@ -119,7 +119,7 @@ Benchmark 1: ./ackermann
   Total interactions: 50152048
    Family reductions: 5571998
         Sharing work: 8.24%
-    Bookkeeping work: 21.18%
+    Bookkeeping work: 32.94%
              GC work: 41.17%
     Compression work: 0.00%
 Max duplicator index: 0
@@ -147,7 +147,7 @@ Benchmark 1: ./tak
   Total interactions: 38890919
    Family reductions: 4666911
         Sharing work: 11.16%
-    Bookkeeping work: 17.17%
+    Bookkeeping work: 29.61%
              GC work: 45.92%
     Compression work: 0.00%
 Max duplicator index: 0
@@ -176,7 +176,7 @@ Benchmark 1: ./scott-bubble-sort
   Total interactions: 165301706
    Family reductions: 814219
         Sharing work: 96.16%
-    Bookkeeping work: 1.13%
+    Bookkeeping work: 1.93%
              GC work: 1.24%
     Compression work: 0.00%
 Max duplicator index: 602
@@ -205,7 +205,7 @@ Benchmark 1: ./scott-insertion-sort
   Total interactions: 18061044
    Family reductions: 5023014
         Sharing work: 3.87%
-    Bookkeeping work: 24.31%
+    Bookkeeping work: 37.91%
              GC work: 44.60%
     Compression work: 0.00%
 Max duplicator index: 0
@@ -234,7 +234,7 @@ Benchmark 1: ./scott-merge-sort
   Total interactions: 10031750
    Family reductions: 296262
         Sharing work: 81.12%
-    Bookkeeping work: 5.62%
+    Bookkeeping work: 9.13%
              GC work: 6.66%
     Compression work: 0.00%
 Max duplicator index: 2002
@@ -263,7 +263,7 @@ Benchmark 1: ./scott-quicksort
   Total interactions: 55068043
    Family reductions: 15029014
         Sharing work: 11.03%
-    Bookkeeping work: 31.33%
+    Bookkeeping work: 49.75%
              GC work: 21.26%
     Compression work: 0.00%
 Max duplicator index: 2000
@@ -291,7 +291,7 @@ Benchmark 1: ./nqueens
   Total interactions: 169205278
    Family reductions: 21150593
         Sharing work: 27.95%
-    Bookkeeping work: 16.32%
+    Bookkeeping work: 25.81%
              GC work: 35.62%
     Compression work: 0.00%
 Max duplicator index: 20
