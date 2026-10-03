@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 2.3.1 - 2026-10-03
+
 ### Fixed
 
  - Statistics: count all interactions with segments & barriers as bookkeeping interactions, since
