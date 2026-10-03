@@ -101,6 +101,14 @@ The BOHM benchmarks used for the comparison live in [`../benchmarks-bohm/`].
 
 On GNU/Linux, you need to reserve huge pages as follows: `sudo sysctl vm.nr_hugepages=6000`.
 
+"Sharing work" counts all interactions involving duplicators, excluding interactions of duplicators
+with delimiters, barriers, or segments. "Bookkeeping work" counts all rewrites involving delimiters,
+barriers, or segments, except when these agents are erased at GC time. "Compression work" counts
+delimiter-merging rewrites alone (which are also counted as bookkeeping work). The other statistical
+counters are self-explanatory. Our rationale is to separate the work performed by Lamping's
+simplified algorithm from the work performed by Optiscope's oracle implementation, so that we can
+tracke the effects of our optimizations on the latter.
+
 ### [Ackermann function](ackermann.c)
 
 Description: Computes the Ackermann function with initial values _(3, 8)_.
