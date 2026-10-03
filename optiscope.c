@@ -3373,13 +3373,13 @@ COMPUTATION_RULE(do_readback_lam, graph, f, g) {
 
     const uint64_t lvl = f.ports[2];
 
-    const struct node neutral = alloc_node(graph, SYMBOL_QVARIABLE);
-    neutral.ports[0] |= REVEAL_CLOSEDNESS_BIT;
-    neutral.ports[1] = lvl;
+    const struct node param = alloc_node(graph, SYMBOL_QVARIABLE);
+    param.ports[0] |= REVEAL_CLOSEDNESS_BIT;
+    param.ports[1] = lvl;
 
     const struct node app = alloc_node(graph, SYMBOL_APPLICATOR);
     connect_ports(&app.ports[0], DECODE_ADDRESS(g.ports[1]));
-    connect_ports(&app.ports[2], &neutral.ports[0]);
+    connect_ports(&app.ports[2], &param.ports[0]);
 
     const struct node rb = alloc_node(graph, SYMBOL_READBACK);
     rb.ports[2] = lvl + 1;
