@@ -3387,10 +3387,10 @@ COMPUTATION_RULE(do_readback_lam, graph, f, g) {
     connect_ports(&app.ports[0], DECODE_ADDRESS(g.ports[1]));
     connect_ports(&app.ports[1], &rb.ports[0]);
 
-    const struct node param = alloc_node(graph, SYMBOL_QVARIABLE);
-    param.ports[0] |= REVEAL_CLOSEDNESS_BIT;
-    param.ports[1] = lvl;
-    connect_ports(&param.ports[0], &app.ports[2]);
+    const struct node v = alloc_node(graph, SYMBOL_QVARIABLE);
+    v.ports[0] |= REVEAL_CLOSEDNESS_BIT;
+    v.ports[1] = lvl;
+    connect_ports(&v.ports[0], &app.ports[2]);
 
     free_node(graph, f);
     free_node(graph, g);
