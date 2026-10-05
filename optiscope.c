@@ -3376,21 +3376,21 @@ COMPUTATION_RULE(do_readback_lam, graph, f, g) {
 
     const uint64_t lvl = f.ports[2];
 
-    const struct node param = alloc_node(graph, SYMBOL_QVARIABLE);
-    param.ports[0] |= REVEAL_CLOSEDNESS_BIT;
-    param.ports[1] = lvl;
-
-    const struct node app = alloc_node(graph, SYMBOL_APPLICATOR);
-    connect_ports(&app.ports[0], DECODE_ADDRESS(g.ports[1]));
-    connect_ports(&app.ports[2], &param.ports[0]);
+    const struct node p = alloc_node(graph, SYMBOL_QLAMBDA_PRINTER);
+    connect_ports(&p.ports[1], DECODE_ADDRESS(f.ports[1]));
 
     const struct node rb = alloc_node(graph, SYMBOL_READBACK);
     rb.ports[2] = lvl + 1;
-    connect_ports(&rb.ports[0], &app.ports[1]);
+    connect_ports(&rb.ports[1], &p.ports[0]);
 
-    const struct node p = alloc_node(graph, SYMBOL_QLAMBDA_PRINTER);
-    connect_ports(&p.ports[0], &rb.ports[1]);
-    connect_ports(&p.ports[1], DECODE_ADDRESS(f.ports[1]));
+    const struct node app = alloc_node(graph, SYMBOL_APPLICATOR);
+    connect_ports(&app.ports[0], DECODE_ADDRESS(g.ports[1]));
+    connect_ports(&app.ports[1], &rb.ports[0]);
+
+    const struct node param = alloc_node(graph, SYMBOL_QVARIABLE);
+    param.ports[0] |= REVEAL_CLOSEDNESS_BIT;
+    param.ports[1] = lvl;
+    connect_ports(&param.ports[0], &app.ports[2]);
 
     free_node(graph, f);
     free_node(graph, g);
