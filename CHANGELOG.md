@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - Optimization: remove segments reaching operators marked closed instead of extruding them, since
-   such operators have either been extruded over already or been constructed closed together with
-   their operands.
+ - Optimization: doe not extrude segments over closed operators, since such operators have either
+   been extruded over already or been constructed closed together with their operands. In these
+   situations, we simply remove the segment.
 
 ### Fixed
 
