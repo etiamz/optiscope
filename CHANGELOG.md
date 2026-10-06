@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+## 2.3.2 - 2026-10-06
+
 ### Changed
 
  - Optimization: doe not extrude segments over closed operators, since such operators have either
