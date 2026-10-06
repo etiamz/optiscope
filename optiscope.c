@@ -2413,7 +2413,8 @@ static void
 emit_bytecode_for_body(
     struct context *const restrict graph,
     struct bytecode *const restrict bc,
-    struct lambda_data *const binder, // also mutated from within `emit_bytecode`
+    struct lambda_data *const
+        binder, // also mutated from within `emit_bytecode`
     struct lambda_term *const restrict body,
     const uint64_t lvl,
     const enum emission_mode mode) {
@@ -3920,27 +3921,42 @@ try_extrude(
     case SYMBOL_READBACK:
     case SYMBOL_QLAMBDA_PRINTER:
     case SYMBOL_QAPPLICATOR_PRINTER_AUX:
+        if (DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+            // This operator was marked closed either during net construction or
+            // after the previouse extrusion; in either case, there is no good
+            // reason for (one more) extrusion.
+            goto remove;
+        }
         REWRITE(graph, f, g, nextrusions, { extrude_2_2(graph, f, g); });
         return true;
     case SYMBOL_APPLICATOR:
     case SYMBOL_BINARY_CALL:
     case SYMBOL_MAPPLICATOR:
     case SYMBOL_QAPPLICATOR_PRINTER:
+        if (DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+            // Same objective as above.
+            goto remove;
+        }
         REWRITE(graph, f, g, nextrusions, { extrude_2_3(graph, f, g); });
         return true;
     case SYMBOL_IF_THEN_ELSE:
+        if (DECODE_CLOSEDNESS_BIT(g.ports[0])) {
+            // Same objective as above.
+            goto remove;
+        }
         REWRITE(graph, f, g, nextrusions, { extrude_2_4(graph, f, g); });
         return true;
 #ifndef OPTISCOPE_DISABLE_SEGMENTATION
     // When `g` is a segment & `f` is either a delimiter or another segment, we
     // simply remove `f` in both cases.
     case SYMBOL_SEGMENT:
+#endif
+    remove:
         REWRITE(graph, f, g, nextrusions, {
             connect_ports(DECODE_ADDRESS(f.ports[1]), &g.ports[1]);
             free_node(graph, f);
         });
         return true;
-#endif
     default: return false;
     }
 }

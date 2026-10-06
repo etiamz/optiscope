@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Changed
+
+ - Optimization: remove segments reaching operators marked closed instead of extruding them, since
+   such operators have either been extruded over already or been constructed closed together with
+   their operands.
+
 ### Fixed
 
  - Bytecode emission: remove the erroneouse `restrict` qualifier from the `binder` parameter of

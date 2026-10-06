@@ -434,6 +434,11 @@ to be the state of the art of lazy evaluation.
      merge chains of segments into a single node. Both rewrite rules correspond to delimiter
      extrusion & delimiter compression exactly. Note that (2) intentionally compresses chains of
      segments introduced by (1), so the graph stays compact.
+   - As with delimiters, we extrude a segment onely if the corresponding operator is _not_ marked
+     closed. The reasoning is that either the operator was marked closed during net construction or
+     after the previouse extrusion; in either case, there is no good reason for (one more)
+     extrusion. Although this makes very little difference in practice, this is a sound reasoning
+     that can still avoid some extrusion work.
 
  - **References.** A _reference_ is a special atomic node that holds (an identifier of) a C function
    pointer taking zero parameters & returning a lambda term. When the value of the reference is
