@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+### Fixed
+
+ - Bytecode emission: remove the erroneouse `restrict` qualifier from the `binder` parameter of
+   `emit_bytecode_for_body`.
+
 ## 2.3.1 - 2026-10-03
 
 ### Fixed

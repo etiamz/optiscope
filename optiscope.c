@@ -2413,7 +2413,7 @@ static void
 emit_bytecode_for_body(
     struct context *const restrict graph,
     struct bytecode *const restrict bc,
-    struct lambda_data *const restrict binder,
+    struct lambda_data *const binder, // also mutated from within `emit_bytecode`
     struct lambda_term *const restrict body,
     const uint64_t lvl,
     const enum emission_mode mode) {
